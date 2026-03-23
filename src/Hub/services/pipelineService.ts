@@ -27,9 +27,10 @@ export async function scaffoldPipeline(
   const folder = pipelineTemplate.folder ?? "\\";
 
   const accessToken = await SDK.getAccessToken();
+  const collection = SDK.getHost().name;
 
   // 1. Resolve the repository ID
-  const repoId = await resolveRepoId(projectId, repoName, accessToken);
+  const repoId = await resolveRepoId(collection, projectId, repoName, accessToken);
   if (!repoId) {
     return {
       pipelineName,
@@ -39,7 +40,7 @@ export async function scaffoldPipeline(
   }
 
   // 2. Get the first available agent queue
-  const queueId = await getDefaultQueueId(projectId, accessToken);
+  const queueId = await getDefaultQueueId(collection, projectId, accessToken);
   if (!queueId) {
     return {
       pipelineName,
@@ -51,7 +52,7 @@ export async function scaffoldPipeline(
 
   // 3. Check if pipeline already exists
   const existsCheck = await fetch(
-    `${window.location.origin}/${projectId}/_apis/build/definitions?name=${encodeURIComponent(pipelineName)}&api-version=7.1`,
+    `${window.location.origin}/${collection}/${projectId}/_apis/build/definitions?name=${encodeURIComponent(pipelineName)}&api-version=7.1`,
     { headers: { Authorization: `Bearer ${accessToken}` } },
   );
 
@@ -88,7 +89,7 @@ export async function scaffoldPipeline(
   };
 
   const createResponse = await fetch(
-    `${window.location.origin}/${projectId}/_apis/build/definitions?api-version=7.1`,
+    `${window.location.origin}/${collection}/${projectId}/_apis/build/definitions?api-version=7.1`,
     {
       method: "POST",
       headers: {
@@ -115,12 +116,13 @@ export async function scaffoldPipeline(
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
 async function resolveRepoId(
+  collection: string,
   projectId: string,
   repoName: string,
   accessToken: string,
 ): Promise<string | null> {
   const response = await fetch(
-    `${window.location.origin}/${projectId}/_apis/git/repositories?api-version=7.1`,
+    `${window.location.origin}/${collection}/${projectId}/_apis/git/repositories?api-version=7.1`,
     { headers: { Authorization: `Bearer ${accessToken}` } },
   );
 
@@ -135,11 +137,12 @@ async function resolveRepoId(
 }
 
 async function getDefaultQueueId(
+  collection: string,
   projectId: string,
   accessToken: string,
 ): Promise<number | null> {
   const response = await fetch(
-    `${window.location.origin}/${projectId}/_apis/distributedtask/queues?api-version=7.1`,
+    `${window.location.origin}/${collection}/${projectId}/_apis/distributedtask/queues?api-version=7.1`,
     { headers: { Authorization: `Bearer ${accessToken}` } },
   );
 

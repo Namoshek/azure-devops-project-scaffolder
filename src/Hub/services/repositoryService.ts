@@ -27,7 +27,8 @@ export async function scaffoldRepository(
   const repoName = renderTemplate(repoTemplate.name, parameterValues);
 
   const accessToken = await SDK.getAccessToken();
-  const baseUrl = `${window.location.origin}/${projectId}/_apis/git/repositories`;
+  const collection = SDK.getHost().name;
+  const baseUrl = `${window.location.origin}/${collection}/${projectId}/_apis/git/repositories`;
 
   // 1. Check if the repo already exists
   const listResponse = await fetch(`${baseUrl}?api-version=7.1`, {

@@ -1,7 +1,7 @@
 import * as SDK from "azure-devops-extension-sdk";
 
 // Project security namespace GUID (constant across all ADO instances).
-const PROJECT_SECURITY_NAMESPACE = "52d39943-cb85-4d7f-8463-6af6cdc3a6c4";
+const PROJECT_SECURITY_NAMESPACE = "52d39943-cb85-4d7f-8fa8-c6baac873819";
 
 // Permission bit 4 = "Edit project-level information" — the standard proxy for "is a Project Administrator".
 const EDIT_PROJECT_PERMISSION_BIT = 4;
@@ -22,6 +22,7 @@ export async function checkProjectAdminPermission(
 ): Promise<boolean> {
   try {
     const accessToken = await SDK.getAccessToken();
+    const collection = SDK.getHost().name;
 
     // The security token for a project is its GUID prefixed with "$PROJECT:vstfs:///Classification/TeamProject/"
     // but the simpler form accepted by the permissions endpoint is just the project ID.
@@ -30,7 +31,7 @@ export async function checkProjectAdminPermission(
     );
 
     const url =
-      `${window.location.origin}/_apis/permissions/${PROJECT_SECURITY_NAMESPACE}/${EDIT_PROJECT_PERMISSION_BIT}` +
+      `${window.location.origin}/${collection}/_apis/permissions/${PROJECT_SECURITY_NAMESPACE}/${EDIT_PROJECT_PERMISSION_BIT}` +
       `?token=${token}&alwaysAllowAdministrators=false&api-version=7.1`;
 
     const response = await fetch(url, {

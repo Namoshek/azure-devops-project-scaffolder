@@ -22,12 +22,10 @@ interface CodeSearchResponse {
  */
 export async function discoverTemplates(): Promise<DiscoveredTemplate[]> {
   const accessToken = await SDK.getAccessToken();
-  const hostBaseUrl = SDK.getHost().serviceVersion
-    ? `${window.location.origin}/`
-    : `${window.location.origin}/`;
+  const collection = SDK.getHost().name;
 
   // Code Search API: POST /_apis/search/codesearchresults?api-version=7.1
-  const searchUrl = `${window.location.origin}/_apis/search/codesearchresults?api-version=7.1`;
+  const searchUrl = `${window.location.origin}/${collection}/_apis/search/codesearchresults?api-version=7.1`;
 
   const body = {
     searchText: "file:project-template.yml",

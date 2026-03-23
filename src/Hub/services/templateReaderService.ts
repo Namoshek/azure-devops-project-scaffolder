@@ -12,12 +12,13 @@ export async function readTemplateFromRepo(
   filePath: string,
 ): Promise<TemplateDefinition> {
   const accessToken = await SDK.getAccessToken();
+  const collection = SDK.getHost().name;
 
   // Normalize path — Code Search returns paths like /project-template.yml
   const normalizedPath = filePath.startsWith("/") ? filePath : `/${filePath}`;
 
   const url =
-    `${window.location.origin}/${projectId}/_apis/git/repositories/${repoId}/items` +
+    `${window.location.origin}/${collection}/${projectId}/_apis/git/repositories/${repoId}/items` +
     `?path=${encodeURIComponent(normalizedPath)}&includeContent=true&api-version=7.1`;
 
   const response = await fetch(url, {
@@ -45,10 +46,11 @@ export async function fetchTemplateFiles(
   sourcePath: string,
 ): Promise<Array<{ path: string; content: string; isBase64: boolean }>> {
   const accessToken = await SDK.getAccessToken();
+  const collection = SDK.getHost().name;
 
   // First, list all items under the sourcePath recursively
   const listUrl =
-    `${window.location.origin}/${projectId}/_apis/git/repositories/${repoId}/items` +
+    `${window.location.origin}/${collection}/${projectId}/_apis/git/repositories/${repoId}/items` +
     `?scopePath=${encodeURIComponent(sourcePath)}&recursionLevel=Full&api-version=7.1`;
 
   const listResponse = await fetch(listUrl, {
@@ -76,7 +78,7 @@ export async function fetchTemplateFiles(
     const isText = isTextFile(file.path);
 
     const fileUrl =
-      `${window.location.origin}/${projectId}/_apis/git/repositories/${repoId}/items` +
+      `${window.location.origin}/${collection}/${projectId}/_apis/git/repositories/${repoId}/items` +
       `?path=${encodeURIComponent(file.path)}` +
       `&includeContent=true` +
       (!isText ? `&$format=base64Encoded` : "") +

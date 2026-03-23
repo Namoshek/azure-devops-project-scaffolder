@@ -4,6 +4,7 @@ import { evaluateWhenExpression } from "../services/templateEngineService";
 
 interface ParameterFormProps {
   template: TemplateDefinition;
+  isAdmin: boolean;
   onSubmit: (values: Record<string, unknown>) => void;
   onBack: () => void;
 }
@@ -102,7 +103,7 @@ export class ParameterForm extends React.Component<
   };
 
   render() {
-    const { template, onBack } = this.props;
+    const { template, onBack, isAdmin } = this.props;
     const { values, errors, submitted } = this.state;
 
     const visibleParams = template.parameters.filter(
@@ -140,9 +141,25 @@ export class ParameterForm extends React.Component<
             <button type="button" style={styles.cancelButton} onClick={onBack}>
               Cancel
             </button>
-            <button type="submit" style={styles.submitButton}>
-              Scaffold Project →
-            </button>
+            <span
+              title={
+                !isAdmin
+                  ? "You need Project Administrator permissions to scaffold projects."
+                  : undefined
+              }
+            >
+              <button
+                type="submit"
+                style={
+                  isAdmin
+                    ? styles.submitButton
+                    : { ...styles.submitButton, ...styles.submitButtonDisabled }
+                }
+                disabled={!isAdmin}
+              >
+                Scaffold Project →
+              </button>
+            </span>
           </div>
         </form>
       </div>
@@ -328,5 +345,9 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: "pointer",
     color: "#ffffff",
     fontWeight: 600,
+  },
+  submitButtonDisabled: {
+    background: "#c8c6c4",
+    cursor: "not-allowed",
   },
 };

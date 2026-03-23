@@ -9,6 +9,7 @@ import { ParameterForm } from "./components/ParameterForm";
 import { ScaffoldProgress } from "./components/ScaffoldProgress";
 import { TemplateDefinition } from "./types/templateTypes";
 import { ScaffoldResult } from "./services/scaffoldingOrchestrator";
+import { checkProjectAdminPermission } from "./services/permissionService";
 
 type Screen = "list" | "form" | "progress";
 
@@ -45,11 +46,7 @@ export class ScaffoldApp extends React.Component<{}, AppState> {
       );
       const project = await projectService.getProject();
       if (!project) return false;
-
-      // The extension is contributed to the project-admin-hub-group, so if the
-      // user can reach this page they already passed ADO's admin permission gate.
-      // We do a secondary check via the project info to confirm we have a valid context.
-      return true;
+      return await checkProjectAdminPermission(project.id);
     } catch {
       return false;
     }
@@ -85,6 +82,7 @@ export class ScaffoldApp extends React.Component<{}, AppState> {
   };
 
   render() {
+    const styles = ScaffoldApp.styles;
     const {
       screen,
       isAdmin,
@@ -101,20 +99,17 @@ export class ScaffoldApp extends React.Component<{}, AppState> {
       );
     }
 
-    if (!isAdmin) {
-      return (
-        <div style={{ padding: 24 }}>
-          <h2>Access Denied</h2>
-          <p>
-            You must be a project administrator to access Project Scaffolding.
-          </p>
-        </div>
-      );
-    }
-
     return (
       <div style={{ padding: 24, maxWidth: 960 }}>
         <h1 style={{ marginTop: 0, marginBottom: 24 }}>Project Scaffolding</h1>
+
+        {!isAdmin && (
+          <div style={styles.warningBanner}>
+            <strong>Read-only view</strong> — you need Project Administrator
+            permissions to scaffold projects. Contact your project admin if you
+            need access.
+          </div>
+        )}
 
         {screen === "list" && (
           <TemplateList onTemplateSelected={this.handleTemplateSelected} />
@@ -123,6 +118,7 @@ export class ScaffoldApp extends React.Component<{}, AppState> {
         {screen === "form" && selectedTemplate && (
           <ParameterForm
             template={selectedTemplate}
+            isAdmin={isAdmin === true}
             onSubmit={this.handleFormSubmit}
             onBack={this.handleBack}
           />
@@ -140,4 +136,16 @@ export class ScaffoldApp extends React.Component<{}, AppState> {
       </div>
     );
   }
+
+  private static readonly styles: Record<string, React.CSSProperties> = {
+    warningBanner: {
+      background: "#fff4ce",
+      border: "1px solid #c8a600",
+      borderRadius: 4,
+      padding: "10px 16px",
+      marginBottom: 20,
+      fontSize: 14,
+      color: "#323130",
+    },
+  };
 }

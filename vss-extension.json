@@ -1,0 +1,48 @@
+{
+  "manifestVersion": 1,
+  "id": "ado-project-scaffolder",
+  "publisher": "namoshek",
+  "version": "0.1.0",
+  "name": "Project Scaffolder",
+  "description": "Scaffold new projects from curated templates — creates repositories, pipelines, and more in a guided, non-destructive flow.",
+  "public": false,
+  "categories": ["Azure Repos", "Azure Pipelines"],
+  "tags": ["scaffolding", "templates", "projects", "repos", "pipelines"],
+  "icons": {
+    "default": "images/logo.png"
+  },
+  "targets": [
+    {
+      "id": "Microsoft.VisualStudio.Services"
+    }
+  ],
+  "contributions": [
+    {
+      "id": "project-scaffolding-hub",
+      "type": "ms.vss-web.hub",
+      "description": "Project Scaffolding page under Project Settings",
+      "targets": ["ms.vss-web.project-admin-hub-group"],
+      "properties": {
+        "name": "Project Scaffolding",
+        "order": 100,
+        "uri": "dist/Hub/index.html"
+      }
+    }
+  ],
+  "scopes": [
+    "vso.code_manage",
+    "vso.build_execute",
+    "vso.project",
+    "vso.graph_manage"
+  ],
+  "files": [
+    {
+      "path": "dist",
+      "addressable": true
+    },
+    {
+      "path": "images",
+      "addressable": true
+    }
+  ]
+}

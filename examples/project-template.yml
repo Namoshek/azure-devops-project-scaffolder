@@ -1,0 +1,57 @@
+id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+name: "Backend with Frontend"
+version: "1.0.0"
+description: "Creates a .NET backend and React frontend with CI pipelines."
+maintainers:
+  - "Platform Team"
+
+parameters:
+  - id: projectName
+    label: "Project Name"
+    hint: "A descriptive but technical name for your project (lowercase, no spaces)"
+    type: string
+    required: true
+    validation:
+      regex: "^[a-z][a-z0-9-]+$"
+      message: "Lowercase letters, numbers, hyphens only. Must start with a letter."
+
+  - id: teamName
+    label: "Team Name"
+    hint: "Name of the team responsible for this project"
+    type: choice
+    required: true
+    options:
+      - "Platform Team"
+      - "Web Team"
+      - "Mobile Team"
+      - "Data Team"
+
+  - id: includeDocker
+    label: "Include Docker Support"
+    hint: "Whether to include Dockerfiles and docker-compose.yml"
+    type: boolean
+    defaultValue: false
+
+  - id: dockerRegistry
+    label: "Container Registry URL"
+    hint: "e.g. myregistry.azurecr.io"
+    type: string
+    when: "includeDocker == true"
+
+repositories:
+  - name: "{{projectName}}.backend"
+    sourcePath: "templates/backend"
+    defaultBranch: "main"
+  - name: "{{projectName}}.frontend"
+    sourcePath: "templates/frontend"
+    defaultBranch: "main"
+
+pipelines:
+  - name: "{{projectName}}-backend-ci"
+    repository: "{{projectName}}.backend"
+    yamlPath: "pipelines/ci.yml"
+    folder: "\\CI"
+  - name: "{{projectName}}-frontend-ci"
+    repository: "{{projectName}}.frontend"
+    yamlPath: "pipelines/ci.yml"
+    folder: "\\CI"

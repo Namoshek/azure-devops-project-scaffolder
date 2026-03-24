@@ -1,6 +1,16 @@
 import * as React from "react";
 import { TemplateDefinition, TemplateParameter } from "../types/templateTypes";
 import { evaluateWhenExpression } from "../services/templateEngineService";
+import { Button } from "azure-devops-ui/Components/Button/Button";
+import { Checkbox } from "azure-devops-ui/Components/Checkbox/Checkbox";
+import { Dropdown } from "azure-devops-ui/Components/Dropdown/Dropdown";
+import { FormItem as FormItemBase } from "azure-devops-ui/Components/FormItem/FormItem";
+import { TextField } from "azure-devops-ui/Components/TextField/TextField";
+const FormItem = FormItemBase as React.ComponentType<
+  React.ComponentProps<typeof FormItemBase> & { children?: React.ReactNode }
+>;
+import { IListBoxItem } from "azure-devops-ui/Components/ListBox/ListBox.Props";
+import { DropdownSelection } from "azure-devops-ui/Utilities/DropdownSelection";
 
 interface ParameterFormProps {
   template: TemplateDefinition;
@@ -81,7 +91,7 @@ export class ParameterForm extends React.Component<
             errors[param.id] = param.validation.message;
           }
         } catch {
-          // Invalid regex in template — skip validation
+          // Invalid regex in template -- skip validation
         }
       }
     }
@@ -89,8 +99,7 @@ export class ParameterForm extends React.Component<
     return errors;
   }
 
-  private handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  private handleSubmit = () => {
     this.setState({ submitted: true });
 
     const errors = this.validate();
@@ -112,62 +121,61 @@ export class ParameterForm extends React.Component<
 
     return (
       <div>
-        <div style={styles.header}>
-          <button style={styles.backButton} onClick={onBack}>
-            ← Back
-          </button>
+        <div
+          className="flex-row rhythm-horizontal-8"
+          style={{ marginBottom: 16 }}
+        >
+          <Button text="Back" subtle onClick={onBack} />
           <div>
-            <h2 style={styles.title}>{template.name}</h2>
+            <div className="title-m">{template.name}</div>
             {template.description && (
-              <p style={styles.description}>{template.description}</p>
+              <p
+                className="body-m secondary-text"
+                style={{ margin: "4px 0 0" }}
+              >
+                {template.description}
+              </p>
             )}
           </div>
         </div>
 
-        <form onSubmit={this.handleSubmit} noValidate>
-          <div style={styles.fields}>
-            {visibleParams.map((param) => (
-              <ParameterField
-                key={param.id}
-                param={param}
-                value={values[param.id]}
-                error={submitted ? errors[param.id] : undefined}
-                onChange={this.handleChange}
-              />
-            ))}
-          </div>
+        <div
+          style={{ maxWidth: 480 }}
+          className="flex-column rhythm-vertical-20"
+        >
+          {visibleParams.map((param) => (
+            <ParameterField
+              key={param.id}
+              param={param}
+              value={values[param.id]}
+              error={submitted ? errors[param.id] : undefined}
+              onChange={this.handleChange}
+            />
+          ))}
+        </div>
 
-          <div style={styles.actions}>
-            <button type="button" style={styles.cancelButton} onClick={onBack}>
-              Cancel
-            </button>
-            <span
-              title={
-                !isAdmin
-                  ? "You need Project Administrator permissions to scaffold projects."
-                  : undefined
-              }
-            >
-              <button
-                type="submit"
-                style={
-                  isAdmin
-                    ? styles.submitButton
-                    : { ...styles.submitButton, ...styles.submitButtonDisabled }
-                }
-                disabled={!isAdmin}
-              >
-                Scaffold Project →
-              </button>
-            </span>
-          </div>
-        </form>
+        <div className="flex-row rhythm-horizontal-8" style={{ marginTop: 32 }}>
+          <Button text="Cancel" onClick={onBack} />
+          <Button
+            text="Scaffold Project"
+            primary
+            disabled={!isAdmin}
+            tooltipProps={
+              !isAdmin
+                ? {
+                    text: "You need Project Administrator permissions to scaffold projects.",
+                  }
+                : undefined
+            }
+            onClick={this.handleSubmit}
+          />
+        </div>
       </div>
     );
   }
 }
 
-// ─── ParameterField ───────────────────────────────────────────────────────────
+// --- ParameterField ---
 
 interface ParameterFieldProps {
   param: TemplateParameter;
@@ -182,172 +190,66 @@ function ParameterField({
   error,
   onChange,
 }: ParameterFieldProps) {
-  const fieldId = `param-${param.id}`;
+  const dropdownSelection = React.useMemo(() => new DropdownSelection(), []);
+  const dropdownItems = React.useMemo<IListBoxItem[]>(
+    () => (param.options || []).map((opt) => ({ id: opt, text: opt })),
+    [param.options],
+  );
 
-  return (
-    <div style={styles.field}>
-      <label htmlFor={fieldId} style={styles.label}>
-        {param.label}
-        {param.required && <span style={styles.required}> *</span>}
-      </label>
-      {param.hint && <div style={styles.hint}>{param.hint}</div>}
+  React.useEffect(() => {
+    if (param.type === "choice" && param.options) {
+      const idx = param.options.indexOf(typeof value === "string" ? value : "");
+      if (idx >= 0) {
+        dropdownSelection.select(idx);
+      }
+    }
+  }, [value, param.options, param.type, dropdownSelection]);
 
-      {param.type === "string" && (
-        <input
-          id={fieldId}
-          type={param.secret ? "password" : "text"}
-          value={typeof value === "string" ? value : ""}
-          onChange={(e) => onChange(param.id, e.target.value)}
-          style={{ ...styles.input, ...(error ? styles.inputError : {}) }}
-          autoComplete={param.secret ? "new-password" : "off"}
+  const hasError = Boolean(error);
+
+  if (param.type === "boolean") {
+    return (
+      <FormItem label={param.label} message={param.hint}>
+        <Checkbox
+          label={Boolean(value) ? "Yes" : "No"}
+          checked={Boolean(value)}
+          onChange={(_e, checked) => onChange(param.id, checked)}
         />
-      )}
+      </FormItem>
+    );
+  }
 
-      {param.type === "boolean" && (
-        <label style={styles.toggleLabel}>
-          <input
-            id={fieldId}
-            type="checkbox"
-            checked={Boolean(value)}
-            onChange={(e) => onChange(param.id, e.target.checked)}
-            style={styles.checkbox}
-          />
-          <span>{value ? "Yes" : "No"}</span>
-        </label>
-      )}
+  if (param.type === "choice" && param.options) {
+    return (
+      <FormItem
+        label={param.label}
+        required={param.required}
+        message={hasError ? error : param.hint}
+        error={hasError}
+      >
+        <Dropdown
+          items={dropdownItems}
+          selection={dropdownSelection}
+          onSelect={(_e, item) => onChange(param.id, item.id)}
+        />
+      </FormItem>
+    );
+  }
 
-      {param.type === "choice" && param.options && (
-        <select
-          id={fieldId}
-          value={typeof value === "string" ? value : ""}
-          onChange={(e) => onChange(param.id, e.target.value)}
-          style={{
-            ...styles.input,
-            ...styles.select,
-            ...(error ? styles.inputError : {}),
-          }}
-        >
-          {param.options.map((opt) => (
-            <option key={opt} value={opt}>
-              {opt}
-            </option>
-          ))}
-        </select>
-      )}
-
-      {error && <div style={styles.errorText}>{error}</div>}
-    </div>
+  // string / secret
+  return (
+    <FormItem
+      label={param.label}
+      required={param.required}
+      message={hasError ? error : param.hint}
+      error={hasError}
+    >
+      <TextField
+        value={typeof value === "string" ? value : ""}
+        inputType={param.secret ? "password" : "text"}
+        autoComplete={param.secret ? false : undefined}
+        onChange={(_e, newValue) => onChange(param.id, newValue)}
+      />
+    </FormItem>
   );
 }
-
-// ─── Styles ────────────────────────────────────────────────────────────────────
-
-const styles: Record<string, React.CSSProperties> = {
-  header: {
-    marginBottom: 24,
-  },
-  backButton: {
-    background: "none",
-    border: "none",
-    cursor: "pointer",
-    color: "#0078d4",
-    padding: 0,
-    fontSize: 14,
-    marginBottom: 12,
-  },
-  title: {
-    margin: "0 0 4px",
-    fontSize: 20,
-    fontWeight: 600,
-    color: "#323130",
-  },
-  description: {
-    margin: 0,
-    color: "#605e5c",
-    fontSize: 14,
-  },
-  fields: {
-    maxWidth: 480,
-    display: "flex",
-    flexDirection: "column",
-    gap: 20,
-  },
-  field: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 4,
-  },
-  label: {
-    fontWeight: 600,
-    fontSize: 14,
-    color: "#323130",
-  },
-  required: {
-    color: "#a4262c",
-  },
-  hint: {
-    fontSize: 12,
-    color: "#605e5c",
-  },
-  input: {
-    border: "1px solid #c8c6c4",
-    borderRadius: 2,
-    padding: "6px 8px",
-    fontSize: 14,
-    outline: "none",
-    width: "100%",
-    boxSizing: "border-box",
-  },
-  inputError: {
-    borderColor: "#a4262c",
-  },
-  select: {
-    background: "#ffffff",
-    cursor: "pointer",
-  },
-  toggleLabel: {
-    display: "flex",
-    alignItems: "center",
-    gap: 8,
-    cursor: "pointer",
-    fontSize: 14,
-    color: "#323130",
-  },
-  checkbox: {
-    width: 16,
-    height: 16,
-    cursor: "pointer",
-  },
-  errorText: {
-    fontSize: 12,
-    color: "#a4262c",
-  },
-  actions: {
-    marginTop: 32,
-    display: "flex",
-    gap: 12,
-  },
-  cancelButton: {
-    background: "none",
-    border: "1px solid #c8c6c4",
-    borderRadius: 2,
-    padding: "8px 20px",
-    fontSize: 14,
-    cursor: "pointer",
-    color: "#323130",
-  },
-  submitButton: {
-    background: "#0078d4",
-    border: "none",
-    borderRadius: 2,
-    padding: "8px 24px",
-    fontSize: 14,
-    cursor: "pointer",
-    color: "#ffffff",
-    fontWeight: 600,
-  },
-  submitButtonDisabled: {
-    background: "#c8c6c4",
-    cursor: "not-allowed",
-  },
-};

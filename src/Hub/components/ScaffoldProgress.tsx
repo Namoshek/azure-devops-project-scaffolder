@@ -10,6 +10,12 @@ import {
   ScaffoldResult,
   ScaffoldStep,
 } from "../services/scaffoldingOrchestrator";
+import { Button } from "azure-devops-ui/Components/Button/Button";
+import { Card } from "azure-devops-ui/Components/Card/Card";
+import { MessageCard } from "azure-devops-ui/Components/MessageCard/MessageCard";
+import { MessageCardSeverity } from "azure-devops-ui/Components/MessageCard/MessageCard.Props";
+import { Status, Statuses } from "azure-devops-ui/Components/Status/Status";
+import { StatusSize } from "azure-devops-ui/Components/Status/Status.Props";
 
 interface ScaffoldProgressProps {
   template: TemplateDefinition;
@@ -88,37 +94,37 @@ export class ScaffoldProgress extends React.Component<
 
     const hasFailures = steps.some((s) => s.status === "failed");
 
+    const titleText = running
+      ? "Scaffolding in progress..."
+      : done && !hasFailures
+        ? "Scaffold complete!"
+        : "Scaffold finished with issues";
+
     return (
-      <div>
-        <h2 style={styles.title}>
-          {running
-            ? "Scaffolding in progress…"
-            : done && !hasFailures
-              ? "Scaffold complete!"
-              : "Scaffold finished with issues"}
-        </h2>
-        <p style={styles.subtitle}>
-          Template: <strong>{template.name}</strong>
-        </p>
+      <div className="flex-column rhythm-vertical-16" style={{ maxWidth: 720 }}>
+        <div>
+          <div className="title-m">{titleText}</div>
+          <p className="body-m secondary-text" style={{ margin: "4px 0 0" }}>
+            Template: <strong>{template.name}</strong>
+          </p>
+        </div>
 
         {fatalError && (
-          <div style={styles.fatalErrorBox}>
+          <MessageCard severity={MessageCardSeverity.Error}>
             <strong>Fatal error</strong>
             <p style={{ margin: "8px 0 0" }}>{fatalError}</p>
-          </div>
+          </MessageCard>
         )}
 
-        <div style={styles.stepList}>
+        <div className="flex-column rhythm-vertical-4">
           {steps.map((step) => (
             <StepRow key={step.id} step={step} />
           ))}
         </div>
 
         {done && (
-          <div style={styles.actions}>
-            <button style={styles.button} onClick={onScaffoldAgain}>
-              ← Scaffold Another Project
-            </button>
+          <div>
+            <Button text="Scaffold Another Project" onClick={onScaffoldAgain} />
           </div>
         )}
       </div>
@@ -126,7 +132,7 @@ export class ScaffoldProgress extends React.Component<
   }
 }
 
-// ─── StepRow ──────────────────────────────────────────────────────────────────
+// --- StepRow ---
 
 interface StepRowProps {
   step: ScaffoldStep;
@@ -148,129 +154,52 @@ class StepRow extends React.Component<StepRowProps, StepRowState> {
     const hasDetail = Boolean(step.detail);
 
     return (
-      <div style={styles.stepRow}>
-        <div style={styles.stepHeader}>
-          <StatusIcon status={step.status} />
-          <span style={styles.stepLabel}>{step.label}</span>
-          {hasDetail && (
-            <button
-              style={styles.expandButton}
-              onClick={() =>
-                this.setState((prev) => ({ expanded: !prev.expanded }))
-              }
+      <Card>
+        <div className="flex-column">
+          <div className="flex-row flex-center" style={{ gap: 12 }}>
+            <StepStatusIcon status={step.status} />
+            <span className="body-m flex-grow">{step.label}</span>
+            {hasDetail && (
+              <Button
+                text={expanded ? "Hide details" : "Show details"}
+                subtle
+                onClick={() =>
+                  this.setState((prev) => ({ expanded: !prev.expanded }))
+                }
+              />
+            )}
+          </div>
+          {expanded && step.detail && (
+            <div
+              className="body-s secondary-text"
+              style={{ marginTop: 8, paddingLeft: 32 }}
             >
-              {expanded ? "▲" : "▼"}
-            </button>
+              {step.detail}
+            </div>
           )}
         </div>
-        {expanded && step.detail && (
-          <div style={styles.stepDetail}>{step.detail}</div>
-        )}
-      </div>
+      </Card>
     );
   }
 }
 
-function StatusIcon({ status }: { status: ScaffoldStep["status"] }) {
-  const map: Record<ScaffoldStep["status"], { symbol: string; color: string }> =
-    {
-      pending: { symbol: "○", color: "#c8c6c4" },
-      running: { symbol: "◌", color: "#0078d4" },
-      success: { symbol: "✔", color: "#107c10" },
-      skipped: { symbol: "—", color: "#605e5c" },
-      failed: { symbol: "✘", color: "#a4262c" },
-    };
-  const { symbol, color } = map[status];
-  return (
-    <span
-      style={{
-        ...styles.statusIcon,
-        color,
-        animation: status === "running" ? "spin 1s linear infinite" : "none",
-      }}
-    >
-      {symbol}
-    </span>
-  );
+function StepStatusIcon({ status }: { status: ScaffoldStep["status"] }) {
+  const statusMap: Record<ScaffoldStep["status"], React.ReactElement> = {
+    pending: (
+      <Status {...Statuses.Waiting} size={StatusSize.m} ariaLabel="Pending" />
+    ),
+    running: (
+      <Status {...Statuses.Running} size={StatusSize.m} ariaLabel="Running" />
+    ),
+    success: (
+      <Status {...Statuses.Success} size={StatusSize.m} ariaLabel="Success" />
+    ),
+    skipped: (
+      <Status {...Statuses.Skipped} size={StatusSize.m} ariaLabel="Skipped" />
+    ),
+    failed: (
+      <Status {...Statuses.Failed} size={StatusSize.m} ariaLabel="Failed" />
+    ),
+  };
+  return statusMap[status];
 }
-
-// ─── Styles ────────────────────────────────────────────────────────────────────
-
-const styles: Record<string, React.CSSProperties> = {
-  title: {
-    fontSize: 20,
-    fontWeight: 600,
-    margin: "0 0 4px",
-    color: "#323130",
-  },
-  subtitle: {
-    fontSize: 14,
-    color: "#605e5c",
-    margin: "0 0 24px",
-  },
-  fatalErrorBox: {
-    background: "#fde7e9",
-    border: "1px solid #a4262c",
-    borderRadius: 4,
-    padding: 16,
-    color: "#a4262c",
-    marginBottom: 20,
-  },
-  stepList: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 2,
-    maxWidth: 640,
-  },
-  stepRow: {
-    background: "#faf9f8",
-    border: "1px solid #edebe9",
-    borderRadius: 4,
-    overflow: "hidden",
-  },
-  stepHeader: {
-    display: "flex",
-    alignItems: "center",
-    padding: "12px 16px",
-    gap: 12,
-  },
-  stepLabel: {
-    flex: 1,
-    fontSize: 14,
-    color: "#323130",
-  },
-  statusIcon: {
-    fontSize: 16,
-    width: 20,
-    textAlign: "center",
-    flexShrink: 0,
-    fontWeight: 700,
-  },
-  expandButton: {
-    background: "none",
-    border: "none",
-    cursor: "pointer",
-    color: "#605e5c",
-    fontSize: 12,
-    padding: "0 4px",
-  },
-  stepDetail: {
-    padding: "0 16px 12px 48px",
-    fontSize: 13,
-    color: "#605e5c",
-    borderTop: "1px solid #edebe9",
-    paddingTop: 8,
-  },
-  actions: {
-    marginTop: 32,
-  },
-  button: {
-    background: "none",
-    border: "1px solid #c8c6c4",
-    borderRadius: 2,
-    padding: "8px 20px",
-    fontSize: 14,
-    cursor: "pointer",
-    color: "#323130",
-  },
-};

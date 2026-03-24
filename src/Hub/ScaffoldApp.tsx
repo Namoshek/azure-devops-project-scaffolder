@@ -4,6 +4,16 @@ import {
   CommonServiceIds,
   IProjectPageService,
 } from "azure-devops-extension-api";
+import { Page as PageBase } from "azure-devops-ui/Components/Page/Page";
+const Page = PageBase as React.ComponentType<
+  React.ComponentProps<typeof PageBase> & { children?: React.ReactNode }
+>;
+import { Header } from "azure-devops-ui/Components/Header/Header";
+import { TitleSize } from "azure-devops-ui/Components/Header/Header.Props";
+import { Spinner } from "azure-devops-ui/Components/Spinner/Spinner";
+import { SpinnerSize } from "azure-devops-ui/Components/Spinner/Spinner.Props";
+import { MessageCard } from "azure-devops-ui/Components/MessageCard/MessageCard";
+import { MessageCardSeverity } from "azure-devops-ui/Components/MessageCard/MessageCard.Props";
 import { TemplateList } from "./components/TemplateList";
 import { ParameterForm } from "./components/ParameterForm";
 import { ScaffoldProgress } from "./components/ScaffoldProgress";
@@ -82,7 +92,6 @@ export class ScaffoldApp extends React.Component<{}, AppState> {
   };
 
   render() {
-    const styles = ScaffoldApp.styles;
     const {
       screen,
       isAdmin,
@@ -93,59 +102,52 @@ export class ScaffoldApp extends React.Component<{}, AppState> {
 
     if (isAdmin === null) {
       return (
-        <div style={{ padding: 24 }}>
-          <span>Loading…</span>
-        </div>
+        <Page>
+          <div className="page-content page-content-top flex-grow flex-row justify-center">
+            <Spinner size={SpinnerSize.large} label="Loading…" />
+          </div>
+        </Page>
       );
     }
 
     return (
-      <div style={{ padding: 24, maxWidth: 960 }}>
-        <h1 style={{ marginTop: 0, marginBottom: 24 }}>Project Scaffolding</h1>
+      <Page>
+        <Header title="Project Scaffolding" titleSize={TitleSize.Large} />
+        <div className="page-content page-content-top rhythm-vertical-16">
+          {!isAdmin && (
+            <MessageCard severity={MessageCardSeverity.Warning}>
+              You need Project Administrator permissions to initialize projects
+              from templates. Contact your project admin if you need access.
+            </MessageCard>
+          )}
 
-        {!isAdmin && (
-          <div style={styles.warningBanner}>
-            <strong>Read-only view</strong> — you need Project Administrator
-            permissions to scaffold projects. Contact your project admin if you
-            need access.
-          </div>
-        )}
+          {screen === "list" && (
+            <TemplateList
+              isAdmin={isAdmin === true}
+              onTemplateSelected={this.handleTemplateSelected}
+            />
+          )}
 
-        {screen === "list" && (
-          <TemplateList onTemplateSelected={this.handleTemplateSelected} />
-        )}
+          {screen === "form" && selectedTemplate && (
+            <ParameterForm
+              template={selectedTemplate}
+              isAdmin={isAdmin === true}
+              onSubmit={this.handleFormSubmit}
+              onBack={this.handleBack}
+            />
+          )}
 
-        {screen === "form" && selectedTemplate && (
-          <ParameterForm
-            template={selectedTemplate}
-            isAdmin={isAdmin === true}
-            onSubmit={this.handleFormSubmit}
-            onBack={this.handleBack}
-          />
-        )}
-
-        {screen === "progress" && selectedTemplate && (
-          <ScaffoldProgress
-            template={selectedTemplate}
-            parameterValues={parameterValues}
-            onComplete={this.handleScaffoldComplete}
-            onScaffoldAgain={this.handleScaffoldAgain}
-            results={scaffoldResults}
-          />
-        )}
-      </div>
+          {screen === "progress" && selectedTemplate && (
+            <ScaffoldProgress
+              template={selectedTemplate}
+              parameterValues={parameterValues}
+              onComplete={this.handleScaffoldComplete}
+              onScaffoldAgain={this.handleScaffoldAgain}
+              results={scaffoldResults}
+            />
+          )}
+        </div>
+      </Page>
     );
   }
-
-  private static readonly styles: Record<string, React.CSSProperties> = {
-    warningBanner: {
-      background: "#fff4ce",
-      border: "1px solid #c8a600",
-      borderRadius: 4,
-      padding: "10px 16px",
-      marginBottom: 20,
-      fontSize: 14,
-      color: "#323130",
-    },
-  };
 }

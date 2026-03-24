@@ -1,8 +1,24 @@
 import * as React from "react";
 import { TemplateDefinition, DiscoveredTemplate } from "../types/templateTypes";
 import { discoverTemplates } from "../services/templateDiscoveryService";
+import { Card } from "azure-devops-ui/Components/Card/Card";
+import { TitleSize } from "azure-devops-ui/Components/Header/Header.Props";
+import { MessageCard } from "azure-devops-ui/Components/MessageCard/MessageCard";
+import { MessageCardSeverity } from "azure-devops-ui/Components/MessageCard/MessageCard.Props";
+import { Pill as PillBase } from "azure-devops-ui/Components/Pill/Pill";
+import {
+  PillSize,
+  PillVariant,
+} from "azure-devops-ui/Components/Pill/Pill.Props";
+import { Spinner } from "azure-devops-ui/Components/Spinner/Spinner";
+import { SpinnerSize } from "azure-devops-ui/Components/Spinner/Spinner.Props";
+const Pill = PillBase as React.ComponentType<
+  React.ComponentProps<typeof PillBase> & { children?: React.ReactNode }
+>;
+import { ZeroData } from "azure-devops-ui/Components/ZeroData/ZeroData";
 
 interface TemplateListProps {
+  isAdmin: boolean;
   onTemplateSelected: (template: TemplateDefinition) => void;
 }
 
@@ -34,34 +50,48 @@ export class TemplateList extends React.Component<
     const { loading, error, templates } = this.state;
 
     if (loading) {
-      return <div style={styles.message}>Discovering templates…</div>;
+      return (
+        <Spinner size={SpinnerSize.large} label="Discovering templates…" />
+      );
     }
 
     if (error) {
       return (
-        <div style={styles.errorBox}>
+        <MessageCard severity={MessageCardSeverity.Error}>
           <strong>Template discovery failed</strong>
           <p style={{ margin: "8px 0 0" }}>{error}</p>
-        </div>
+        </MessageCard>
       );
     }
 
     if (templates.length === 0) {
       return (
-        <div style={styles.message}>
-          No templates found. Create a repository in any project in this
-          collection with a <code>project-template.yml</code> file at the root
-          to get started.
-        </div>
+        <ZeroData
+          primaryText="No templates found"
+          secondaryText={
+            <>
+              Create a repository in any project in this collection with a{" "}
+              <code>project-template.yml</code> file at the root to get started.
+            </>
+          }
+          imageAltText="No templates found"
+          iconProps={{ iconName: "FileTemplate" }}
+        />
       );
     }
 
     return (
       <div>
-        <p style={{ margin: "0 0 20px", color: "#605e5c" }}>
+        <p className="body-m secondary-text" style={{ margin: "0 0 20px" }}>
           Select a template to scaffold a new project.
         </p>
-        <div style={styles.grid}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
+            gap: 16,
+          }}
+        >
           {templates.map((t) => (
             <TemplateCard
               key={t.definition.id}
@@ -86,111 +116,55 @@ function TemplateCard({ template, onSelect }: TemplateCardProps) {
   const { definition, sourceProjectName, sourceRepoName } = template;
 
   return (
-    <button
-      style={styles.card}
+    // eslint-disable-next-line jsx-a11y/interactive-supports-focus
+    <div
+      role="button"
+      tabIndex={0}
+      className="cursor-pointer"
       onClick={onSelect}
-      onMouseEnter={(e) =>
-        ((e.currentTarget as HTMLButtonElement).style.borderColor = "#0078d4")
-      }
-      onMouseLeave={(e) =>
-        ((e.currentTarget as HTMLButtonElement).style.borderColor = "#c8c6c4")
-      }
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") onSelect();
+      }}
     >
-      <div style={styles.cardTitle}>{definition.name}</div>
-      <div style={styles.cardVersion}>v{definition.version}</div>
-      {definition.description && (
-        <div style={styles.cardDescription}>{definition.description}</div>
-      )}
-      <div style={styles.cardMeta}>
-        <span>
-          {sourceProjectName} / {sourceRepoName}
-        </span>
-        {definition.maintainers && definition.maintainers.length > 0 && (
-          <span style={{ marginLeft: 12 }}>
-            Maintained by: {definition.maintainers.join(", ")}
-          </span>
-        )}
-      </div>
-      {definition.repositories && definition.repositories.length > 0 && (
-        <div style={styles.chipRow}>
-          <Chip label={`${definition.repositories.length} repo(s)`} />
-          {definition.pipelines && definition.pipelines.length > 0 && (
-            <Chip label={`${definition.pipelines.length} pipeline(s)`} />
+      <Card
+        titleProps={{ text: definition.name, size: TitleSize.Medium }}
+        headerDescriptionProps={{ text: `v${definition.version}` }}
+      >
+        <div
+          className="flex-column rhythm-vertical-8"
+          style={{ paddingBottom: 4 }}
+        >
+          {definition.description && (
+            <p className="body-m" style={{ margin: 0 }}>
+              {definition.description}
+            </p>
+          )}
+          <p className="secondary-text caption" style={{ margin: 0 }}>
+            {sourceProjectName} / {sourceRepoName}
+            {definition.maintainers && definition.maintainers.length > 0 && (
+              <span style={{ marginLeft: 12 }}>
+                Maintained by: {definition.maintainers.join(", ")}
+              </span>
+            )}
+          </p>
+          {((definition.repositories && definition.repositories.length > 0) ||
+            (definition.pipelines && definition.pipelines.length > 0)) && (
+            <div className="flex-row flex-wrap rhythm-horizontal-8">
+              {definition.repositories &&
+                definition.repositories.length > 0 && (
+                  <Pill size={PillSize.compact} variant={PillVariant.outlined}>
+                    {definition.repositories.length} repo(s)
+                  </Pill>
+                )}
+              {definition.pipelines && definition.pipelines.length > 0 && (
+                <Pill size={PillSize.compact} variant={PillVariant.outlined}>
+                  {definition.pipelines.length} pipeline(s)
+                </Pill>
+              )}
+            </div>
           )}
         </div>
-      )}
-    </button>
+      </Card>
+    </div>
   );
 }
-
-function Chip({ label }: { label: string }) {
-  return <span style={styles.chip}>{label}</span>;
-}
-
-// ─── Styles ────────────────────────────────────────────────────────────────────
-
-const styles: Record<string, React.CSSProperties> = {
-  message: {
-    color: "#605e5c",
-    padding: "16px 0",
-  },
-  errorBox: {
-    background: "#fde7e9",
-    border: "1px solid #a4262c",
-    borderRadius: 4,
-    padding: 16,
-    color: "#a4262c",
-  },
-  grid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
-    gap: 16,
-  },
-  card: {
-    display: "block",
-    textAlign: "left",
-    background: "#ffffff",
-    border: "1px solid #c8c6c4",
-    borderRadius: 4,
-    padding: 20,
-    cursor: "pointer",
-    transition: "border-color 0.1s",
-    width: "100%",
-  },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: 600,
-    color: "#323130",
-    marginBottom: 2,
-  },
-  cardVersion: {
-    fontSize: 12,
-    color: "#605e5c",
-    marginBottom: 8,
-  },
-  cardDescription: {
-    fontSize: 14,
-    color: "#323130",
-    marginBottom: 12,
-    lineHeight: 1.5,
-  },
-  cardMeta: {
-    fontSize: 12,
-    color: "#605e5c",
-    marginBottom: 8,
-  },
-  chipRow: {
-    display: "flex",
-    gap: 6,
-    flexWrap: "wrap",
-    marginTop: 8,
-  },
-  chip: {
-    background: "#f3f2f1",
-    border: "1px solid #c8c6c4",
-    borderRadius: 12,
-    padding: "2px 10px",
-    fontSize: 11,
-    color: "#323130",
-  },
-};

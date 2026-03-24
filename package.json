@@ -13,6 +13,7 @@
   "dependencies": {
     "azure-devops-extension-api": "^4.0.0",
     "azure-devops-extension-sdk": "^4.0.0",
+    "azure-devops-ui": "^2.270.0",
     "handlebars": "^4.7.8",
     "js-yaml": "^4.1.0",
     "react": "^18.2.0",

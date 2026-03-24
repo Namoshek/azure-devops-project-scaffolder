@@ -2,7 +2,7 @@
   "manifestVersion": 1,
   "id": "ado-project-scaffolder",
   "publisher": "namoshek",
-  "version": "0.3.3",
+  "version": "0.3.5",
   "name": "Project Scaffolder",
   "description": "Scaffold new projects from curated templates — creates repositories, pipelines, and more in a guided, non-destructive flow.",
   "public": false,
@@ -32,6 +32,7 @@
   "scopes": [
     "vso.code_manage",
     "vso.build_execute",
+    "vso.agentpools",
     "vso.project",
     "vso.graph_manage"
   ],

@@ -116,9 +116,13 @@ export async function scaffoldRepository(
   }
 
   // 4. Apply Handlebars to content and path, exclude project-template.yml
-  const sourcePathPrefix = repoTemplate.sourcePath.endsWith("/")
+  // Normalise to an absolute prefix (Git API returns paths like /templates/backend/file.txt)
+  const normalizedBase = repoTemplate.sourcePath.startsWith("/")
     ? repoTemplate.sourcePath
-    : `${repoTemplate.sourcePath}/`;
+    : `/${repoTemplate.sourcePath}`;
+  const sourcePathPrefix = normalizedBase.endsWith("/")
+    ? normalizedBase
+    : `${normalizedBase}/`;
 
   const changes = templateFiles
     .filter((f) => !f.path.endsWith("project-template.yml"))

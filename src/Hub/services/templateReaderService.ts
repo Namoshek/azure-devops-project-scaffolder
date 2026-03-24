@@ -1,4 +1,8 @@
-import * as SDK from "azure-devops-extension-sdk";
+import { getClient } from "azure-devops-extension-api";
+import {
+  GitRestClient,
+  VersionControlRecursionType,
+} from "azure-devops-extension-api/Git";
 import * as yaml from "js-yaml";
 import { TemplateDefinition, TemplateParameter } from "../types/templateTypes";
 
@@ -11,27 +15,16 @@ export async function readTemplateFromRepo(
   repoId: string,
   filePath: string,
 ): Promise<TemplateDefinition> {
-  const accessToken = await SDK.getAccessToken();
-  const collection = SDK.getHost().name;
+  const gitClient = getClient(GitRestClient);
 
   // Normalize path — Code Search returns paths like /project-template.yml
   const normalizedPath = filePath.startsWith("/") ? filePath : `/${filePath}`;
 
-  const url =
-    `${window.location.origin}/${collection}/${projectId}/_apis/git/repositories/${repoId}/items` +
-    `?path=${encodeURIComponent(normalizedPath)}&includeContent=true&api-version=7.1`;
-
-  const response = await fetch(url, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
-
-  if (!response.ok) {
-    throw new Error(
-      `Failed to fetch template file (${response.status}): ${response.statusText}`,
-    );
-  }
-
-  const content = await response.text();
+  const content = await gitClient.getItemText(
+    repoId,
+    normalizedPath,
+    projectId,
+  );
   return parseTemplateYaml(content);
 }
 
@@ -45,59 +38,61 @@ export async function fetchTemplateFiles(
   repoId: string,
   sourcePath: string,
 ): Promise<Array<{ path: string; content: string; isBase64: boolean }>> {
-  const accessToken = await SDK.getAccessToken();
-  const collection = SDK.getHost().name;
+  const gitClient = getClient(GitRestClient);
 
-  // First, list all items under the sourcePath recursively
-  const listUrl =
-    `${window.location.origin}/${collection}/${projectId}/_apis/git/repositories/${repoId}/items` +
-    `?scopePath=${encodeURIComponent(sourcePath)}&recursionLevel=Full&api-version=7.1`;
-
-  const listResponse = await fetch(listUrl, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
-
-  if (!listResponse.ok) {
-    throw new Error(
-      `Failed to list template files at '${sourcePath}' (${listResponse.status}): ${listResponse.statusText}`,
-    );
-  }
-
-  const listData: {
-    value: Array<{ path: string; isFolder: boolean; gitObjectType: string }>;
-  } = await listResponse.json();
-
-  const files = listData.value.filter(
-    (item) => !item.isFolder && item.gitObjectType === "blob",
+  // List all items recursively under the sourcePath.
+  const items = await gitClient.getItems(
+    repoId,
+    projectId,
+    sourcePath,
+    VersionControlRecursionType.Full,
   );
 
+  const files = items.filter((item) => !item.isFolder);
   const results: Array<{ path: string; content: string; isBase64: boolean }> =
     [];
 
   for (const file of files) {
-    const isText = isTextFile(file.path);
+    const filePath = file.path!;
+    const isText = isTextFile(filePath);
 
-    const fileUrl =
-      `${window.location.origin}/${collection}/${projectId}/_apis/git/repositories/${repoId}/items` +
-      `?path=${encodeURIComponent(file.path)}` +
-      `&includeContent=true` +
-      (!isText ? `&$format=base64Encoded` : "") +
-      `&api-version=7.1`;
-
-    const fileResponse = await fetch(fileUrl, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-
-    if (!fileResponse.ok) {
-      console.warn(`Skipping file ${file.path}: ${fileResponse.statusText}`);
-      continue;
+    try {
+      if (isText) {
+        const content = await gitClient.getItemText(
+          repoId,
+          filePath,
+          projectId,
+        );
+        results.push({ path: filePath, content, isBase64: false });
+      } else {
+        const buffer = await gitClient.getItemContent(
+          repoId,
+          filePath,
+          projectId,
+        );
+        results.push({
+          path: filePath,
+          content: arrayBufferToBase64(buffer),
+          isBase64: true,
+        });
+      }
+    } catch (err) {
+      console.warn(`Skipping file ${filePath}: ${(err as Error).message}`);
     }
-
-    const content = await fileResponse.text();
-    results.push({ path: file.path, content, isBase64: !isText });
   }
 
   return results;
+}
+
+// ─── Internal helpers ──────────────────────────────────────────────────────────
+
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
 }
 
 // ─── Internal helpers ──────────────────────────────────────────────────────────

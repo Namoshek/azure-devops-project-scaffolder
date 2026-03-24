@@ -3,16 +3,18 @@ import * as SDK from "azure-devops-extension-sdk";
 // Project security namespace GUID (constant across all ADO instances).
 const PROJECT_SECURITY_NAMESPACE = "52d39943-cb85-4d7f-8fa8-c6baac873819";
 
-// Permission bit 4 = "Edit project-level information" — the standard proxy for "is a Project Administrator".
-const EDIT_PROJECT_PERMISSION_BIT = 4;
+// Bit 2 = GENERIC_WRITE = "Edit project-level information".
+// This is the canonical permission held by Project Administrators and is
+// available via the Security REST API on both ADO Services and ADO Server.
+const EDIT_PROJECT_PERMISSION_BIT = 2;
 
 /**
  * Checks whether the currently authenticated user has the
  * "Edit project-level information" permission on the given project,
  * which is the canonical permission held by Project Administrators.
  *
- * Uses the ADO Security Permissions REST API:
- *   GET /_apis/permissions/{namespaceId}/{permissions}?token={token}&alwaysAllowAdministrators=false
+ * Uses the Security Permissions REST API, which is available on both
+ * Azure DevOps Services and Azure DevOps Server (on-premises).
  *
  * Returns true if the user is an admin, false otherwise (including on errors,
  * to fail closed — the UI will show a warning but won't grant access).
@@ -24,8 +26,6 @@ export async function checkProjectAdminPermission(
     const accessToken = await SDK.getAccessToken();
     const collection = SDK.getHost().name;
 
-    // The security token for a project is its GUID prefixed with "$PROJECT:vstfs:///Classification/TeamProject/"
-    // but the simpler form accepted by the permissions endpoint is just the project ID.
     const token = encodeURIComponent(
       `$PROJECT:vstfs:///Classification/TeamProject/${projectId}`,
     );
@@ -39,15 +39,14 @@ export async function checkProjectAdminPermission(
     });
 
     if (!response.ok) {
-      // Fail closed: treat permission check failures as non-admin
       console.warn(
         `Permission check returned ${response.status}. Treating as non-admin.`,
       );
       return false;
     }
 
-    const data: { value: boolean } = await response.json();
-    return data.value === true;
+    const data: { value: boolean[] } = await response.json();
+    return data.value.length === 1 && data.value[0] === true;
   } catch (err) {
     console.warn(
       `Permission check failed: ${(err as Error).message}. Treating as non-admin.`,

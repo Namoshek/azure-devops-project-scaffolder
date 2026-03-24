@@ -1,4 +1,14 @@
-import * as SDK from "azure-devops-extension-sdk";
+import { getClient } from "azure-devops-extension-api";
+import {
+  BuildRestClient,
+  BuildDefinition,
+  DefinitionType,
+  YamlProcess,
+  AgentPoolQueue,
+  BuildRepository,
+} from "azure-devops-extension-api/Build";
+import { GitRestClient } from "azure-devops-extension-api/Git";
+import { TaskAgentRestClient } from "azure-devops-extension-api/TaskAgent";
 import { TemplatePipeline } from "../types/templateTypes";
 import { renderTemplate } from "./templateEngineService";
 
@@ -26,11 +36,12 @@ export async function scaffoldPipeline(
   const repoName = renderTemplate(pipelineTemplate.repository, parameterValues);
   const folder = pipelineTemplate.folder ?? "\\";
 
-  const accessToken = await SDK.getAccessToken();
-  const collection = SDK.getHost().name;
+  const gitClient = getClient(GitRestClient);
+  const buildClient = getClient(BuildRestClient);
+  const taskAgentClient = getClient(TaskAgentRestClient);
 
   // 1. Resolve the repository ID
-  const repoId = await resolveRepoId(collection, projectId, repoName, accessToken);
+  const repoId = await resolveRepoId(gitClient, projectId, repoName);
   if (!repoId) {
     return {
       pipelineName,
@@ -40,7 +51,7 @@ export async function scaffoldPipeline(
   }
 
   // 2. Get the first available agent queue
-  const queueId = await getDefaultQueueId(collection, projectId, accessToken);
+  const queueId = await getDefaultQueueId(taskAgentClient, projectId);
   if (!queueId) {
     return {
       pipelineName,
@@ -51,110 +62,84 @@ export async function scaffoldPipeline(
   }
 
   // 3. Check if pipeline already exists
-  const existsCheck = await fetch(
-    `${window.location.origin}/${collection}/${projectId}/_apis/build/definitions?name=${encodeURIComponent(pipelineName)}&api-version=7.1`,
-    { headers: { Authorization: `Bearer ${accessToken}` } },
-  );
-
-  if (existsCheck.ok) {
-    const existsData: { count: number } = await existsCheck.json();
-    if (existsData.count > 0) {
+  try {
+    const existing = await buildClient.getDefinitions(projectId, pipelineName);
+    if (existing.length > 0) {
       return {
         pipelineName,
         status: "skipped",
         reason: `Pipeline '${pipelineName}' already exists.`,
       };
     }
+  } catch {
+    // If the check fails, proceed and let createDefinition surface any error.
   }
 
   // 4. Create the pipeline definition
-  const definition = {
+  const definition: BuildDefinition = {
     name: pipelineName,
     path: folder,
-    type: 2, // build
-    queue: { id: queueId },
+    type: DefinitionType.Build,
+    queue: { id: queueId } as AgentPoolQueue,
     process: {
-      type: 2, // YAML
+      type: 2, // YAML process type
       yamlFilename: pipelineTemplate.yamlPath,
-    },
+    } as YamlProcess,
     repository: {
       id: repoId,
       type: "TfsGit",
       name: repoName,
       defaultBranch: "refs/heads/main",
-      clean: null,
       checkoutSubmodules: false,
-    },
+    } as BuildRepository,
     triggers: [],
-  };
+  } as unknown as BuildDefinition;
 
-  const createResponse = await fetch(
-    `${window.location.origin}/${collection}/${projectId}/_apis/build/definitions?api-version=7.1`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify(definition),
-    },
-  );
-
-  if (!createResponse.ok) {
-    const text = await createResponse.text();
+  let created: BuildDefinition;
+  try {
+    created = await buildClient.createDefinition(definition, projectId);
+  } catch (err) {
     return {
       pipelineName,
       status: "failed",
-      reason: `Failed to create pipeline: ${text}`,
+      reason: `Failed to create pipeline: ${(err as Error).message}`,
     };
   }
 
-  const created: { id: number } = await createResponse.json();
   return { pipelineName, status: "created", pipelineId: created.id };
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
 async function resolveRepoId(
-  collection: string,
+  gitClient: GitRestClient,
   projectId: string,
   repoName: string,
-  accessToken: string,
 ): Promise<string | null> {
-  const response = await fetch(
-    `${window.location.origin}/${collection}/${projectId}/_apis/git/repositories?api-version=7.1`,
-    { headers: { Authorization: `Bearer ${accessToken}` } },
-  );
-
-  if (!response.ok) return null;
-
-  const data: { value: Array<{ id: string; name: string }> } =
-    await response.json();
-  const repo = data.value.find(
-    (r) => r.name.toLowerCase() === repoName.toLowerCase(),
-  );
-  return repo?.id ?? null;
+  try {
+    const repos = await gitClient.getRepositories(projectId);
+    const repo = repos.find(
+      (r) => r.name?.toLowerCase() === repoName.toLowerCase(),
+    );
+    return repo?.id ?? null;
+  } catch {
+    return null;
+  }
 }
 
 async function getDefaultQueueId(
-  collection: string,
+  taskAgentClient: TaskAgentRestClient,
   projectId: string,
-  accessToken: string,
 ): Promise<number | null> {
-  const response = await fetch(
-    `${window.location.origin}/${collection}/${projectId}/_apis/distributedtask/queues?api-version=7.1`,
-    { headers: { Authorization: `Bearer ${accessToken}` } },
-  );
-
-  if (!response.ok) return null;
-
-  const data: { value: Array<{ id: number; name: string }> } =
-    await response.json();
-  if (!data.value || data.value.length === 0) return null;
-
-  // Prefer a queue named "Default"; otherwise take the first available
-  const defaultQueue = data.value.find(
-    (q) => q.name.toLowerCase() === "default",
-  );
-  return (defaultQueue ?? data.value[0]).id;
+  try {
+    const queues = await taskAgentClient.getAgentQueues(projectId);
+    if (!queues || queues.length === 0) return null;
+    // Prefer a queue named "Default"; otherwise take the first available
+    const defaultQueue = queues.find(
+      (q) => q.name?.toLowerCase() === "default",
+    );
+    return (defaultQueue ?? queues[0]).id;
+  } catch {
+    return null;
+  }
 }

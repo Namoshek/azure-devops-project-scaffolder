@@ -1,4 +1,10 @@
-import * as SDK from "azure-devops-extension-sdk";
+import { getClient } from "azure-devops-extension-api";
+import {
+  GitRestClient,
+  GitPush,
+  VersionControlChangeType,
+  ItemContentType,
+} from "azure-devops-extension-api/Git";
 import { TemplateRepository } from "../types/templateTypes";
 import { fetchTemplateFiles } from "./templateReaderService";
 import { renderTemplate } from "./templateEngineService";
@@ -25,47 +31,37 @@ export async function scaffoldRepository(
   parameterValues: Record<string, unknown>,
 ): Promise<RepoScaffoldResult> {
   const repoName = renderTemplate(repoTemplate.name, parameterValues);
-
-  const accessToken = await SDK.getAccessToken();
-  const collection = SDK.getHost().name;
-  const baseUrl = `${window.location.origin}/${collection}/${projectId}/_apis/git/repositories`;
+  const gitClient = getClient(GitRestClient);
 
   // 1. Check if the repo already exists
-  const listResponse = await fetch(`${baseUrl}?api-version=7.1`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
-
-  if (!listResponse.ok) {
+  let repos: Awaited<ReturnType<GitRestClient["getRepositories"]>>;
+  try {
+    repos = await gitClient.getRepositories(projectId);
+  } catch (err) {
     return {
       repoName,
       status: "failed",
-      reason: `Failed to list repositories: ${listResponse.statusText}`,
+      reason: `Failed to list repositories: ${(err as Error).message}`,
     };
   }
 
-  const listData: { value: Array<{ id: string; name: string; size: number }> } =
-    await listResponse.json();
-
-  const existing = listData.value.find(
-    (r) => r.name.toLowerCase() === repoName.toLowerCase(),
+  const existing = repos.find(
+    (r) => r.name?.toLowerCase() === repoName.toLowerCase(),
   );
 
   if (existing) {
     // Check if non-empty (has at least one ref / commit)
-    const refsResponse = await fetch(
-      `${baseUrl}/${existing.id}/refs?filter=heads&api-version=7.1`,
-      { headers: { Authorization: `Bearer ${accessToken}` } },
-    );
-
-    if (refsResponse.ok) {
-      const refsData: { count: number } = await refsResponse.json();
-      if (refsData.count > 0) {
+    try {
+      const refs = await gitClient.getRefs(existing.id!, projectId, "heads");
+      if (refs.length > 0) {
         return {
           repoName,
           status: "skipped",
           reason: `Repository '${repoName}' already exists and is not empty.`,
         };
       }
+    } catch {
+      // If ref listing fails, fall through and treat repo as empty.
     }
   }
 
@@ -73,28 +69,22 @@ export async function scaffoldRepository(
   let repoId: string;
 
   if (!existing) {
-    const createResponse = await fetch(`${baseUrl}?api-version=7.1`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify({ name: repoName, project: { id: projectId } }),
-    });
-
-    if (!createResponse.ok) {
-      const text = await createResponse.text();
+    let created: Awaited<ReturnType<GitRestClient["createRepository"]>>;
+    try {
+      created = await gitClient.createRepository(
+        { name: repoName, project: { id: projectId } } as any,
+        projectId,
+      );
+    } catch (err) {
       return {
         repoName,
         status: "failed",
-        reason: `Failed to create repository: ${text}`,
+        reason: `Failed to create repository: ${(err as Error).message}`,
       };
     }
-
-    const created: { id: string } = await createResponse.json();
-    repoId = created.id;
+    repoId = created.id!;
   } else {
-    repoId = existing.id;
+    repoId = existing.id!;
   }
 
   // 3. Fetch template files
@@ -147,56 +137,45 @@ export async function scaffoldRepository(
         : renderTemplate(f.content, parameterValues);
 
       return {
-        changeType: 1, // Add
+        changeType: VersionControlChangeType.Add,
         item: { path: `/${relativePath}` },
         newContent: {
           content: renderedContent,
-          contentType: f.isBase64 ? 2 : 0, // 2 = base64Encoded, 0 = rawtext
+          contentType: f.isBase64
+            ? ItemContentType.Base64Encoded
+            : ItemContentType.RawText,
         },
       };
     });
 
   // 5. Push all files in a single commit
   const defaultBranch = repoTemplate.defaultBranch || "main";
-  const pushPayload = {
-    refUpdates: [
-      {
-        name: `refs/heads/${defaultBranch}`,
-        oldObjectId: "0000000000000000000000000000000000000000",
-      },
-    ],
-    commits: [
-      {
-        comment: "Initial scaffold from template",
-        changes,
-      },
-    ],
-  };
 
-  const pushResponse = await fetch(
-    `${baseUrl}/${repoId}/pushes?api-version=7.1`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify(pushPayload),
-    },
-  );
-
-  if (!pushResponse.ok) {
-    const text = await pushResponse.text();
+  try {
+    await gitClient.createPush(
+      {
+        refUpdates: [
+          {
+            name: `refs/heads/${defaultBranch}`,
+            oldObjectId: "0000000000000000000000000000000000000000",
+          },
+        ],
+        commits: [
+          {
+            comment: "Initial scaffold from template",
+            changes,
+          },
+        ],
+      } as GitPush,
+      repoId,
+      projectId,
+    );
+  } catch (err) {
     return {
       repoName,
       status: "failed",
-      reason: `Failed to push files: ${text}`,
+      reason: `Failed to push files: ${(err as Error).message}`,
     };
-  }
-
-  // 6. If a non-default branch was specified, also update HEAD
-  if (defaultBranch !== "main") {
-    // Optionally update HEAD ref — ADO defaults to the first branch pushed; skip for now
   }
 
   return { repoName, status: "created" };

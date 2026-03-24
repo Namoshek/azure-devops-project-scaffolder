@@ -82,13 +82,21 @@ export class TemplateList extends React.Component<
 
     return (
       <div>
-        <p className="body-m secondary-text" style={{ margin: "0 0 20px" }}>
-          Select a template to scaffold a new project.
+        <p className="body-l secondary-text" style={{ margin: "0 0 20px" }}>
+          {this.props.isAdmin && (
+            <>Select a template to scaffold a new project.</>
+          )}
+          {!this.props.isAdmin && (
+            <>
+              These are the available templates. If you need to scaffold a new
+              project, contact your project admin.
+            </>
+          )}
         </p>
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
+            gridTemplateColumns: "repeat(auto-fill, minmax(600px, 1fr))",
             gap: 16,
           }}
         >
@@ -96,7 +104,7 @@ export class TemplateList extends React.Component<
             <TemplateCard
               key={t.definition.id}
               template={t}
-              onSelect={() => this.props.onTemplateSelected(t.definition)}
+              onSelect={this.props.isAdmin ? () => this.props.onTemplateSelected(t.definition) : undefined}
             />
           ))}
         </div>
@@ -109,7 +117,7 @@ export class TemplateList extends React.Component<
 
 interface TemplateCardProps {
   template: DiscoveredTemplate;
-  onSelect: () => void;
+  onSelect?: () => void;
 }
 
 function TemplateCard({ template, onSelect }: TemplateCardProps) {
@@ -123,7 +131,7 @@ function TemplateCard({ template, onSelect }: TemplateCardProps) {
       className="cursor-pointer"
       onClick={onSelect}
       onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") onSelect();
+        if (onSelect && (e.key === "Enter" || e.key === " ")) onSelect();
       }}
     >
       <Card
@@ -139,14 +147,14 @@ function TemplateCard({ template, onSelect }: TemplateCardProps) {
               {definition.description}
             </p>
           )}
-          <p className="secondary-text caption" style={{ margin: 0 }}>
-            {sourceProjectName} / {sourceRepoName}
-            {definition.maintainers && definition.maintainers.length > 0 && (
-              <span style={{ marginLeft: 12 }}>
-                Maintained by: {definition.maintainers.join(", ")}
-              </span>
-            )}
+          <p className="secondary-text caption" style={{ marginBottom: 0 }}>
+            Source repository: {sourceProjectName} / {sourceRepoName}
           </p>
+          {definition.maintainers && definition.maintainers.length > 0 && (
+            <p className="secondary-text caption" style={{ marginTop: 0 }}>
+              Maintained by: {definition.maintainers.join(", ")}
+            </p>
+          )}
           {((definition.repositories && definition.repositories.length > 0) ||
             (definition.pipelines && definition.pipelines.length > 0)) && (
             <div className="flex-row flex-wrap rhythm-horizontal-8">

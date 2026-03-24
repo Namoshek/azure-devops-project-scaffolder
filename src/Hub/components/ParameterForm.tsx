@@ -123,11 +123,10 @@ export class ParameterForm extends React.Component<
       <div>
         <div
           className="flex-row rhythm-horizontal-8"
-          style={{ marginBottom: 16 }}
+          style={{ marginBottom: 24 }}
         >
-          <Button text="Back" subtle onClick={onBack} />
           <div>
-            <div className="title-m">{template.name}</div>
+            <div className="title-m">Selected Template: {template.name}</div>
             {template.description && (
               <p
                 className="body-m secondary-text"
@@ -139,10 +138,7 @@ export class ParameterForm extends React.Component<
           </div>
         </div>
 
-        <div
-          style={{ maxWidth: 480 }}
-          className="flex-column rhythm-vertical-20"
-        >
+        <div className="flex-column rhythm-vertical-20">
           {visibleParams.map((param) => (
             <ParameterField
               key={param.id}

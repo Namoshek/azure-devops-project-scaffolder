@@ -104,7 +104,11 @@ export class TemplateList extends React.Component<
             <TemplateCard
               key={t.definition.id}
               template={t}
-              onSelect={this.props.isAdmin ? () => this.props.onTemplateSelected(t.definition) : undefined}
+              onSelect={
+                this.props.isAdmin
+                  ? () => this.props.onTemplateSelected(t.definition)
+                  : undefined
+              }
             />
           ))}
         </div>
@@ -137,6 +141,7 @@ function TemplateCard({ template, onSelect }: TemplateCardProps) {
       <Card
         titleProps={{ text: definition.name, size: TitleSize.Medium }}
         headerDescriptionProps={{ text: `v${definition.version}` }}
+        className="bolt-card-white"
       >
         <div
           className="flex-column rhythm-vertical-8"

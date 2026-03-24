@@ -11,6 +11,13 @@ const FormItem = FormItemBase as React.ComponentType<
 >;
 import { IListBoxItem } from "azure-devops-ui/Components/ListBox/ListBox.Props";
 import { DropdownSelection } from "azure-devops-ui/Utilities/DropdownSelection";
+import { Card } from "azure-devops-ui/Components/Card/Card";
+import { TitleSize } from "azure-devops-ui/Header";
+import { ArrayItemProvider } from "azure-devops-ui/Utilities/Provider";
+import { renderSimpleCell, Table } from "azure-devops-ui/Table";
+import { ObservableValue } from "azure-devops-ui/Core/Observable";
+import { ISimpleListCell } from "azure-devops-ui/List";
+import { Icon, IconSize } from "azure-devops-ui/Icon";
 
 interface ParameterFormProps {
   template: TemplateDefinition;
@@ -23,6 +30,11 @@ interface ParameterFormState {
   values: Record<string, unknown>;
   errors: Record<string, string>;
   submitted: boolean;
+}
+
+interface ParameterSummaryItem {
+  type: "repository" | "pipeline";
+  name: string;
 }
 
 export class ParameterForm extends React.Component<
@@ -119,52 +131,116 @@ export class ParameterForm extends React.Component<
       (p) => !p.when || evaluateWhenExpression(p.when, values),
     );
 
+    const summaryItems = new ArrayItemProvider<ParameterSummaryItem>([]);
+
+    for (const repository of this.props.template.repositories ?? []) {
+      summaryItems.value.push({
+        type: "repository",
+        name: repository.name,
+      });
+    }
+
+    for (const pipeline of this.props.template.pipelines ?? []) {
+      summaryItems.value.push({
+        type: "pipeline",
+        name: pipeline.name,
+      });
+    }
+
     return (
-      <div>
-        <div
-          className="flex-row rhythm-horizontal-8"
-          style={{ marginBottom: 24 }}
-        >
-          <div>
-            <div className="title-m">Selected Template: {template.name}</div>
-            {template.description && (
-              <p
-                className="body-m secondary-text"
-                style={{ margin: "4px 0 0" }}
-              >
-                {template.description}
-              </p>
-            )}
+      <div className="flex-row" style={{ gap: 48 }}>
+        <div>
+          <div
+            className="flex-row rhythm-horizontal-8"
+            style={{ marginBottom: 24 }}
+          >
+            <div>
+              <div className="title-m">Selected Template: {template.name}</div>
+              {template.description && (
+                <p
+                  className="body-m secondary-text"
+                  style={{ margin: "4px 0 0" }}
+                >
+                  {template.description}
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="flex-column rhythm-vertical-20">
+            {visibleParams.map((param) => (
+              <ParameterField
+                key={param.id}
+                param={param}
+                value={values[param.id]}
+                error={submitted ? errors[param.id] : undefined}
+                onChange={this.handleChange}
+              />
+            ))}
+          </div>
+
+          <div
+            className="flex-row rhythm-horizontal-8"
+            style={{ marginTop: 32 }}
+          >
+            <p className="body-m secondary-text" style={{ margin: 0 }}>
+              By submitting this form, the resources will be created as
+              displayed on the right side.
+            </p>
+          </div>
+
+          <div
+            className="flex-row rhythm-horizontal-8"
+            style={{ marginTop: 24 }}
+          >
+            <Button text="Cancel" onClick={onBack} />
+            <Button
+              text="Scaffold Project"
+              primary
+              disabled={!isAdmin}
+              tooltipProps={
+                !isAdmin
+                  ? {
+                      text: "You need Project Administrator permissions to scaffold projects.",
+                    }
+                  : undefined
+              }
+              onClick={this.handleSubmit}
+            />
           </div>
         </div>
 
-        <div className="flex-column rhythm-vertical-20">
-          {visibleParams.map((param) => (
-            <ParameterField
-              key={param.id}
-              param={param}
-              value={values[param.id]}
-              error={submitted ? errors[param.id] : undefined}
-              onChange={this.handleChange}
-            />
-          ))}
-        </div>
+        <div style={{ minWidth: 400 }}>
+          <Card
+            className="bolt-card-white"
+            titleProps={{ text: "Summary", size: TitleSize.Medium }}
+          >
+            <div className="rhythm-vertical-8" style={{ width: "100%" }}>
+              {summaryItems.value.map((item, index) => {
+                const isLastItem = summaryItems.length - 1 === index;
+                const className = isLastItem
+                  ? "flex-row justify-start"
+                  : "flex-row justify-start separator-line-bottom";
 
-        <div className="flex-row rhythm-horizontal-8" style={{ marginTop: 32 }}>
-          <Button text="Cancel" onClick={onBack} />
-          <Button
-            text="Scaffold Project"
-            primary
-            disabled={!isAdmin}
-            tooltipProps={
-              !isAdmin
-                ? {
-                    text: "You need Project Administrator permissions to scaffold projects.",
-                  }
-                : undefined
-            }
-            onClick={this.handleSubmit}
-          />
+                return (
+                  <div
+                    key={index}
+                    className={className}
+                    style={{ gap: 16, paddingBottom: isLastItem ? 0 : 12 }}
+                  >
+                    <Icon
+                      size={IconSize.medium}
+                      iconName={
+                        item.type === "repository" ? "OpenSource" : "Build"
+                      }
+                    />{" "}
+                    {item.type === "repository" ? "Repository" : "Pipeline"}:{" "}
+                    {item.name}
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
         </div>
       </div>
     );

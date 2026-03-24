@@ -113,7 +113,7 @@ export class ScaffoldApp extends React.Component<{}, AppState> {
     return (
       <Page>
         <Header title="Project Scaffolding" titleSize={TitleSize.Large} />
-        <div className="page-content page-content-top rhythm-vertical-16">
+        <div className="page-content page-content-top rhythm-vertical-24">
           {!isAdmin && (
             <MessageCard severity={MessageCardSeverity.Warning}>
               You need Project Administrator permissions to initialize projects

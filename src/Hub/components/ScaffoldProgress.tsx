@@ -111,6 +111,19 @@ export function ScaffoldProgress({
         ))}
       </div>
 
+      {done &&
+        !hasFailures &&
+        template.postScaffoldNotes &&
+        template.postScaffoldNotes.length > 0 && (
+          <div className="flex-column rhythm-vertical-8">
+            {template.postScaffoldNotes.map((note, i) => (
+              <MessageCard key={i} severity={MessageCardSeverity.Info}>
+                {note}
+              </MessageCard>
+            ))}
+          </div>
+        )}
+
       {done && (
         <div>
           <Button text="Scaffold Another Project" onClick={onScaffoldAgain} />

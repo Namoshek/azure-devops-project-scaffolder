@@ -49,6 +49,8 @@ export interface TemplateDefinition {
   version: string;
   description?: string;
   maintainers?: string[];
+  preScaffoldNotes?: string[];
+  postScaffoldNotes?: string[];
   parameters: TemplateParameter[];
   repositories?: TemplateRepository[];
   pipelines?: TemplatePipeline[];

@@ -3,6 +3,8 @@ import { TemplateDefinition, TemplateParameter } from "../types/templateTypes";
 import { evaluateWhenExpression } from "../services/templateEngineService";
 import { Button } from "azure-devops-ui/Components/Button/Button";
 import { Card } from "azure-devops-ui/Components/Card/Card";
+import { MessageCard } from "azure-devops-ui/Components/MessageCard/MessageCard";
+import { MessageCardSeverity } from "azure-devops-ui/Components/MessageCard/MessageCard.Props";
 import { TitleSize } from "azure-devops-ui/Header";
 import { Icon, IconSize } from "azure-devops-ui/Icon";
 import { ParameterField } from "./ParameterField";
@@ -133,6 +135,19 @@ export function ParameterForm({
             )}
           </div>
         </div>
+
+        {template.preScaffoldNotes && template.preScaffoldNotes.length > 0 && (
+          <div
+            className="flex-column rhythm-vertical-8"
+            style={{ marginBottom: 20 }}
+          >
+            {template.preScaffoldNotes.map((note, i) => (
+              <MessageCard key={i} severity={MessageCardSeverity.Info}>
+                {note}
+              </MessageCard>
+            ))}
+          </div>
+        )}
 
         <div className="flex-column rhythm-vertical-20">
           {visibleParams.map((param) => (

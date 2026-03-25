@@ -5,6 +5,18 @@ description: "Creates a .NET backend and React frontend with CI pipelines."
 maintainers:
   - "Platform Team"
 
+preScaffoldNotes:
+  - |-
+    Make sure your project name matches the naming convention agreed upon by the Platform Team.
+    Use kebab-case (e.g. my-awesome-service).
+  - "You will need at least Project Administrator permissions in the target project."
+
+postScaffoldNotes:
+  - |-
+    Your repositories have been created and the CI pipelines are ready.
+    The first pipeline run will be triggered automatically on the next commit to main.
+  - "Remember to configure your service connections and environment-specific variable groups before deploying to production."
+
 parameters:
   - id: projectName
     label: "Project Name"

@@ -15,7 +15,9 @@ postScaffoldNotes:
   - |-
     Your repositories have been created and the CI pipelines are ready.
     The first pipeline run will be triggered automatically on the next commit to main.
-  - "Remember to configure your service connections and environment-specific variable groups before deploying to production."
+  - |-
+    Remember to configure your service connections and environment-specific variable
+    groups before deploying to production.
 
 parameters:
   - id: projectName

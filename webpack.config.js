@@ -38,6 +38,10 @@ module.exports = {
         test: /\.(woff|woff2|eot|ttf|otf)$/,
         type: "asset/inline",
       },
+      {
+        test: /\.ya?ml$/,
+        type: "asset/source",
+      },
     ],
   },
   performance: {

@@ -7,6 +7,7 @@ import { Spinner } from "azure-devops-ui/Components/Spinner/Spinner";
 import { SpinnerSize } from "azure-devops-ui/Components/Spinner/Spinner.Props";
 import { ZeroData } from "azure-devops-ui/Components/ZeroData/ZeroData";
 import { TemplateCard } from "./TemplateCard";
+import { HowItWorksDialog } from "./HowItWorksDialog";
 
 interface TemplateListProps {
   isAdmin: boolean;
@@ -64,15 +65,21 @@ export function TemplateList({
 
   return (
     <div>
-      <p className="body-l secondary-text" style={{ margin: "0 0 20px" }}>
-        {isAdmin && <>Select a template to scaffold a new project.</>}
-        {!isAdmin && (
-          <>
-            These are the available templates. If you need to scaffold a new
-            project, contact your project admin.
-          </>
-        )}
-      </p>
+      <div
+        className="flex-row flex-wrap"
+        style={{ alignItems: "center", gap: 12, margin: "0 0 20px" }}
+      >
+        <p className="body-l secondary-text" style={{ margin: 0, flex: 1 }}>
+          {isAdmin && <>Select a template to scaffold a new project.</>}
+          {!isAdmin && (
+            <>
+              These are the available templates. If you need to scaffold a new
+              project, contact your project admin.
+            </>
+          )}
+        </p>
+        <HowItWorksDialog />
+      </div>
       <div
         style={{
           display: "grid",

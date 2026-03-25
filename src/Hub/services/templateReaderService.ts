@@ -189,9 +189,6 @@ function parseTemplateYaml(raw: string): TemplateDefinition {
     parameters,
     repositories: parseRepositories(obj.repositories),
     pipelines: parsePipelines(obj.pipelines),
-    teams: Array.isArray(obj.teams)
-      ? (obj.teams as TemplateDefinition["teams"])
-      : [],
   };
 
   return definition;

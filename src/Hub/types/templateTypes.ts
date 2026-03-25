@@ -39,18 +39,6 @@ export interface TemplatePipeline {
   when?: string; // skip this entire pipeline when expression is false
 }
 
-export interface TemplateServiceConnection {
-  name: string;
-  type: string; // e.g. "AzureRM"
-  subscriptionId?: string;
-  subscriptionName?: string;
-}
-
-export interface TemplateTeam {
-  name: string;
-  description?: string;
-}
-
 export interface TemplateDefinition {
   id: string; // GUID
   name: string;
@@ -62,8 +50,6 @@ export interface TemplateDefinition {
   parameters: TemplateParameter[];
   repositories?: TemplateRepository[];
   pipelines?: TemplatePipeline[];
-  serviceConnections?: TemplateServiceConnection[];
-  teams?: TemplateTeam[];
 
   // Metadata set by discovery, not parsed from YAML
   _sourceProjectId?: string;

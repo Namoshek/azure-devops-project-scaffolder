@@ -19,9 +19,19 @@ interface ParameterFormProps {
   onBack: () => void;
 }
 
+const COLOR_INCLUDED = "var(--status-success-foreground)";
+const COLOR_EXCLUDED = "var(--status-error-foreground)";
+
+interface ParameterSummarySubItem {
+  name: string;
+  included: boolean;
+}
+
 interface ParameterSummaryItem {
   type: "repository" | "pipeline";
   name: string;
+  included: boolean;
+  subItems?: ParameterSummarySubItem[];
 }
 
 function buildDefaults(
@@ -109,18 +119,29 @@ export function ParameterForm({
   );
 
   const summaryItems: ParameterSummaryItem[] = [
-    ...(template.repositories ?? [])
-      .filter((r) => !r.when || evaluateWhenExpression(r.when, values))
-      .map((r) => ({
+    ...(template.repositories ?? []).map((r) => {
+      const included = !r.when || evaluateWhenExpression(r.when, values);
+      const conditionalExcludes = (r.exclude ?? []).filter((e) => !!e.when);
+      const subItems: ParameterSummarySubItem[] = [
+        { name: "All non-conditional files", included },
+        ...conditionalExcludes.map((e) => ({
+          name: e.path,
+          // The file is excluded when its 'when' condition is true, so included = !when
+          included: !evaluateWhenExpression(e.when!, values),
+        })),
+      ];
+      return {
         type: "repository" as const,
         name: renderTemplate(r.name, values),
-      })),
-    ...(template.pipelines ?? [])
-      .filter((p) => !p.when || evaluateWhenExpression(p.when, values))
-      .map((p) => ({
-        type: "pipeline" as const,
-        name: renderTemplate(p.name, values),
-      })),
+        included,
+        subItems,
+      };
+    }),
+    ...(template.pipelines ?? []).map((p) => ({
+      type: "pipeline" as const,
+      name: renderTemplate(p.name, values),
+      included: !p.when || evaluateWhenExpression(p.when, values),
+    })),
   ];
 
   return (
@@ -201,24 +222,112 @@ export function ParameterForm({
           <div className="rhythm-vertical-8" style={{ width: "100%" }}>
             {summaryItems.map((item, index) => {
               const isLastItem = summaryItems.length - 1 === index;
-              const className = isLastItem
-                ? "flex-row justify-start"
-                : "flex-row justify-start separator-line-bottom";
+              const wrapperClass = isLastItem
+                ? "flex-column justify-start"
+                : "flex-column justify-start separator-line-bottom";
 
               return (
                 <div
                   key={index}
-                  className={className}
-                  style={{ gap: 16, paddingBottom: isLastItem ? 0 : 12 }}
+                  className={wrapperClass}
+                  style={{ gap: 6, paddingBottom: isLastItem ? 0 : 12 }}
                 >
-                  <Icon
-                    size={IconSize.medium}
-                    iconName={
-                      item.type === "repository" ? "OpenSource" : "Build"
-                    }
-                  />{" "}
-                  {item.type === "repository" ? "Repository" : "Pipeline"}:{" "}
-                  {item.name}
+                  {/* Main resource row */}
+                  <div
+                    className="flex-row"
+                    style={{ gap: 8, alignItems: "center" }}
+                  >
+                    <span
+                      style={{
+                        color: item.included ? COLOR_INCLUDED : COLOR_EXCLUDED,
+                      }}
+                    >
+                      <Icon
+                        size={IconSize.medium}
+                        iconName={
+                          item.type === "repository" ? "OpenSource" : "Build"
+                        }
+                      />
+                    </span>
+                    <span
+                      style={
+                        item.included
+                          ? undefined
+                          : { textDecoration: "line-through", opacity: 0.5 }
+                      }
+                    >
+                      {item.type === "repository" ? "Repository" : "Pipeline"}:{" "}
+                      {item.name}
+                    </span>
+                    {!item.included && (
+                      <span
+                        style={{
+                          fontSize: 11,
+                          color: COLOR_EXCLUDED,
+                          fontWeight: 600,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.05em",
+                        }}
+                      >
+                        Excluded
+                      </span>
+                    )}
+                  </div>
+                  {/* File sub-items (repositories only) */}
+                  {item.subItems && (
+                    <div
+                      className="flex-column"
+                      style={{
+                        paddingLeft: 24,
+                        gap: 4,
+                        opacity: item.included ? 1 : 0.4,
+                      }}
+                    >
+                      {item.subItems.map((sub, si) => (
+                        <div
+                          key={si}
+                          className="flex-row"
+                          style={{ gap: 8, alignItems: "center" }}
+                        >
+                          <span
+                            style={{
+                              color: sub.included
+                                ? COLOR_INCLUDED
+                                : COLOR_EXCLUDED,
+                            }}
+                          >
+                            <Icon size={IconSize.small} iconName="Page" />
+                          </span>
+                          <span
+                            className="body-s"
+                            style={
+                              sub.included
+                                ? undefined
+                                : {
+                                    textDecoration: "line-through",
+                                    opacity: 0.6,
+                                  }
+                            }
+                          >
+                            {sub.name}
+                          </span>
+                          {!sub.included && (
+                            <span
+                              style={{
+                                fontSize: 10,
+                                color: COLOR_EXCLUDED,
+                                fontWeight: 600,
+                                textTransform: "uppercase",
+                                letterSpacing: "0.05em",
+                              }}
+                            >
+                              Excluded
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               );
             })}

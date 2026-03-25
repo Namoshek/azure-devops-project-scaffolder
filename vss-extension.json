@@ -2,7 +2,7 @@
   "manifestVersion": 1,
   "id": "ado-project-scaffolder",
   "publisher": "namoshek",
-  "version": "0.6.3",
+  "version": "0.6.4",
   "name": "Project Scaffolder",
   "description": "Scaffold project resources from curated templates — creates repositories, pipelines, and more in a guided, non-destructive flow.",
   "public": false,

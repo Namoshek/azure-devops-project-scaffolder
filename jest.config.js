@@ -1,0 +1,21 @@
+/** @type {import('ts-jest').JestConfigWithTsJest} */
+module.exports = {
+  preset: "ts-jest",
+  testEnvironment: "node",
+  testMatch: ["**/tests/**/*.test.ts"],
+  transform: {
+    "^.+\\.tsx?$": [
+      "ts-jest",
+      {
+        tsconfig: {
+          module: "CommonJS",
+          strict: true,
+          esModuleInterop: true,
+          allowSyntheticDefaultImports: true,
+          resolveJsonModule: true,
+          skipLibCheck: true,
+        },
+      },
+    ],
+  },
+};

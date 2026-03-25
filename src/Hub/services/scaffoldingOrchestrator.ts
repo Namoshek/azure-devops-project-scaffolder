@@ -1,7 +1,10 @@
 import { TemplateDefinition } from "../types/templateTypes";
 import { scaffoldRepository, RepoScaffoldResult } from "./repositoryService";
 import { scaffoldPipeline, PipelineScaffoldResult } from "./pipelineService";
-import { evaluateWhenExpression } from "./templateEngineService";
+import {
+  evaluateWhenExpression,
+  renderTemplate,
+} from "./templateEngineService";
 
 export type StepStatus =
   | "pending"
@@ -42,13 +45,13 @@ export async function runScaffold(
   // Build the initial step list
   const repoSteps: ScaffoldStep[] = (template.repositories ?? []).map((r) => ({
     id: `repo:${r.name}`,
-    label: `Create repository: ${r.name}`,
+    label: `Create repository: ${renderTemplate(r.name, parameterValues)}`,
     status: "pending",
   }));
 
   const pipelineSteps: ScaffoldStep[] = (template.pipelines ?? []).map((p) => ({
     id: `pipeline:${p.name}`,
-    label: `Create pipeline: ${p.name}`,
+    label: `Create pipeline: ${renderTemplate(p.name, parameterValues)}`,
     status: "pending",
   }));
 

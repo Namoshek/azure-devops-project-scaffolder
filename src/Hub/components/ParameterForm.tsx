@@ -1,6 +1,9 @@
 import React, { useState } from "react";
 import { TemplateDefinition, TemplateParameter } from "../types/templateTypes";
-import { evaluateWhenExpression } from "../services/templateEngineService";
+import {
+  evaluateWhenExpression,
+  renderTemplate,
+} from "../services/templateEngineService";
 import { Button } from "azure-devops-ui/Components/Button/Button";
 import { Card } from "azure-devops-ui/Components/Card/Card";
 import { MessageCard } from "azure-devops-ui/Components/MessageCard/MessageCard";
@@ -110,13 +113,13 @@ export function ParameterForm({
       .filter((r) => !r.when || evaluateWhenExpression(r.when, values))
       .map((r) => ({
         type: "repository" as const,
-        name: r.name,
+        name: renderTemplate(r.name, values),
       })),
     ...(template.pipelines ?? [])
       .filter((p) => !p.when || evaluateWhenExpression(p.when, values))
       .map((p) => ({
         type: "pipeline" as const,
-        name: p.name,
+        name: renderTemplate(p.name, values),
       })),
   ];
 

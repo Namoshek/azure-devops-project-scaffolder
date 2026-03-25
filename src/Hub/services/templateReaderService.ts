@@ -4,7 +4,13 @@ import {
   VersionControlRecursionType,
 } from "azure-devops-extension-api/Git";
 import * as yaml from "js-yaml";
-import { TemplateDefinition, TemplateParameter } from "../types/templateTypes";
+import {
+  TemplateDefinition,
+  TemplateParameter,
+  TemplateRepository,
+  TemplateFileExclude,
+  TemplatePipeline,
+} from "../types/templateTypes";
 
 /**
  * Fetches and parses a project-template.yml from a specific repository path
@@ -181,12 +187,8 @@ function parseTemplateYaml(raw: string): TemplateDefinition {
       ? (obj.postScaffoldNotes as string[])
       : undefined,
     parameters,
-    repositories: Array.isArray(obj.repositories)
-      ? (obj.repositories as TemplateDefinition["repositories"])
-      : [],
-    pipelines: Array.isArray(obj.pipelines)
-      ? (obj.pipelines as TemplateDefinition["pipelines"])
-      : [],
+    repositories: parseRepositories(obj.repositories),
+    pipelines: parsePipelines(obj.pipelines),
     teams: Array.isArray(obj.teams)
       ? (obj.teams as TemplateDefinition["teams"])
       : [],
@@ -201,6 +203,73 @@ function assertString(obj: Record<string, unknown>, key: string): void {
       `project-template.yml must have a non-empty string field: '${key}'`,
     );
   }
+}
+
+function parseRepositories(raw: unknown): TemplateRepository[] {
+  if (!Array.isArray(raw)) return [];
+
+  return raw.map((item, index) => {
+    if (!item || typeof item !== "object") {
+      throw new Error(`repositories[${index}] must be an object`);
+    }
+    const r = item as Record<string, unknown>;
+    if (typeof r.name !== "string")
+      throw new Error(`repositories[${index}].name must be a string`);
+    if (typeof r.sourcePath !== "string")
+      throw new Error(`repositories[${index}].sourcePath must be a string`);
+
+    const repo: TemplateRepository = {
+      name: r.name,
+      sourcePath: r.sourcePath,
+      defaultBranch:
+        typeof r.defaultBranch === "string" ? r.defaultBranch : "main",
+    };
+
+    if (typeof r.when === "string") repo.when = r.when;
+
+    if (Array.isArray(r.exclude)) {
+      repo.exclude = r.exclude
+        .filter(
+          (e): e is Record<string, unknown> => !!e && typeof e === "object",
+        )
+        .map(
+          (e): TemplateFileExclude => ({
+            path: typeof e.path === "string" ? e.path : String(e.path),
+            ...(typeof e.when === "string" ? { when: e.when } : {}),
+          }),
+        );
+    }
+
+    return repo;
+  });
+}
+
+function parsePipelines(raw: unknown): TemplatePipeline[] {
+  if (!Array.isArray(raw)) return [];
+
+  return raw.map((item, index) => {
+    if (!item || typeof item !== "object") {
+      throw new Error(`pipelines[${index}] must be an object`);
+    }
+    const p = item as Record<string, unknown>;
+    if (typeof p.name !== "string")
+      throw new Error(`pipelines[${index}].name must be a string`);
+    if (typeof p.repository !== "string")
+      throw new Error(`pipelines[${index}].repository must be a string`);
+    if (typeof p.yamlPath !== "string")
+      throw new Error(`pipelines[${index}].yamlPath must be a string`);
+
+    const pipeline: TemplatePipeline = {
+      name: p.name,
+      repository: p.repository,
+      yamlPath: p.yamlPath,
+    };
+
+    if (typeof p.folder === "string") pipeline.folder = p.folder;
+    if (typeof p.when === "string") pipeline.when = p.when;
+
+    return pipeline;
+  });
 }
 
 function parseParameters(raw: unknown): TemplateParameter[] {

@@ -15,6 +15,7 @@ const sampleTemplateRepositoryStructure = `templates/
   │  │  ├─ main.tf
   │  │  ├─ variables.tf
   │  │  └─ ...
+  │  ├─ Dockerfile          ← excluded when includeDocker is false
   │  └─ pipelines/
   │       └─ build.yml
   └─ frontend/
@@ -46,9 +47,6 @@ export function HowItWorksDialog() {
           }}
           showCloseButton
           onDismiss={() => setOpen(false)}
-          footerButtonProps={[
-            { text: "Close", onClick: () => setOpen(false), primary: true },
-          ]}
           contentSize={ContentSize.ExtraLarge}
         >
           <div style={{ maxWidth: 680 }}>
@@ -73,8 +71,15 @@ export function HowItWorksDialog() {
               <li style={{ listStyle: "disc" }}>
                 Create one or more <strong>repositories</strong> by copying
                 files from the template repository, rendering all file content
-                and file names through <strong>Handlebars.js</strong> using the
-                values you provide in the parameter form.
+                and file names through{" "}
+                <a
+                  href="https://handlebarsjs.com/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Handlebars.js
+                </a>{" "}
+                using the values you provide in the parameter form.
               </li>
               <li style={{ listStyle: "disc" }}>
                 Register <strong>YAML pipelines</strong> pointing to pipeline

@@ -18,10 +18,17 @@ export interface TemplateParameter {
   validation?: ParameterValidation;
 }
 
+export interface TemplateFileExclude {
+  path: string; // relative to sourcePath, no leading slash
+  when?: string; // exclusion condition — file is excluded when this expression is true
+}
+
 export interface TemplateRepository {
   name: string; // may contain Handlebars expressions
   sourcePath: string; // subfolder within the template repo
   defaultBranch: string;
+  when?: string; // skip this entire repository when expression is false
+  exclude?: TemplateFileExclude[]; // individual files to exclude based on conditions
 }
 
 export interface TemplatePipeline {
@@ -29,6 +36,7 @@ export interface TemplatePipeline {
   repository: string; // must match a TemplateRepository name (after rendering)
   yamlPath: string;
   folder?: string; // pipeline folder grouping in ADO
+  when?: string; // skip this entire pipeline when expression is false
 }
 
 export interface TemplateServiceConnection {

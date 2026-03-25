@@ -64,10 +64,16 @@ repositories:
   - name: "{{projectName}}.backend" # Handlebars in repo name ✔
     sourcePath: "templates/backend" # Subfolder in THIS repository
     defaultBranch: "main"
+    exclude: # Optional: exclude individual files
+      - path: "Dockerfile"
+        when: "!includeDocker" # excluded when includeDocker is false
+      - path: "docker-compose.yml"
+        when: "!includeDocker"
 
-  - name: "{{projectName}}.frontend"
-    sourcePath: "templates/frontend"
+  - name: "{{projectName}}.docker-infra"
+    sourcePath: "templates/docker"
     defaultBranch: "main"
+    when: "includeDocker" # Optional: skip this entire repo when false
 
 # ── Pipelines ─────────────────────────────────────────────────────────
 pipelines:
@@ -75,6 +81,12 @@ pipelines:
     repository: "{{projectName}}.backend" # Must match a repository name above (after rendering)
     yamlPath: "pipelines/ci.yml" # Path within the target repo
     folder: "\\CI" # Pipeline folder in ADO (optional)
+
+  - name: "{{projectName}}-docker-build"
+    repository: "{{projectName}}.backend"
+    yamlPath: "pipelines/docker.yml"
+    folder: "\\CI"
+    when: "includeDocker" # Optional: skip this pipeline when false
 ```
 
 ---
@@ -140,6 +152,54 @@ Supported syntax:
 | `paramId != "value"`      | Inequality     |
 | `a == true && b == "x"`   | AND            |
 | `a == true \|\| b == "x"` | OR             |
+
+---
+
+## Optional Files and Resources
+
+### Conditional repositories and pipelines
+
+Add a `when` field to any `repository` or `pipeline` entry to skip it entirely when the condition evaluates to false. The same expression syntax used for parameter visibility applies here.
+
+```yaml
+repositories:
+  - name: "{{projectName}}.docker-infra"
+    sourcePath: "templates/docker"
+    defaultBranch: "main"
+    when: "includeDocker" # entire repo is skipped when includeDocker is false
+
+pipelines:
+  - name: "{{projectName}}-docker-build"
+    repository: "{{projectName}}.backend"
+    yamlPath: "pipelines/docker.yml"
+    folder: "\\CI"
+    when: "includeDocker" # pipeline is skipped when includeDocker is false
+```
+
+Skipped entries still appear in the scaffolding progress view with a **Skipped** status, giving the user full visibility into what was conditionally omitted.
+
+### Excluding individual files from a repository
+
+Add an `exclude` list to a repository entry to drop specific files based on parameter values:
+
+```yaml
+repositories:
+  - name: "{{projectName}}.backend"
+    sourcePath: "templates/backend"
+    defaultBranch: "main"
+    exclude:
+      - path: "Dockerfile"
+        when: "!includeDocker" # exclude this file when Docker is disabled
+      - path: "docker-compose.yml"
+        when: "!includeDocker"
+      - path: "always-omitted.txt" # no when = always excluded
+```
+
+- `path` must match the file path **relative to `sourcePath`**, with no leading slash.
+- `when` uses the same expression syntax as parameter `when` fields. The file is excluded when the expression evaluates to **true** — the `when` expresses the _exclusion condition_, not the inclusion condition.
+- Omitting `when` always excludes the file.
+
+> **Tip:** Use `{{#if}}` blocks inside files for inline optional content, and `exclude` for entirely optional files.
 
 ---
 

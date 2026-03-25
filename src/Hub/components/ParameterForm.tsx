@@ -106,14 +106,18 @@ export function ParameterForm({
   );
 
   const summaryItems: ParameterSummaryItem[] = [
-    ...(template.repositories ?? []).map((r) => ({
-      type: "repository" as const,
-      name: r.name,
-    })),
-    ...(template.pipelines ?? []).map((p) => ({
-      type: "pipeline" as const,
-      name: p.name,
-    })),
+    ...(template.repositories ?? [])
+      .filter((r) => !r.when || evaluateWhenExpression(r.when, values))
+      .map((r) => ({
+        type: "repository" as const,
+        name: r.name,
+      })),
+    ...(template.pipelines ?? [])
+      .filter((p) => !p.when || evaluateWhenExpression(p.when, values))
+      .map((p) => ({
+        type: "pipeline" as const,
+        name: p.name,
+      })),
   ];
 
   return (

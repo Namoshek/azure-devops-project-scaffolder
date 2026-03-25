@@ -1,6 +1,7 @@
 import { TemplateDefinition } from "../types/templateTypes";
 import { scaffoldRepository, RepoScaffoldResult } from "./repositoryService";
 import { scaffoldPipeline, PipelineScaffoldResult } from "./pipelineService";
+import { evaluateWhenExpression } from "./templateEngineService";
 
 export type StepStatus =
   | "pending"
@@ -57,6 +58,18 @@ export async function runScaffold(
   // ── Phase 1: Repositories ────────────────────────────────────────────────────
   for (let i = 0; i < repoSteps.length; i++) {
     const repoTemplate = template.repositories![i];
+
+    // Skip this repository if its when condition is not satisfied
+    if (
+      repoTemplate.when &&
+      !evaluateWhenExpression(repoTemplate.when, parameterValues)
+    ) {
+      repoSteps[i].status = "skipped";
+      repoSteps[i].detail = `Condition '${repoTemplate.when}' was not met.`;
+      onProgress([...allSteps]);
+      continue;
+    }
+
     repoSteps[i].status = "running";
     onProgress([...allSteps]);
 
@@ -85,6 +98,19 @@ export async function runScaffold(
   // ── Phase 2: Pipelines ───────────────────────────────────────────────────────
   for (let i = 0; i < pipelineSteps.length; i++) {
     const pipelineTemplate = template.pipelines![i];
+
+    // Skip this pipeline if its when condition is not satisfied
+    if (
+      pipelineTemplate.when &&
+      !evaluateWhenExpression(pipelineTemplate.when, parameterValues)
+    ) {
+      pipelineSteps[i].status = "skipped";
+      pipelineSteps[i].detail =
+        `Condition '${pipelineTemplate.when}' was not met.`;
+      onProgress([...allSteps]);
+      continue;
+    }
+
     pipelineSteps[i].status = "running";
     onProgress([...allSteps]);
 

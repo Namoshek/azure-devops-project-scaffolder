@@ -7,7 +7,10 @@ import {
 } from "azure-devops-extension-api/Git";
 import { TemplateRepository } from "../types/templateTypes";
 import { fetchTemplateFiles } from "./templateReaderService";
-import { renderTemplate } from "./templateEngineService";
+import {
+  renderTemplate,
+  evaluateWhenExpression,
+} from "./templateEngineService";
 
 export type RepoScaffoldStatus = "created" | "skipped" | "failed";
 
@@ -126,6 +129,18 @@ export async function scaffoldRepository(
 
   const changes = templateFiles
     .filter((f) => !f.path.endsWith("project-template.yml"))
+    .filter((f) => {
+      // Apply exclude rules: drop any file whose relative path matches a rule
+      // whose when expression evaluates to true (meaning: exclude condition is met)
+      const relativePath = f.path.startsWith(sourcePathPrefix)
+        ? f.path.slice(sourcePathPrefix.length)
+        : f.path;
+      return !(repoTemplate.exclude ?? []).some(
+        (rule) =>
+          rule.path === relativePath &&
+          (!rule.when || evaluateWhenExpression(rule.when, parameterValues)),
+      );
+    })
     .map((f) => {
       // Strip the sourcePath prefix to get the relative file path for the new repo
       let relativePath = f.path.startsWith(sourcePathPrefix)

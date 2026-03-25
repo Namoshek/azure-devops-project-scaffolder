@@ -15,12 +15,35 @@ interface CodeSearchResponse {
 }
 
 /**
+ * Module-level cache for the in-flight / completed discovery promise.
+ * Populated on the first call to discoverTemplates() and reused for
+ * subsequent calls within the same page lifetime. Because the module is
+ * re-evaluated on every fresh extension load, the cache is always empty
+ * when the extension is first opened.
+ */
+let cachedDiscovery: Promise<DiscoveredTemplate[]> | null = null;
+
+/**
  * Discovers all project-template.yml files across the collection using the
  * Code Search extension REST API.
  *
+ * Results are cached for the lifetime of the current page so navigating
+ * back from the parameter form does not trigger a redundant re-fetch.
  * Throws a descriptive error if the Code Search extension is not installed.
  */
-export async function discoverTemplates(): Promise<DiscoveredTemplate[]> {
+export function discoverTemplates(): Promise<DiscoveredTemplate[]> {
+  if (cachedDiscovery !== null) {
+    return cachedDiscovery;
+  }
+  cachedDiscovery = fetchTemplates().catch((err) => {
+    // Clear the cache so a retry is possible if the fetch failed.
+    cachedDiscovery = null;
+    throw err;
+  });
+  return cachedDiscovery;
+}
+
+async function fetchTemplates(): Promise<DiscoveredTemplate[]> {
   const accessToken = await SDK.getAccessToken();
   const collection = SDK.getHost().name;
 

@@ -1,19 +1,11 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState } from "react";
 import { TemplateDefinition, TemplateParameter } from "../types/templateTypes";
 import { evaluateWhenExpression } from "../services/templateEngineService";
 import { Button } from "azure-devops-ui/Components/Button/Button";
-import { Checkbox } from "azure-devops-ui/Components/Checkbox/Checkbox";
-import { Dropdown } from "azure-devops-ui/Components/Dropdown/Dropdown";
-import { FormItem as FormItemBase } from "azure-devops-ui/Components/FormItem/FormItem";
-import { TextField } from "azure-devops-ui/Components/TextField/TextField";
-const FormItem = FormItemBase as React.ComponentType<
-  React.ComponentProps<typeof FormItemBase> & { children?: React.ReactNode }
->;
-import { IListBoxItem } from "azure-devops-ui/Components/ListBox/ListBox.Props";
-import { DropdownSelection } from "azure-devops-ui/Utilities/DropdownSelection";
 import { Card } from "azure-devops-ui/Components/Card/Card";
 import { TitleSize } from "azure-devops-ui/Header";
 import { Icon, IconSize } from "azure-devops-ui/Icon";
+import { ParameterField } from "./ParameterField";
 
 interface ParameterFormProps {
   template: TemplateDefinition;
@@ -212,84 +204,5 @@ export function ParameterForm({
         </Card>
       </div>
     </div>
-  );
-}
-
-// --- ParameterField ---
-
-interface ParameterFieldProps {
-  param: TemplateParameter;
-  value: unknown;
-  error?: string;
-  onChange: (id: string, value: unknown) => void;
-}
-
-function ParameterField({
-  param,
-  value,
-  error,
-  onChange,
-}: ParameterFieldProps) {
-  const dropdownSelection = useMemo(() => new DropdownSelection(), []);
-  const dropdownItems = useMemo<IListBoxItem[]>(
-    () => (param.options || []).map((opt) => ({ id: opt, text: opt })),
-    [param.options],
-  );
-
-  useEffect(() => {
-    if (param.type === "choice" && param.options) {
-      const idx = param.options.indexOf(typeof value === "string" ? value : "");
-      if (idx >= 0) {
-        dropdownSelection.select(idx);
-      }
-    }
-  }, [value, param.options, param.type, dropdownSelection]);
-
-  const hasError = Boolean(error);
-
-  if (param.type === "boolean") {
-    return (
-      <FormItem label={param.label} message={param.hint}>
-        <Checkbox
-          label={Boolean(value) ? "Yes" : "No"}
-          checked={Boolean(value)}
-          onChange={(_e, checked) => onChange(param.id, checked)}
-        />
-      </FormItem>
-    );
-  }
-
-  if (param.type === "choice" && param.options) {
-    return (
-      <FormItem
-        label={param.label}
-        required={param.required}
-        message={hasError ? error : param.hint}
-        error={hasError}
-      >
-        <Dropdown
-          items={dropdownItems}
-          selection={dropdownSelection}
-          onSelect={(_e, item) => onChange(param.id, item.id)}
-        />
-      </FormItem>
-    );
-  }
-
-  // string / secret
-  return (
-    <FormItem
-      label={param.label}
-      required={param.required}
-      message={hasError ? error : param.hint}
-      error={hasError}
-    >
-      <TextField
-        value={typeof value === "string" ? value : ""}
-        inputType={param.secret ? "password" : "text"}
-        autoComplete={param.secret ? false : undefined}
-        onChange={(_e, newValue) => onChange(param.id, newValue)}
-      />
-    </FormItem>
   );
 }

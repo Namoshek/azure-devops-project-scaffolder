@@ -1,4 +1,4 @@
-import * as React from "react";
+import React, { useState, useEffect } from "react";
 import { TemplateDefinition, DiscoveredTemplate } from "../types/templateTypes";
 import { discoverTemplates } from "../services/templateDiscoveryService";
 import { Card } from "azure-devops-ui/Components/Card/Card";
@@ -12,109 +12,96 @@ import {
 } from "azure-devops-ui/Components/Pill/Pill.Props";
 import { Spinner } from "azure-devops-ui/Components/Spinner/Spinner";
 import { SpinnerSize } from "azure-devops-ui/Components/Spinner/Spinner.Props";
+import { ZeroData } from "azure-devops-ui/Components/ZeroData/ZeroData";
+
 const Pill = PillBase as React.ComponentType<
   React.ComponentProps<typeof PillBase> & { children?: React.ReactNode }
 >;
-import { ZeroData } from "azure-devops-ui/Components/ZeroData/ZeroData";
 
 interface TemplateListProps {
   isAdmin: boolean;
   onTemplateSelected: (template: TemplateDefinition) => void;
 }
 
-interface TemplateListState {
-  loading: boolean;
-  error: string | null;
-  templates: DiscoveredTemplate[];
-}
+export function TemplateList({
+  isAdmin,
+  onTemplateSelected,
+}: TemplateListProps) {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [templates, setTemplates] = useState<DiscoveredTemplate[]>([]);
 
-export class TemplateList extends React.Component<
-  TemplateListProps,
-  TemplateListState
-> {
-  constructor(props: TemplateListProps) {
-    super(props);
-    this.state = { loading: true, error: null, templates: [] };
+  useEffect(() => {
+    discoverTemplates()
+      .then((result) => {
+        setLoading(false);
+        setTemplates(result);
+      })
+      .catch((err) => {
+        setLoading(false);
+        setError((err as Error).message);
+      });
+  }, []);
+
+  if (loading) {
+    return <Spinner size={SpinnerSize.large} label="Discovering templates…" />;
   }
 
-  async componentDidMount() {
-    try {
-      const templates = await discoverTemplates();
-      this.setState({ loading: false, templates });
-    } catch (err) {
-      this.setState({ loading: false, error: (err as Error).message });
-    }
-  }
-
-  render() {
-    const { loading, error, templates } = this.state;
-
-    if (loading) {
-      return (
-        <Spinner size={SpinnerSize.large} label="Discovering templates…" />
-      );
-    }
-
-    if (error) {
-      return (
-        <MessageCard severity={MessageCardSeverity.Error}>
-          <strong>Template discovery failed</strong>
-          <p style={{ margin: "8px 0 0" }}>{error}</p>
-        </MessageCard>
-      );
-    }
-
-    if (templates.length === 0) {
-      return (
-        <ZeroData
-          primaryText="No templates found"
-          secondaryText={
-            <>
-              Create a repository in any project in this collection with a{" "}
-              <code>project-template.yml</code> file at the root to get started.
-            </>
-          }
-          imageAltText="No templates found"
-          iconProps={{ iconName: "FileTemplate" }}
-        />
-      );
-    }
-
+  if (error) {
     return (
-      <div>
-        <p className="body-l secondary-text" style={{ margin: "0 0 20px" }}>
-          {this.props.isAdmin && (
-            <>Select a template to scaffold a new project.</>
-          )}
-          {!this.props.isAdmin && (
-            <>
-              These are the available templates. If you need to scaffold a new
-              project, contact your project admin.
-            </>
-          )}
-        </p>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(600px, 1fr))",
-            gap: 16,
-          }}
-        >
-          {templates.map((t) => (
-            <TemplateCard
-              key={t.definition.id}
-              template={t}
-              onSelect={
-                this.props.isAdmin
-                  ? () => this.props.onTemplateSelected(t.definition)
-                  : undefined
-              }
-            />
-          ))}
-        </div>
-      </div>
+      <MessageCard severity={MessageCardSeverity.Error}>
+        <strong>Template discovery failed</strong>
+        <p style={{ margin: "8px 0 0" }}>{error}</p>
+      </MessageCard>
     );
   }
+
+  if (templates.length === 0) {
+    return (
+      <ZeroData
+        primaryText="No templates found"
+        secondaryText={
+          <>
+            Create a repository in any project in this collection with a{" "}
+            <code>project-template.yml</code> file at the root to get started.
+          </>
+        }
+        imageAltText="No templates found"
+        iconProps={{ iconName: "FileTemplate" }}
+      />
+    );
+  }
+
+  return (
+    <div>
+      <p className="body-l secondary-text" style={{ margin: "0 0 20px" }}>
+        {isAdmin && <>Select a template to scaffold a new project.</>}
+        {!isAdmin && (
+          <>
+            These are the available templates. If you need to scaffold a new
+            project, contact your project admin.
+          </>
+        )}
+      </p>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(600px, 1fr))",
+          gap: 16,
+        }}
+      >
+        {templates.map((t) => (
+          <TemplateCard
+            key={t.definition.id}
+            template={t}
+            onSelect={
+              isAdmin ? () => onTemplateSelected(t.definition) : undefined
+            }
+          />
+        ))}
+      </div>
+    </div>
+  );
 }
 
 // ─── TemplateCard ──────────────────────────────────────────────────────────────

@@ -1,4 +1,4 @@
-import * as React from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { TemplateDefinition, TemplateParameter } from "../types/templateTypes";
 import { evaluateWhenExpression } from "../services/templateEngineService";
 import { Button } from "azure-devops-ui/Components/Button/Button";
@@ -13,10 +13,6 @@ import { IListBoxItem } from "azure-devops-ui/Components/ListBox/ListBox.Props";
 import { DropdownSelection } from "azure-devops-ui/Utilities/DropdownSelection";
 import { Card } from "azure-devops-ui/Components/Card/Card";
 import { TitleSize } from "azure-devops-ui/Header";
-import { ArrayItemProvider } from "azure-devops-ui/Utilities/Provider";
-import { renderSimpleCell, Table } from "azure-devops-ui/Table";
-import { ObservableValue } from "azure-devops-ui/Core/Observable";
-import { ISimpleListCell } from "azure-devops-ui/List";
 import { Icon, IconSize } from "azure-devops-ui/Icon";
 
 interface ParameterFormProps {
@@ -26,62 +22,50 @@ interface ParameterFormProps {
   onBack: () => void;
 }
 
-interface ParameterFormState {
-  values: Record<string, unknown>;
-  errors: Record<string, string>;
-  submitted: boolean;
-}
-
 interface ParameterSummaryItem {
   type: "repository" | "pipeline";
   name: string;
 }
 
-export class ParameterForm extends React.Component<
-  ParameterFormProps,
-  ParameterFormState
-> {
-  constructor(props: ParameterFormProps) {
-    super(props);
-    this.state = {
-      values: this.buildDefaults(props.template.parameters),
-      errors: {},
-      submitted: false,
-    };
-  }
-
-  private buildDefaults(
-    parameters: TemplateParameter[],
-  ): Record<string, unknown> {
-    const defaults: Record<string, unknown> = {};
-    for (const p of parameters) {
-      if (p.defaultValue !== undefined) {
-        defaults[p.id] = p.defaultValue;
-      } else if (p.type === "boolean") {
-        defaults[p.id] = false;
-      } else if (p.type === "choice" && p.options && p.options.length > 0) {
-        defaults[p.id] = p.options[0];
-      } else {
-        defaults[p.id] = "";
-      }
+function buildDefaults(
+  parameters: TemplateParameter[],
+): Record<string, unknown> {
+  const defaults: Record<string, unknown> = {};
+  for (const p of parameters) {
+    if (p.defaultValue !== undefined) {
+      defaults[p.id] = p.defaultValue;
+    } else if (p.type === "boolean") {
+      defaults[p.id] = false;
+    } else if (p.type === "choice" && p.options && p.options.length > 0) {
+      defaults[p.id] = p.options[0];
+    } else {
+      defaults[p.id] = "";
     }
-    return defaults;
+  }
+  return defaults;
+}
+
+export function ParameterForm({
+  template,
+  isAdmin,
+  onSubmit,
+  onBack,
+}: ParameterFormProps) {
+  const [values, setValues] = useState<Record<string, unknown>>(() =>
+    buildDefaults(template.parameters),
+  );
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submitted, setSubmitted] = useState(false);
+
+  function handleChange(id: string, value: unknown) {
+    setValues((prev) => ({ ...prev, [id]: value }));
+    setErrors((prev) => ({ ...prev, [id]: "" }));
   }
 
-  private handleChange = (id: string, value: unknown) => {
-    this.setState((prev) => ({
-      values: { ...prev.values, [id]: value },
-      errors: { ...prev.errors, [id]: "" },
-    }));
-  };
-
-  private validate(): Record<string, string> {
-    const { template } = this.props;
-    const { values } = this.state;
-    const errors: Record<string, string> = {};
+  function validate(): Record<string, string> {
+    const errs: Record<string, string> = {};
 
     for (const param of template.parameters) {
-      // Skip fields that are hidden due to `when`
       if (param.when && !evaluateWhenExpression(param.when, values)) continue;
 
       const value = values[param.id];
@@ -91,7 +75,7 @@ export class ParameterForm extends React.Component<
           param.type === "string" &&
           (value === "" || value === undefined || value === null)
         ) {
-          errors[param.id] = `${param.label} is required.`;
+          errs[param.id] = `${param.label} is required.`;
           continue;
         }
       }
@@ -100,7 +84,7 @@ export class ParameterForm extends React.Component<
         try {
           const regex = new RegExp(param.validation.regex);
           if (!regex.test(value)) {
-            errors[param.id] = param.validation.message;
+            errs[param.id] = param.validation.message;
           }
         } catch {
           // Invalid regex in template -- skip validation
@@ -108,143 +92,127 @@ export class ParameterForm extends React.Component<
       }
     }
 
-    return errors;
+    return errs;
   }
 
-  private handleSubmit = () => {
-    this.setState({ submitted: true });
+  function handleSubmit() {
+    setSubmitted(true);
 
-    const errors = this.validate();
-    if (Object.keys(errors).length > 0) {
-      this.setState({ errors });
+    const errs = validate();
+    if (Object.keys(errs).length > 0) {
+      setErrors(errs);
       return;
     }
 
-    this.props.onSubmit(this.state.values);
-  };
+    onSubmit(values);
+  }
 
-  render() {
-    const { template, onBack, isAdmin } = this.props;
-    const { values, errors, submitted } = this.state;
+  const visibleParams = template.parameters.filter(
+    (p) => !p.when || evaluateWhenExpression(p.when, values),
+  );
 
-    const visibleParams = template.parameters.filter(
-      (p) => !p.when || evaluateWhenExpression(p.when, values),
-    );
+  const summaryItems: ParameterSummaryItem[] = [
+    ...(template.repositories ?? []).map((r) => ({
+      type: "repository" as const,
+      name: r.name,
+    })),
+    ...(template.pipelines ?? []).map((p) => ({
+      type: "pipeline" as const,
+      name: p.name,
+    })),
+  ];
 
-    const summaryItems = new ArrayItemProvider<ParameterSummaryItem>([]);
-
-    for (const repository of this.props.template.repositories ?? []) {
-      summaryItems.value.push({
-        type: "repository",
-        name: repository.name,
-      });
-    }
-
-    for (const pipeline of this.props.template.pipelines ?? []) {
-      summaryItems.value.push({
-        type: "pipeline",
-        name: pipeline.name,
-      });
-    }
-
-    return (
-      <div className="flex-row" style={{ gap: 48 }}>
-        <div>
-          <div
-            className="flex-row rhythm-horizontal-8"
-            style={{ marginBottom: 24 }}
-          >
-            <div>
-              <div className="title-m">Selected Template: {template.name}</div>
-              {template.description && (
-                <p
-                  className="body-m secondary-text"
-                  style={{ margin: "4px 0 0" }}
-                >
-                  {template.description}
-                </p>
-              )}
-            </div>
-          </div>
-
-          <div className="flex-column rhythm-vertical-20">
-            {visibleParams.map((param) => (
-              <ParameterField
-                key={param.id}
-                param={param}
-                value={values[param.id]}
-                error={submitted ? errors[param.id] : undefined}
-                onChange={this.handleChange}
-              />
-            ))}
-          </div>
-
-          <div
-            className="flex-row rhythm-horizontal-8"
-            style={{ marginTop: 32 }}
-          >
-            <p className="body-m secondary-text" style={{ margin: 0 }}>
-              By submitting this form, the resources will be created as
-              displayed on the right side.
-            </p>
-          </div>
-
-          <div
-            className="flex-row rhythm-horizontal-8"
-            style={{ marginTop: 24 }}
-          >
-            <Button text="Cancel" onClick={onBack} />
-            <Button
-              text="Scaffold Project"
-              primary
-              disabled={!isAdmin}
-              tooltipProps={
-                !isAdmin
-                  ? {
-                      text: "You need Project Administrator permissions to scaffold projects.",
-                    }
-                  : undefined
-              }
-              onClick={this.handleSubmit}
-            />
+  return (
+    <div className="flex-row" style={{ gap: 48 }}>
+      <div>
+        <div
+          className="flex-row rhythm-horizontal-8"
+          style={{ marginBottom: 24 }}
+        >
+          <div>
+            <div className="title-m">Selected Template: {template.name}</div>
+            {template.description && (
+              <p
+                className="body-m secondary-text"
+                style={{ margin: "4px 0 0" }}
+              >
+                {template.description}
+              </p>
+            )}
           </div>
         </div>
 
-        <div style={{ minWidth: 400 }}>
-          <Card
-            className="bolt-card-white"
-            titleProps={{ text: "Summary", size: TitleSize.Medium }}
-          >
-            <div className="rhythm-vertical-8" style={{ width: "100%" }}>
-              {summaryItems.value.map((item, index) => {
-                const isLastItem = summaryItems.length - 1 === index;
-                const className = isLastItem
-                  ? "flex-row justify-start"
-                  : "flex-row justify-start separator-line-bottom";
+        <div className="flex-column rhythm-vertical-20">
+          {visibleParams.map((param) => (
+            <ParameterField
+              key={param.id}
+              param={param}
+              value={values[param.id]}
+              error={submitted ? errors[param.id] : undefined}
+              onChange={handleChange}
+            />
+          ))}
+        </div>
 
-                return (
-                  <div
-                    key={index}
-                    className={className}
-                    style={{ gap: 16, paddingBottom: isLastItem ? 0 : 12 }}
-                  >
-                    <Icon
-                      size={IconSize.medium}
-                      iconName={
-                        item.type === "repository" ? "OpenSource" : "Build"
-                      }
-                    />{" "}
-                    {item.type === "repository" ? "Repository" : "Pipeline"}:{" "}
-                    {item.name}
-                  </div>
-                );
-              })}
-            </div>
-          </Card>
+        <div className="flex-row rhythm-horizontal-8" style={{ marginTop: 32 }}>
+          <p className="body-m secondary-text" style={{ margin: 0 }}>
+            By submitting this form, the resources will be created as displayed
+            on the right side.
+          </p>
+        </div>
+
+        <div className="flex-row rhythm-horizontal-8" style={{ marginTop: 24 }}>
+          <Button text="Cancel" onClick={onBack} />
+          <Button
+            text="Scaffold Project"
+            primary
+            disabled={!isAdmin}
+            tooltipProps={
+              !isAdmin
+                ? {
+                    text: "You need Project Administrator permissions to scaffold projects.",
+                  }
+                : undefined
+            }
+            onClick={handleSubmit}
+          />
         </div>
       </div>
-    );
-  }
+
+      <div style={{ minWidth: 400 }}>
+        <Card
+          className="bolt-card-white"
+          titleProps={{ text: "Summary", size: TitleSize.Medium }}
+        >
+          <div className="rhythm-vertical-8" style={{ width: "100%" }}>
+            {summaryItems.map((item, index) => {
+              const isLastItem = summaryItems.length - 1 === index;
+              const className = isLastItem
+                ? "flex-row justify-start"
+                : "flex-row justify-start separator-line-bottom";
+
+              return (
+                <div
+                  key={index}
+                  className={className}
+                  style={{ gap: 16, paddingBottom: isLastItem ? 0 : 12 }}
+                >
+                  <Icon
+                    size={IconSize.medium}
+                    iconName={
+                      item.type === "repository" ? "OpenSource" : "Build"
+                    }
+                  />{" "}
+                  {item.type === "repository" ? "Repository" : "Pipeline"}:{" "}
+                  {item.name}
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
 }
 
 // --- ParameterField ---
@@ -262,13 +230,13 @@ function ParameterField({
   error,
   onChange,
 }: ParameterFieldProps) {
-  const dropdownSelection = React.useMemo(() => new DropdownSelection(), []);
-  const dropdownItems = React.useMemo<IListBoxItem[]>(
+  const dropdownSelection = useMemo(() => new DropdownSelection(), []);
+  const dropdownItems = useMemo<IListBoxItem[]>(
     () => (param.options || []).map((opt) => ({ id: opt, text: opt })),
     [param.options],
   );
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (param.type === "choice" && param.options) {
       const idx = param.options.indexOf(typeof value === "string" ? value : "");
       if (idx >= 0) {

@@ -1,4 +1,4 @@
-import * as React from "react";
+import React, { useState, useEffect, useRef, ReactElement } from "react";
 import * as SDK from "azure-devops-extension-sdk";
 import {
   CommonServiceIds,
@@ -25,36 +25,27 @@ interface ScaffoldProgressProps {
   onScaffoldAgain: () => void;
 }
 
-interface ScaffoldProgressState {
-  steps: ScaffoldStep[];
-  running: boolean;
-  done: boolean;
-  fatalError: string | null;
-}
+export function ScaffoldProgress({
+  template,
+  parameterValues,
+  results,
+  onComplete,
+  onScaffoldAgain,
+}: ScaffoldProgressProps) {
+  const [steps, setSteps] = useState<ScaffoldStep[]>(
+    results.length > 0 ? results : [],
+  );
+  const [running, setRunning] = useState(results.length === 0);
+  const [done, setDone] = useState(results.length > 0);
+  const [fatalError, setFatalError] = useState<string | null>(null);
+  const stepsRef = useRef<ScaffoldStep[]>(steps);
 
-export class ScaffoldProgress extends React.Component<
-  ScaffoldProgressProps,
-  ScaffoldProgressState
-> {
-  constructor(props: ScaffoldProgressProps) {
-    super(props);
-    this.state = {
-      steps: props.results.length > 0 ? props.results : [],
-      running: props.results.length === 0,
-      done: props.results.length > 0,
-      fatalError: null,
-    };
-  }
+  useEffect(() => {
+    if (results.length > 0) return;
+    void runOrchestration();
+  }, []);
 
-  async componentDidMount() {
-    // Only auto-start if there are no pre-existing results
-    if (this.props.results.length > 0) return;
-    await this.runOrchestration();
-  }
-
-  private async runOrchestration() {
-    const { template, parameterValues, onComplete } = this.props;
-
+  async function runOrchestration() {
     let projectId: string;
     try {
       const projectService = await SDK.getService<IProjectPageService>(
@@ -64,72 +55,71 @@ export class ScaffoldProgress extends React.Component<
       if (!project) throw new Error("Could not determine current project.");
       projectId = project.id;
     } catch (err) {
-      this.setState({
-        running: false,
-        done: true,
-        fatalError: `Failed to determine current project: ${(err as Error).message}`,
-      });
+      setRunning(false);
+      setDone(true);
+      setFatalError(
+        `Failed to determine current project: ${(err as Error).message}`,
+      );
       return;
     }
 
     try {
-      await runScaffold(projectId, template, parameterValues, (steps) => {
-        this.setState({ steps: [...steps] });
-      });
+      await runScaffold(
+        projectId,
+        template,
+        parameterValues,
+        (updatedSteps) => {
+          const copy = [...updatedSteps];
+          stepsRef.current = copy;
+          setSteps(copy);
+        },
+      );
     } catch (err) {
-      this.setState({
-        fatalError: `Unexpected error: ${(err as Error).message}`,
-      });
+      setFatalError(`Unexpected error: ${(err as Error).message}`);
     }
 
-    this.setState((prev) => {
-      onComplete(prev.steps);
-      return { running: false, done: true };
-    });
+    onComplete(stepsRef.current);
+    setRunning(false);
+    setDone(true);
   }
 
-  render() {
-    const { steps, running, done, fatalError } = this.state;
-    const { template, onScaffoldAgain } = this.props;
+  const hasFailures = steps.some((s) => s.status === "failed");
 
-    const hasFailures = steps.some((s) => s.status === "failed");
+  const titleText = running
+    ? "Scaffolding in progress..."
+    : done && !hasFailures
+      ? "Scaffold complete!"
+      : "Scaffold finished with issues";
 
-    const titleText = running
-      ? "Scaffolding in progress..."
-      : done && !hasFailures
-        ? "Scaffold complete!"
-        : "Scaffold finished with issues";
-
-    return (
-      <div className="flex-column rhythm-vertical-16" style={{ maxWidth: 720 }}>
-        <div>
-          <div className="title-m">{titleText}</div>
-          <p className="body-m secondary-text" style={{ margin: "4px 0 0" }}>
-            Template: <strong>{template.name}</strong>
-          </p>
-        </div>
-
-        {fatalError && (
-          <MessageCard severity={MessageCardSeverity.Error}>
-            <strong>Fatal error</strong>
-            <p style={{ margin: "8px 0 0" }}>{fatalError}</p>
-          </MessageCard>
-        )}
-
-        <div className="flex-column rhythm-vertical-4">
-          {steps.map((step) => (
-            <StepRow key={step.id} step={step} />
-          ))}
-        </div>
-
-        {done && (
-          <div>
-            <Button text="Scaffold Another Project" onClick={onScaffoldAgain} />
-          </div>
-        )}
+  return (
+    <div className="flex-column rhythm-vertical-16" style={{ maxWidth: 720 }}>
+      <div>
+        <div className="title-m">{titleText}</div>
+        <p className="body-m secondary-text" style={{ margin: "4px 0 0" }}>
+          Template: <strong>{template.name}</strong>
+        </p>
       </div>
-    );
-  }
+
+      {fatalError && (
+        <MessageCard severity={MessageCardSeverity.Error}>
+          <strong>Fatal error</strong>
+          <p style={{ margin: "8px 0 0" }}>{fatalError}</p>
+        </MessageCard>
+      )}
+
+      <div className="flex-column rhythm-vertical-4">
+        {steps.map((step) => (
+          <StepRow key={step.id} step={step} />
+        ))}
+      </div>
+
+      {done && (
+        <div>
+          <Button text="Scaffold Another Project" onClick={onScaffoldAgain} />
+        </div>
+      )}
+    </div>
+  );
 }
 
 // --- StepRow ---
@@ -138,53 +128,43 @@ interface StepRowProps {
   step: ScaffoldStep;
 }
 
-interface StepRowState {
-  expanded: boolean;
-}
+function StepRow({ step }: StepRowProps) {
+  const [expanded, setExpanded] = useState(false);
+  const hasDetail = Boolean(step.detail);
 
-class StepRow extends React.Component<StepRowProps, StepRowState> {
-  constructor(props: StepRowProps) {
-    super(props);
-    this.state = { expanded: false };
-  }
-
-  render() {
-    const { step } = this.props;
-    const { expanded } = this.state;
-    const hasDetail = Boolean(step.detail);
-
-    return (
-      <Card>
-        <div className="flex-column">
-          <div className="flex-row flex-center" style={{ gap: 12 }}>
-            <StepStatusIcon status={step.status} />
-            <span className="body-m flex-grow">{step.label}</span>
-            {hasDetail && (
-              <Button
-                text={expanded ? "Hide details" : "Show details"}
-                subtle
-                onClick={() =>
-                  this.setState((prev) => ({ expanded: !prev.expanded }))
-                }
-              />
-            )}
-          </div>
-          {expanded && step.detail && (
-            <div
-              className="body-s secondary-text"
-              style={{ marginTop: 8, paddingLeft: 32 }}
-            >
-              {step.detail}
-            </div>
+  return (
+    <Card>
+      <div className="flex-column">
+        <div className="flex-row flex-center" style={{ gap: 12 }}>
+          <StepStatusIcon status={step.status} />
+          <span className="body-m flex-grow">{step.label}</span>
+          {hasDetail && (
+            <Button
+              text={expanded ? "Hide details" : "Show details"}
+              subtle
+              onClick={() => setExpanded((prev) => !prev)}
+            />
           )}
         </div>
-      </Card>
-    );
-  }
+        {expanded && step.detail && (
+          <div
+            className="body-s secondary-text"
+            style={{ marginTop: 8, paddingLeft: 32 }}
+          >
+            {step.detail}
+          </div>
+        )}
+      </div>
+    </Card>
+  );
 }
 
-function StepStatusIcon({ status }: { status: ScaffoldStep["status"] }) {
-  const statusMap: Record<ScaffoldStep["status"], React.ReactElement> = {
+function StepStatusIcon({
+  status,
+}: {
+  status: ScaffoldStep["status"];
+}): ReactElement {
+  const statusMap: Record<ScaffoldStep["status"], ReactElement> = {
     pending: (
       <Status {...Statuses.Waiting} size={StatusSize.m} ariaLabel="Pending" />
     ),

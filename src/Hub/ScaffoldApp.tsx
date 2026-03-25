@@ -1,4 +1,4 @@
-import * as React from "react";
+import React, { useState, useEffect } from "react";
 import * as SDK from "azure-devops-extension-sdk";
 import {
   CommonServiceIds,
@@ -23,33 +23,25 @@ import { checkProjectAdminPermission } from "./services/permissionService";
 
 type Screen = "list" | "form" | "progress";
 
-interface AppState {
-  screen: Screen;
-  isAdmin: boolean | null;
-  selectedTemplate: TemplateDefinition | null;
-  parameterValues: Record<string, unknown>;
-  scaffoldResults: ScaffoldResult[];
-}
+export function ScaffoldApp() {
+  const [screen, setScreen] = useState<Screen>("list");
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+  const [selectedTemplate, setSelectedTemplate] =
+    useState<TemplateDefinition | null>(null);
+  const [parameterValues, setParameterValues] = useState<
+    Record<string, unknown>
+  >({});
+  const [scaffoldResults, setScaffoldResults] = useState<ScaffoldResult[]>([]);
 
-export class ScaffoldApp extends React.Component<{}, AppState> {
-  constructor(props: {}) {
-    super(props);
-    this.state = {
-      screen: "list",
-      isAdmin: null,
-      selectedTemplate: null,
-      parameterValues: {},
-      scaffoldResults: [],
-    };
-  }
+  useEffect(() => {
+    async function init() {
+      await SDK.ready();
+      setIsAdmin(await checkAdminPermission());
+    }
+    void init();
+  }, []);
 
-  async componentDidMount() {
-    await SDK.ready();
-    const isAdmin = await this.checkAdminPermission();
-    this.setState({ isAdmin });
-  }
-
-  private async checkAdminPermission(): Promise<boolean> {
+  async function checkAdminPermission(): Promise<boolean> {
     try {
       const projectService = await SDK.getService<IProjectPageService>(
         CommonServiceIds.ProjectPageService,
@@ -62,92 +54,80 @@ export class ScaffoldApp extends React.Component<{}, AppState> {
     }
   }
 
-  private handleTemplateSelected = (template: TemplateDefinition) => {
-    this.setState({ selectedTemplate: template, screen: "form" });
-  };
+  function handleTemplateSelected(template: TemplateDefinition) {
+    setSelectedTemplate(template);
+    setScreen("form");
+  }
 
-  private handleFormSubmit = (values: Record<string, unknown>) => {
-    this.setState({ parameterValues: values, screen: "progress" });
-  };
+  function handleFormSubmit(values: Record<string, unknown>) {
+    setParameterValues(values);
+    setScreen("progress");
+  }
 
-  private handleBack = () => {
-    this.setState({
-      screen: "list",
-      selectedTemplate: null,
-      parameterValues: {},
-    });
-  };
+  function handleBack() {
+    setScreen("list");
+    setSelectedTemplate(null);
+    setParameterValues({});
+  }
 
-  private handleScaffoldComplete = (results: ScaffoldResult[]) => {
-    this.setState({ scaffoldResults: results });
-  };
+  function handleScaffoldComplete(results: ScaffoldResult[]) {
+    setScaffoldResults(results);
+  }
 
-  private handleScaffoldAgain = () => {
-    this.setState({
-      screen: "list",
-      selectedTemplate: null,
-      parameterValues: {},
-      scaffoldResults: [],
-    });
-  };
+  function handleScaffoldAgain() {
+    setScreen("list");
+    setSelectedTemplate(null);
+    setParameterValues({});
+    setScaffoldResults([]);
+  }
 
-  render() {
-    const {
-      screen,
-      isAdmin,
-      selectedTemplate,
-      parameterValues,
-      scaffoldResults,
-    } = this.state;
-
-    if (isAdmin === null) {
-      return (
-        <Page>
-          <div className="page-content page-content-top flex-grow flex-row justify-center">
-            <Spinner size={SpinnerSize.large} label="Loading…" />
-          </div>
-        </Page>
-      );
-    }
-
+  if (isAdmin === null) {
     return (
       <Page>
-        <Header title="Project Scaffolding" titleSize={TitleSize.Large} />
-        <div className="page-content page-content-top rhythm-vertical-24">
-          {!isAdmin && (
-            <MessageCard severity={MessageCardSeverity.Warning}>
-              You need Project Administrator permissions to initialize projects
-              from templates. Contact your project admin if you need access.
-            </MessageCard>
-          )}
-
-          {screen === "list" && (
-            <TemplateList
-              isAdmin={isAdmin === true}
-              onTemplateSelected={this.handleTemplateSelected}
-            />
-          )}
-
-          {screen === "form" && selectedTemplate && (
-            <ParameterForm
-              template={selectedTemplate}
-              isAdmin={isAdmin === true}
-              onSubmit={this.handleFormSubmit}
-              onBack={this.handleBack}
-            />
-          )}
-
-          {screen === "progress" && selectedTemplate && (
-            <ScaffoldProgress
-              template={selectedTemplate}
-              parameterValues={parameterValues}
-              onComplete={this.handleScaffoldComplete}
-              onScaffoldAgain={this.handleScaffoldAgain}
-              results={scaffoldResults}
-            />
-          )}
+        <div className="page-content page-content-top flex-grow flex-row justify-center">
+          <Spinner size={SpinnerSize.large} label="Loading…" />
         </div>
       </Page>
     );
   }
+
+  return (
+    <Page>
+      <Header title="Project Scaffolding" titleSize={TitleSize.Large} />
+      <div className="page-content page-content-top rhythm-vertical-24">
+        {!isAdmin && (
+          <MessageCard severity={MessageCardSeverity.Warning}>
+            You need Project Administrator permissions to initialize projects
+            from templates. Contact your project admin if you need access.
+          </MessageCard>
+        )}
+
+        {screen === "list" && (
+          <TemplateList
+            isAdmin={isAdmin === true}
+            onTemplateSelected={handleTemplateSelected}
+          />
+        )}
+
+        {screen === "form" && selectedTemplate && (
+          <ParameterForm
+            template={selectedTemplate}
+            isAdmin={isAdmin === true}
+            onSubmit={handleFormSubmit}
+            onBack={handleBack}
+          />
+        )}
+
+        {screen === "progress" && selectedTemplate && (
+          <ScaffoldProgress
+            template={selectedTemplate}
+            parameterValues={parameterValues}
+            onComplete={handleScaffoldComplete}
+            onScaffoldAgain={handleScaffoldAgain}
+            results={scaffoldResults}
+          />
+        )}
+      </div>
+    </Page>
+  );
 }

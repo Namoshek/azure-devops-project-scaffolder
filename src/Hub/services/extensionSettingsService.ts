@@ -17,6 +17,7 @@ export interface RestrictedProject {
 }
 
 const SETTINGS_KEY = "restrictedProject";
+const TEMPLATE_CATEGORIES_KEY = "templateCategories";
 
 /**
  * Internal wrapper stored in extension data. Using a wrapper object ensures
@@ -26,6 +27,10 @@ const SETTINGS_KEY = "restrictedProject";
  */
 interface SettingsWrapper {
   project: RestrictedProject | null;
+}
+
+interface TemplateCategoriesWrapper {
+  categories: string[];
 }
 
 /**
@@ -98,4 +103,36 @@ export async function clearRestrictedProject(): Promise<void> {
   // Store { project: null } rather than null directly — passing null to
   // setValue causes "Cannot set properties of null" in the ADO SDK serializer.
   await manager.setValue<SettingsWrapper>(SETTINGS_KEY, { project: null });
+}
+
+/**
+ * Returns the configured template categories in admin-defined order, or an empty
+ * array if none have been saved yet. Errors are swallowed and treated as
+ * "no categories" so the hub fails open (everything lands in "Others").
+ */
+export async function getTemplateCategories(): Promise<string[]> {
+  try {
+    const manager = await getManager();
+    const wrapper = await manager.getValue<TemplateCategoriesWrapper | null>(
+      TEMPLATE_CATEGORIES_KEY,
+      { defaultValue: null },
+    );
+    return wrapper?.categories ?? [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Persists the ordered list of template categories at collection scope.
+ * Pass an empty array to clear all configured categories.
+ * Throws on failure so the settings UI can surface an appropriate error.
+ */
+export async function setTemplateCategories(
+  categories: string[],
+): Promise<void> {
+  const manager = await getManager();
+  await manager.setValue<TemplateCategoriesWrapper>(TEMPLATE_CATEGORIES_KEY, {
+    categories,
+  });
 }

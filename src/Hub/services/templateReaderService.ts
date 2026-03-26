@@ -186,6 +186,9 @@ function parseTemplateYaml(raw: string): TemplateDefinition {
     postScaffoldNotes: Array.isArray(obj.postScaffoldNotes)
       ? (obj.postScaffoldNotes as string[])
       : undefined,
+    templateCategories: Array.isArray(obj.templateCategories)
+      ? (obj.templateCategories as string[])
+      : undefined,
     parameters,
     repositories: parseRepositories(obj.repositories),
     pipelines: parsePipelines(obj.pipelines),

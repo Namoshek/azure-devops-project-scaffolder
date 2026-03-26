@@ -298,4 +298,36 @@ repositories:
     );
     expect(result.repositories![0].defaultBranch).toBe("main");
   });
+
+  it("parses templateCategories when present", async () => {
+    const yaml = `
+id: "abc"
+name: "Categorised Template"
+version: "1.0.0"
+templateCategories:
+  - "Backend"
+parameters: []
+`;
+    const mockClient = makeMockGitClient(yaml);
+    (getClient as jest.Mock).mockReturnValue(mockClient);
+
+    const result = await readTemplateFromRepo(
+      "p",
+      "r",
+      "/project-template.yml",
+    );
+    expect(result.templateCategories).toEqual(["Backend"]);
+  });
+
+  it("leaves templateCategories undefined when the field is absent", async () => {
+    const mockClient = makeMockGitClient(MINIMAL_YAML);
+    (getClient as jest.Mock).mockReturnValue(mockClient);
+
+    const result = await readTemplateFromRepo(
+      "p",
+      "r",
+      "/project-template.yml",
+    );
+    expect(result.templateCategories).toBeUndefined();
+  });
 });

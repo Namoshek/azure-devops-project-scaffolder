@@ -39,6 +39,20 @@ export interface TemplatePipeline {
   when?: string; // skip this entire pipeline when expression is false
 }
 
+/**
+ * The name of the virtual "All" category that is always prepended first and
+ * shows every discovered template (after search filtering). This category is
+ * never stored in settings — it is a UI-only entry.
+ */
+export const ALL_CATEGORY_NAME = "All";
+
+/**
+ * The name of the implicit fallback category that collects all templates whose
+ * `templateCategories` field is absent or contains no match for any configured
+ * category. This category is never stored in settings — it is always appended last.
+ */
+export const OTHERS_CATEGORY_NAME = "Others";
+
 export interface TemplateDefinition {
   id: string; // GUID
   name: string;
@@ -47,6 +61,7 @@ export interface TemplateDefinition {
   maintainers?: string[];
   preScaffoldNotes?: string[];
   postScaffoldNotes?: string[];
+  templateCategories?: string[]; // optional list of category names declared in the YAML
   parameters: TemplateParameter[];
   repositories?: TemplateRepository[];
   pipelines?: TemplatePipeline[];

@@ -47,6 +47,8 @@ function loadFreshModule(options: {
       getRestrictedProject: () => Promise<RestrictedProject | null>;
       setRestrictedProject: (id: string, name: string) => Promise<void>;
       clearRestrictedProject: () => Promise<void>;
+      getTemplateCategories: () => Promise<string[]>;
+      setTemplateCategories: (categories: string[]) => Promise<void>;
     };
 
   return { service, mockManager, mockGetExtensionDataManager };
@@ -215,5 +217,90 @@ describe("manager caching", () => {
     expect(result2).toBeNull();
 
     expect(mockGetExtensionDataManager).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("getTemplateCategories", () => {
+  it("returns an empty array when no value is stored", async () => {
+    const { service } = loadFreshModule({});
+
+    const result = await service.getTemplateCategories();
+
+    expect(result).toEqual([]);
+  });
+
+  it("returns the stored categories array", async () => {
+    const stored = ["Backend", "Frontend", "Data"];
+    const { service } = loadFreshModule({
+      managerOverrides: {
+        getValue: jest.fn().mockResolvedValue({ categories: stored }),
+      },
+    });
+
+    const result = await service.getTemplateCategories();
+
+    expect(result).toEqual(stored);
+  });
+
+  it("returns an empty array when the manager cannot be obtained (fails open)", async () => {
+    const { service } = loadFreshModule({
+      managerError: new Error("Service unavailable"),
+    });
+
+    const result = await service.getTemplateCategories();
+
+    expect(result).toEqual([]);
+  });
+
+  it("returns an empty array when getValue rejects (fails open)", async () => {
+    const { service } = loadFreshModule({
+      managerOverrides: {
+        getValue: jest.fn().mockRejectedValue(new Error("Storage error")),
+      },
+    });
+
+    const result = await service.getTemplateCategories();
+
+    expect(result).toEqual([]);
+  });
+});
+
+describe("setTemplateCategories", () => {
+  it("calls setValue with the correct key and wrapped value", async () => {
+    const mockSetValue = jest.fn().mockResolvedValue(undefined);
+    const { service } = loadFreshModule({
+      managerOverrides: { setValue: mockSetValue },
+    });
+
+    await service.setTemplateCategories(["Backend", "Frontend"]);
+
+    expect(mockSetValue).toHaveBeenCalledWith("templateCategories", {
+      categories: ["Backend", "Frontend"],
+    });
+  });
+
+  it("persists an empty array to clear all categories", async () => {
+    const mockSetValue = jest.fn().mockResolvedValue(undefined);
+    const { service } = loadFreshModule({
+      managerOverrides: { setValue: mockSetValue },
+    });
+
+    await service.setTemplateCategories([]);
+
+    expect(mockSetValue).toHaveBeenCalledWith("templateCategories", {
+      categories: [],
+    });
+  });
+
+  it("throws when setValue rejects", async () => {
+    const { service } = loadFreshModule({
+      managerOverrides: {
+        setValue: jest.fn().mockRejectedValue(new Error("Permission denied")),
+      },
+    });
+
+    await expect(service.setTemplateCategories(["Backend"])).rejects.toThrow(
+      "Permission denied",
+    );
   });
 });

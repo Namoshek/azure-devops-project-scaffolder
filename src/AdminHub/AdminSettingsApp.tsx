@@ -12,6 +12,7 @@ import { MessageCard } from "azure-devops-ui/Components/MessageCard/MessageCard"
 import { MessageCardSeverity } from "azure-devops-ui/Components/MessageCard/MessageCard.Props";
 import { checkCollectionAdminPermission } from "../Hub/services/permissionService";
 import { ProjectRestrictionSettings } from "./components/ProjectRestrictionSettings";
+import { TemplateCategorySettings } from "./components/TemplateCategorySettings";
 
 export function AdminSettingsApp() {
   const [loading, setLoading] = useState(true);
@@ -51,7 +52,12 @@ export function AdminSettingsApp() {
           </MessageCard>
         )}
 
-        {isAdmin && <ProjectRestrictionSettings />}
+        {isAdmin && (
+          <>
+            <ProjectRestrictionSettings />
+            <TemplateCategorySettings />
+          </>
+        )}
       </div>
     </Page>
   );

@@ -264,4 +264,19 @@ describe("discoverTemplates", () => {
     expect(results).toEqual([]);
     expect(mockFetch).toHaveBeenCalledTimes(2);
   });
+
+  it("preserves templateCategories from the parsed definition", async () => {
+    const definitionWithCategories = {
+      ...MOCK_DEFINITION,
+      templateCategories: ["Backend"],
+    };
+    const { discoverTemplates } = loadFreshModule({
+      fetchResponse: buildSearchResponse([makeSearchHit()]),
+      readTemplateResult: definitionWithCategories,
+    });
+
+    const results = await discoverTemplates();
+
+    expect(results[0].definition.templateCategories).toEqual(["Backend"]);
+  });
 });

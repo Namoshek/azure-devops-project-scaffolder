@@ -44,7 +44,7 @@
     "vso.agentpools",
     "vso.build_execute",
     "vso.code_manage",
-    "vso.graph_manage",
+    "vso.graph",
     "vso.identity",
     "vso.project"
   ],

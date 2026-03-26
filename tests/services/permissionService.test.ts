@@ -23,21 +23,13 @@ const PROJECT_ID = "proj-id-123";
 const USER_ID = "5828435a-0bfd-493d-afe1-a04fdb7bf090";
 const DESCRIPTOR =
   "System.Security.Principal.WindowsIdentity;S-1-5-21-12345-67890-111";
-const IDENTITY_TYPE = "System.Security.Principal.WindowsIdentity";
-const IDENTIFIER = "S-1-5-21-12345-67890-111";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function makeIdentityResponse(
-  identityType = IDENTITY_TYPE,
-  identifier = IDENTIFIER,
-) {
+function makeIdentityResponse(descriptor = DESCRIPTOR) {
   return {
     ok: true,
-    json: () =>
-      Promise.resolve({
-        Descriptor: { IdentityType: identityType, Identifier: identifier },
-      }),
+    json: () => Promise.resolve({ descriptor }),
   };
 }
 
@@ -238,7 +230,7 @@ describe("checkPipelinePermission", () => {
     // Second call: ACL endpoint
     const [aclUrl, options] = mockFetch.mock.calls[1];
     expect(aclUrl).toContain(
-      `_apis/accesscontrollists/33344d9c-fc72-4d6f-aba5-fa317101a7e8`,
+      `_apis/accesscontrollists/33344d9c-fc72-4d6f-aba5-fa317101a7e9`,
     );
     expect(aclUrl).toContain(encodeURIComponent(PROJECT_ID));
     expect(aclUrl).toContain(encodeURIComponent(DESCRIPTOR));

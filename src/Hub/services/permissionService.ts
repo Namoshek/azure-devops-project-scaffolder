@@ -9,7 +9,7 @@ import {
 /** Git Repositories security namespace */
 const GIT_SECURITY_NAMESPACE = "2e9eb7ed-3c0a-47d4-87c1-0ffdd275fd87";
 /** Build security namespace */
-const BUILD_SECURITY_NAMESPACE = "33344d9c-fc72-4d6f-aba5-fa317101a7e8";
+const BUILD_SECURITY_NAMESPACE = "33344d9c-fc72-4d6f-aba5-fa317101a7e9";
 /** Collection/Organization-level security namespace */
 const COLLECTION_SECURITY_NAMESPACE = "3e65f728-f8bc-4ecd-8764-7e378b19bfa7";
 
@@ -32,7 +32,7 @@ const EDIT_COLLECTION_PERMISSION_BIT = 2;
 // ─── API response types ─────────────────────────────────────────────────────
 
 interface IdentityApiResponse {
-  Descriptor: { IdentityType: string; Identifier: string };
+  descriptor: string;
 }
 
 interface AclEntry {
@@ -77,7 +77,7 @@ async function resolveUserDescriptor(userId: string): Promise<string> {
   }
 
   const data: IdentityApiResponse = await response.json();
-  return `${data.Descriptor.IdentityType};${data.Descriptor.Identifier}`;
+  return data.descriptor;
 }
 
 /**

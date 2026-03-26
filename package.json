@@ -5,7 +5,7 @@
   "scripts": {
     "build": "webpack --mode production && npm run copy-html",
     "build:dev": "webpack --mode development && npm run copy-html",
-    "copy-html": "node -e \"const{cpSync,mkdirSync}=require('fs');mkdirSync('dist/Hub',{recursive:true});cpSync('src/Hub/index.html','dist/Hub/index.html');\"",
+    "copy-html": "node -e \"const{cpSync,mkdirSync}=require('fs');mkdirSync('dist/Hub',{recursive:true});cpSync('src/Hub/index.html','dist/Hub/index.html');mkdirSync('dist/AdminHub',{recursive:true});cpSync('src/AdminHub/index.html','dist/AdminHub/index.html');\"",
     "watch": "webpack --mode development --watch",
     "package": "npm run build && tfx extension create --manifest-globs vss-extension.json",
     "clean": "rimraf dist",

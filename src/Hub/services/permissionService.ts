@@ -10,6 +10,8 @@ import {
 const GIT_SECURITY_NAMESPACE = "2e9eb7ed-3c0a-47d4-87c1-0ffdd275fd87";
 /** Build security namespace */
 const BUILD_SECURITY_NAMESPACE = "33344d9c-fc72-4d6f-aba5-fa317101a7e9";
+/** Collection/Organization-level security namespace */
+const COLLECTION_SECURITY_NAMESPACE = "3e65f728-f8bc-4ecd-8764-7e378b19bfa7";
 
 /**
  * Combined bit for Git repo creation:
@@ -23,6 +25,9 @@ const GIT_REPO_PERMISSION_BIT = 260;
  *   EditBuildDefinition = 2048.
  */
 const BUILD_PIPELINE_PERMISSION_BIT = 2048;
+
+// Bit 2 = GENERIC_WRITE = "Edit collection-level information".
+const EDIT_COLLECTION_PERMISSION_BIT = 2;
 
 // ─── API response types ─────────────────────────────────────────────────────
 
@@ -228,4 +233,43 @@ export async function checkTemplatePermissions(
   ]);
 
   return { canCreateRepos, canCreatePipelines };
+}
+
+/**
+ * Checks whether the current user has collection-level admin rights
+ * ("Edit collection-level information", bit 2) on the instance.
+ *
+ * Uses the Security Permissions REST API with the Organization security
+ * namespace (e48329a9-9c6a-41b4-a0a4-0cf77f1e6b41) and the $COLLECTION
+ * scope token, which are both constant across ADO Services and ADO Server.
+ *
+ * Fails closed: returns false on any error.
+ */
+export async function checkCollectionAdminPermission(): Promise<boolean> {
+  try {
+    const accessToken = await SDK.getAccessToken();
+
+    const url =
+      `${baseUrl()}/_apis/permissions/${COLLECTION_SECURITY_NAMESPACE}/${EDIT_COLLECTION_PERMISSION_BIT}` +
+      `?token=${encodeURIComponent("$COLLECTION")}&alwaysAllowAdministrators=false&api-version=7.1`;
+
+    const response = await fetch(url, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+
+    if (!response.ok) {
+      console.warn(
+        `Collection admin permission check returned ${response.status}. Treating as non-admin.`,
+      );
+      return false;
+    }
+
+    const data: { value: boolean[] } = await response.json();
+    return data.value.length === 1 && data.value[0] === true;
+  } catch (err) {
+    console.warn(
+      `Collection admin permission check failed: ${(err as Error).message}. Treating as non-admin.`,
+    );
+    return false;
+  }
 }

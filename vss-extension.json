@@ -2,7 +2,7 @@
   "manifestVersion": 1,
   "id": "ado-project-scaffolder",
   "publisher": "namoshek",
-  "version": "0.7.7",
+  "version": "0.8.1",
   "name": "Project Scaffolder",
   "description": "Scaffold project resources from curated templates — creates repositories, pipelines, and more in a guided, non-destructive flow.",
   "public": false,
@@ -26,6 +26,17 @@
         "name": "Project Scaffolding",
         "order": 100,
         "uri": "dist/Hub/index.html"
+      }
+    },
+    {
+      "id": "collection-settings-hub",
+      "type": "ms.vss-web.hub",
+      "description": "Project Scaffolding settings page under Organization Settings (collection admins only)",
+      "targets": ["ms.vss-web.collection-admin-hub-group"],
+      "properties": {
+        "name": "Project Scaffolding",
+        "order": 100,
+        "uri": "dist/AdminHub/index.html"
       }
     }
   ],

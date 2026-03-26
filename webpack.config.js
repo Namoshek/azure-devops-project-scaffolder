@@ -3,6 +3,7 @@ const path = require("path");
 module.exports = {
   entry: {
     Hub: "./src/Hub/index.tsx",
+    AdminHub: "./src/AdminHub/index.tsx",
   },
   output: {
     filename: "[name]/[name].js",

@@ -351,3 +351,106 @@ describe("runScaffold", () => {
     expect(steps[0].label).toBe("Create repository: my-app-api");
   });
 });
+// ─── Permission-based skipping ────────────────────────────────────────────────
+
+describe("runScaffold — permission skipping", () => {
+  const repoTemplate = {
+    name: "api",
+    sourcePath: "/src",
+    defaultBranch: "main",
+  };
+  const pipelineTemplate = {
+    name: "ci",
+    repository: "api",
+    yamlPath: "azure-pipelines.yml",
+  };
+
+  it("skips all repo steps when canCreateRepos is false", async () => {
+    const template = makeTemplate({
+      repositories: [repoTemplate],
+      pipelines: [],
+    });
+
+    const steps = await runScaffold("proj1", template, PARAMS, jest.fn(), {
+      canCreateRepos: false,
+      canCreatePipelines: true,
+    });
+
+    expect(steps).toHaveLength(1);
+    expect(steps[0].status).toBe("skipped");
+    expect(steps[0].detail).toMatch(/insufficient permissions/i);
+    expect(mockScaffoldRepository).not.toHaveBeenCalled();
+  });
+
+  it("skips all pipeline steps when canCreatePipelines is false", async () => {
+    mockScaffoldRepository.mockResolvedValue({
+      repoName: "api",
+      status: "created",
+    });
+
+    const template = makeTemplate({
+      repositories: [repoTemplate],
+      pipelines: [pipelineTemplate],
+    });
+
+    const steps = await runScaffold("proj1", template, PARAMS, jest.fn(), {
+      canCreateRepos: true,
+      canCreatePipelines: false,
+    });
+
+    const pipelineStep = steps.find((s) => s.id.startsWith("pipeline:"));
+    expect(pipelineStep!.status).toBe("skipped");
+    expect(pipelineStep!.detail).toMatch(/insufficient permissions/i);
+    expect(mockScaffoldPipeline).not.toHaveBeenCalled();
+  });
+
+  it("runs both phases normally when both permissions are true", async () => {
+    mockScaffoldRepository.mockResolvedValue({
+      repoName: "api",
+      status: "created",
+    });
+    mockScaffoldPipeline.mockResolvedValue({
+      pipelineName: "ci",
+      status: "created",
+    });
+
+    const template = makeTemplate({
+      repositories: [repoTemplate],
+      pipelines: [pipelineTemplate],
+    });
+
+    const steps = await runScaffold("proj1", template, PARAMS, jest.fn(), {
+      canCreateRepos: true,
+      canCreatePipelines: true,
+    });
+
+    expect(steps.every((s) => s.status === "success")).toBe(true);
+    expect(mockScaffoldRepository).toHaveBeenCalledTimes(1);
+    expect(mockScaffoldPipeline).toHaveBeenCalledTimes(1);
+  });
+
+  it("still applies when-condition skips inside a permitted phase", async () => {
+    const template = makeTemplate({
+      repositories: [{ ...repoTemplate, when: "includeDocker == true" }],
+      pipelines: [],
+    });
+
+    // canCreateRepos is true, but the when condition should still cause a skip
+    mockScaffoldRepository.mockResolvedValue({
+      repoName: "api",
+      status: "created",
+    });
+
+    const steps = await runScaffold(
+      "proj1",
+      template,
+      { includeDocker: false },
+      jest.fn(),
+      { canCreateRepos: true, canCreatePipelines: true },
+    );
+
+    expect(steps[0].status).toBe("skipped");
+    expect(steps[0].detail).toMatch(/Condition/);
+    expect(mockScaffoldRepository).not.toHaveBeenCalled();
+  });
+});

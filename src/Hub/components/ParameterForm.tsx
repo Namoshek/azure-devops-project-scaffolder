@@ -1,5 +1,9 @@
-import React, { useState } from "react";
-import { TemplateDefinition, TemplateParameter } from "../types/templateTypes";
+﻿import React, { useState } from "react";
+import {
+  TemplateDefinition,
+  TemplateParameter,
+  TemplatePermissions,
+} from "../types/templateTypes";
 import {
   evaluateWhenExpression,
   renderTemplate,
@@ -8,19 +12,22 @@ import { Button } from "azure-devops-ui/Components/Button/Button";
 import { Card } from "azure-devops-ui/Components/Card/Card";
 import { MessageCard } from "azure-devops-ui/Components/MessageCard/MessageCard";
 import { MessageCardSeverity } from "azure-devops-ui/Components/MessageCard/MessageCard.Props";
+import { Spinner } from "azure-devops-ui/Components/Spinner/Spinner";
+import { SpinnerSize } from "azure-devops-ui/Components/Spinner/Spinner.Props";
 import { TitleSize } from "azure-devops-ui/Header";
 import { Icon, IconSize } from "azure-devops-ui/Icon";
 import { ParameterField } from "./ParameterField";
 
 interface ParameterFormProps {
   template: TemplateDefinition;
-  isAdmin: boolean;
+  permissions: TemplatePermissions | null;
   onSubmit: (values: Record<string, unknown>) => void;
   onBack: () => void;
 }
 
 const COLOR_INCLUDED = "var(--status-success-foreground)";
 const COLOR_EXCLUDED = "var(--status-error-foreground)";
+const COLOR_NO_PERMISSION = "var(--status-warning-foreground)";
 
 interface ParameterSummarySubItem {
   name: string;
@@ -31,6 +38,7 @@ interface ParameterSummaryItem {
   type: "repository" | "pipeline";
   name: string;
   included: boolean;
+  permissionDenied: boolean;
   subItems?: ParameterSummarySubItem[];
 }
 
@@ -54,7 +62,7 @@ function buildDefaults(
 
 export function ParameterForm({
   template,
-  isAdmin,
+  permissions,
   onSubmit,
   onBack,
 }: ParameterFormProps) {
@@ -126,7 +134,6 @@ export function ParameterForm({
         { name: "All non-conditional files", included },
         ...conditionalExcludes.map((e) => ({
           name: e.path,
-          // The file is excluded when its 'when' condition is true, so included = !when
           included: !evaluateWhenExpression(e.when!, values),
         })),
       ];
@@ -134,6 +141,7 @@ export function ParameterForm({
         type: "repository" as const,
         name: renderTemplate(r.name, values),
         included,
+        permissionDenied: permissions !== null && !permissions.canCreateRepos,
         subItems,
       };
     }),
@@ -141,8 +149,24 @@ export function ParameterForm({
       type: "pipeline" as const,
       name: renderTemplate(p.name, values),
       included: !p.when || evaluateWhenExpression(p.when, values),
+      permissionDenied: permissions !== null && !permissions.canCreatePipelines,
     })),
   ];
+
+  // Submit is disabled when permissions are still loading, or when every
+  // when-included resource is also permission-denied (nothing can be created).
+  const includedItems = summaryItems.filter((i) => i.included);
+  const allDenied =
+    permissions !== null &&
+    includedItems.length > 0 &&
+    includedItems.every((i) => i.permissionDenied);
+  const submitDisabled = permissions === null || allDenied;
+
+  const submitTooltip = allDenied
+    ? "You don't have the required permissions for any of this template's resources."
+    : permissions === null
+      ? "Checking permissionsâ€¦"
+      : undefined;
 
   return (
     <div className="flex-row" style={{ gap: 48 }}>
@@ -201,14 +225,8 @@ export function ParameterForm({
           <Button
             text="Scaffold Project"
             primary
-            disabled={!isAdmin}
-            tooltipProps={
-              !isAdmin
-                ? {
-                    text: "You need Project Administrator permissions to scaffold projects.",
-                  }
-                : undefined
-            }
+            disabled={submitDisabled}
+            tooltipProps={submitTooltip ? { text: submitTooltip } : undefined}
             onClick={handleSubmit}
           />
         </div>
@@ -219,119 +237,153 @@ export function ParameterForm({
           className="bolt-card-white"
           titleProps={{ text: "Summary", size: TitleSize.Medium }}
         >
-          <div className="rhythm-vertical-8" style={{ width: "100%" }}>
-            {summaryItems.map((item, index) => {
-              const isLastItem = summaryItems.length - 1 === index;
-              const wrapperClass = isLastItem
-                ? "flex-column justify-start"
-                : "flex-column justify-start separator-line-bottom";
+          {permissions === null ? (
+            <div
+              className="flex-row flex-center"
+              style={{ gap: 8, padding: "8px 0" }}
+            >
+              <Spinner size={SpinnerSize.small} />
+              <span className="body-s secondary-text">
+                Checking permissionsâ€¦
+              </span>
+            </div>
+          ) : (
+            <div className="rhythm-vertical-8" style={{ width: "100%" }}>
+              {summaryItems.map((item, index) => {
+                const isLastItem = summaryItems.length - 1 === index;
+                const wrapperClass = isLastItem
+                  ? "flex-column justify-start"
+                  : "flex-column justify-start separator-line-bottom";
 
-              return (
-                <div
-                  key={index}
-                  className={wrapperClass}
-                  style={{ gap: 6, paddingBottom: isLastItem ? 0 : 12 }}
-                >
-                  {/* Main resource row */}
+                // Determine visual state: permission-denied overrides included style
+                // but only applies to when-included items.
+                const effectivelyBlocked =
+                  item.included && item.permissionDenied;
+                const iconColor = !item.included
+                  ? COLOR_EXCLUDED
+                  : effectivelyBlocked
+                    ? COLOR_NO_PERMISSION
+                    : COLOR_INCLUDED;
+
+                return (
                   <div
-                    className="flex-row"
-                    style={{ gap: 8, alignItems: "center" }}
+                    key={index}
+                    className={wrapperClass}
+                    style={{ gap: 6, paddingBottom: isLastItem ? 0 : 12 }}
                   >
-                    <span
-                      style={{
-                        color: item.included ? COLOR_INCLUDED : COLOR_EXCLUDED,
-                      }}
-                    >
-                      <Icon
-                        size={IconSize.medium}
-                        iconName={
-                          item.type === "repository" ? "OpenSource" : "Build"
-                        }
-                      />
-                    </span>
-                    <span
-                      style={
-                        item.included
-                          ? undefined
-                          : { textDecoration: "line-through", opacity: 0.5 }
-                      }
-                    >
-                      {item.type === "repository" ? "Repository" : "Pipeline"}:{" "}
-                      {item.name}
-                    </span>
-                    {!item.included && (
-                      <span
-                        style={{
-                          fontSize: 11,
-                          color: COLOR_EXCLUDED,
-                          fontWeight: 600,
-                          textTransform: "uppercase",
-                          letterSpacing: "0.05em",
-                        }}
-                      >
-                        Excluded
-                      </span>
-                    )}
-                  </div>
-                  {/* File sub-items (repositories only) */}
-                  {item.subItems && (
+                    {/* Main resource row */}
                     <div
-                      className="flex-column"
-                      style={{
-                        paddingLeft: 24,
-                        gap: 4,
-                        opacity: item.included ? 1 : 0.4,
-                      }}
+                      className="flex-row"
+                      style={{ gap: 8, alignItems: "center" }}
                     >
-                      {item.subItems.map((sub, si) => (
-                        <div
-                          key={si}
-                          className="flex-row"
-                          style={{ gap: 8, alignItems: "center" }}
+                      <span style={{ color: iconColor }}>
+                        <Icon
+                          size={IconSize.medium}
+                          iconName={
+                            item.type === "repository" ? "OpenSource" : "Build"
+                          }
+                        />
+                      </span>
+                      <span
+                        style={
+                          !item.included
+                            ? { textDecoration: "line-through", opacity: 0.5 }
+                            : undefined
+                        }
+                      >
+                        {item.type === "repository" ? "Repository" : "Pipeline"}
+                        : {item.name}
+                      </span>
+                      {!item.included && (
+                        <span
+                          style={{
+                            fontSize: 11,
+                            color: COLOR_EXCLUDED,
+                            fontWeight: 600,
+                            textTransform: "uppercase",
+                            letterSpacing: "0.05em",
+                          }}
                         >
+                          Excluded
+                        </span>
+                      )}
+                      {effectivelyBlocked && (
+                        <>
+                          <Icon size={IconSize.small} iconName="Lock" />
                           <span
                             style={{
-                              color: sub.included
-                                ? COLOR_INCLUDED
-                                : COLOR_EXCLUDED,
+                              fontSize: 11,
+                              color: COLOR_NO_PERMISSION,
+                              fontWeight: 600,
+                              textTransform: "uppercase",
+                              letterSpacing: "0.05em",
                             }}
                           >
-                            <Icon size={IconSize.small} iconName="Page" />
+                            No permission
                           </span>
-                          <span
-                            className="body-s"
-                            style={
-                              sub.included
-                                ? undefined
-                                : {
-                                    textDecoration: "line-through",
-                                    opacity: 0.6,
-                                  }
-                            }
+                        </>
+                      )}
+                    </div>
+                    {/* File sub-items (repositories only) */}
+                    {item.subItems && (
+                      <div
+                        className="flex-column"
+                        style={{
+                          paddingLeft: 24,
+                          gap: 4,
+                          opacity: item.included ? 1 : 0.4,
+                        }}
+                      >
+                        {item.subItems.map((sub, si) => (
+                          <div
+                            key={si}
+                            className="flex-row"
+                            style={{ gap: 8, alignItems: "center" }}
                           >
-                            {sub.name}
-                          </span>
-                          {!sub.included && (
                             <span
                               style={{
-                                fontSize: 10,
-                                color: COLOR_EXCLUDED,
-                                fontWeight: 600,
-                                textTransform: "uppercase",
-                                letterSpacing: "0.05em",
+                                color: sub.included
+                                  ? COLOR_INCLUDED
+                                  : COLOR_EXCLUDED,
                               }}
                             >
-                              Excluded
+                              <Icon size={IconSize.small} iconName="Page" />
                             </span>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                            <span
+                              className="body-s"
+                              style={
+                                sub.included
+                                  ? undefined
+                                  : {
+                                      textDecoration: "line-through",
+                                      opacity: 0.6,
+                                    }
+                              }
+                            >
+                              {sub.name}
+                            </span>
+                            {!sub.included && (
+                              <span
+                                style={{
+                                  fontSize: 10,
+                                  color: COLOR_EXCLUDED,
+                                  fontWeight: 600,
+                                  textTransform: "uppercase",
+                                  letterSpacing: "0.05em",
+                                }}
+                              >
+                                Excluded
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </Card>
       </div>
     </div>

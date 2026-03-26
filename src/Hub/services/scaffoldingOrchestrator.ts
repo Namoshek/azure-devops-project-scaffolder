@@ -1,4 +1,7 @@
-import { TemplateDefinition } from "../types/templateTypes";
+import {
+  TemplateDefinition,
+  TemplatePermissions,
+} from "../types/templateTypes";
 import { scaffoldRepository, RepoScaffoldResult } from "./repositoryService";
 import { scaffoldPipeline, PipelineScaffoldResult } from "./pipelineService";
 import {
@@ -38,6 +41,7 @@ export async function runScaffold(
   template: TemplateDefinition,
   parameterValues: Record<string, unknown>,
   onProgress: ProgressCallback,
+  permissions?: TemplatePermissions,
 ): Promise<ScaffoldResult[]> {
   const sourceProjectId = template._sourceProjectId!;
   const sourceRepoId = template._sourceRepoId!;
@@ -59,7 +63,16 @@ export async function runScaffold(
   onProgress([...allSteps]);
 
   // ── Phase 1: Repositories ────────────────────────────────────────────────────
+  if (permissions && !permissions.canCreateRepos && repoSteps.length > 0) {
+    for (const step of repoSteps) {
+      step.status = "skipped";
+      step.detail = "Skipped: insufficient permissions to create repositories.";
+    }
+    onProgress([...allSteps]);
+  }
+
   for (let i = 0; i < repoSteps.length; i++) {
+    if (repoSteps[i].status === "skipped") continue;
     const repoTemplate = template.repositories![i];
 
     // Skip this repository if its when condition is not satisfied
@@ -99,7 +112,21 @@ export async function runScaffold(
   }
 
   // ── Phase 2: Pipelines ───────────────────────────────────────────────────────
+  if (
+    permissions &&
+    !permissions.canCreatePipelines &&
+    pipelineSteps.length > 0
+  ) {
+    for (const step of pipelineSteps) {
+      step.status = "skipped";
+      step.detail =
+        "Skipped: insufficient permissions to create pipeline definitions.";
+    }
+    onProgress([...allSteps]);
+  }
+
   for (let i = 0; i < pipelineSteps.length; i++) {
+    if (pipelineSteps[i].status === "skipped") continue;
     const pipelineTemplate = template.pipelines![i];
 
     // Skip this pipeline if its when condition is not satisfied

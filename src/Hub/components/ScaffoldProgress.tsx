@@ -4,7 +4,10 @@ import {
   CommonServiceIds,
   IProjectPageService,
 } from "azure-devops-extension-api";
-import { TemplateDefinition } from "../types/templateTypes";
+import {
+  TemplateDefinition,
+  TemplatePermissions,
+} from "../types/templateTypes";
 import {
   runScaffold,
   ScaffoldResult,
@@ -18,6 +21,7 @@ import { StepRow } from "./StepRow";
 interface ScaffoldProgressProps {
   template: TemplateDefinition;
   parameterValues: Record<string, unknown>;
+  permissions: TemplatePermissions;
   results: ScaffoldResult[];
   onComplete: (results: ScaffoldResult[]) => void;
   onScaffoldAgain: () => void;
@@ -26,6 +30,7 @@ interface ScaffoldProgressProps {
 export function ScaffoldProgress({
   template,
   parameterValues,
+  permissions,
   results,
   onComplete,
   onScaffoldAgain,
@@ -71,6 +76,7 @@ export function ScaffoldProgress({
           stepsRef.current = copy;
           setSteps(copy);
         },
+        permissions,
       );
     } catch (err) {
       setFatalError(`Unexpected error: ${(err as Error).message}`);

@@ -10,14 +10,10 @@ import { TemplateCard } from "./TemplateCard";
 import { HowItWorksDialog } from "./HowItWorksDialog";
 
 interface TemplateListProps {
-  isAdmin: boolean;
   onTemplateSelected: (template: TemplateDefinition) => void;
 }
 
-export function TemplateList({
-  isAdmin,
-  onTemplateSelected,
-}: TemplateListProps) {
+export function TemplateList({ onTemplateSelected }: TemplateListProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [templates, setTemplates] = useState<DiscoveredTemplate[]>([]);
@@ -70,13 +66,7 @@ export function TemplateList({
         style={{ alignItems: "center", gap: 12, margin: "0 0 20px" }}
       >
         <p className="body-l secondary-text" style={{ margin: 0, flex: 1 }}>
-          {isAdmin && <>Select a template to scaffold a new project.</>}
-          {!isAdmin && (
-            <>
-              These are the available templates. If you need to scaffold a new
-              project, contact your project admin.
-            </>
-          )}
+          Select a template to scaffold a new project.
         </p>
         <HowItWorksDialog />
       </div>
@@ -91,9 +81,7 @@ export function TemplateList({
           <TemplateCard
             key={t.definition.id}
             template={t}
-            onSelect={
-              isAdmin ? () => onTemplateSelected(t.definition) : undefined
-            }
+            onSelect={() => onTemplateSelected(t.definition)}
           />
         ))}
       </div>

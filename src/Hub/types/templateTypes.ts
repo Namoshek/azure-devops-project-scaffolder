@@ -63,3 +63,10 @@ export interface DiscoveredTemplate {
   sourceProjectName: string;
   sourceRepoName: string;
 }
+
+export interface TemplatePermissions {
+  /** User can create and contribute to Git repositories in this project. */
+  canCreateRepos: boolean;
+  /** User can create build pipeline definitions in this project. */
+  canCreatePipelines: boolean;
+}

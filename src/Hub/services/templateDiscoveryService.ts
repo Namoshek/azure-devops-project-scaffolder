@@ -1,7 +1,7 @@
 import * as SDK from "azure-devops-extension-sdk";
 import { DiscoveredTemplate } from "../types/templateTypes";
 import { readTemplateFromRepo } from "./templateReaderService";
-import { getRestrictedProject } from "./extensionSettingsService";
+import { getRestrictedProjects } from "./extensionSettingsService";
 import { getSearchServiceUrl } from "./locationService";
 
 interface CodeSearchResult {
@@ -52,10 +52,10 @@ async function fetchTemplates(): Promise<DiscoveredTemplate[]> {
   // ILocationService and falls back to the collection URL on-prem.
   const searchBaseUrl = await getSearchServiceUrl();
 
-  // Check whether a collection admin has restricted discovery to a specific
-  // project. Errors are swallowed inside getRestrictedProject() and treated
+  // Check whether a collection admin has restricted discovery to specific
+  // projects. Errors are swallowed inside getRestrictedProjects() and treated
   // as "no restriction" so discovery still works for regular users.
-  const restriction = await getRestrictedProject();
+  const restrictions = await getRestrictedProjects();
 
   // Code Search API: POST /_apis/search/codesearchresults
   const searchUrl = `${searchBaseUrl}/_apis/search/codesearchresults?api-version=7.0`;
@@ -64,7 +64,10 @@ async function fetchTemplates(): Promise<DiscoveredTemplate[]> {
     searchText: "file:project-template.yml",
     $skip: 0,
     $top: 200,
-    filters: restriction ? { Project: [restriction.name] } : {},
+    filters:
+      restrictions.length > 0
+        ? { Project: restrictions.map((r) => r.name) }
+        : {},
     $orderBy: null,
     includeFacets: false,
   };

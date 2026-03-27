@@ -2,6 +2,7 @@
 // and loads a fresh instance via doMock + require.
 
 import type { DiscoveredTemplate } from "../../src/Hub/types/templateTypes";
+import type { RestrictedProject } from "../../src/Hub/services/extensionSettingsService";
 
 const COLLECTION_URL = "https://dev.azure.com/MyOrg";
 // On cloud, Code Search is served from a separate resource area host.
@@ -58,6 +59,7 @@ function loadFreshModule(options: {
   fetchStatus?: number;
   readTemplateResult?: object | Error;
   collectionUrl?: string;
+  restrictions?: RestrictedProject[];
 }) {
   const mockReadTemplate = jest.fn();
   if (options.readTemplateResult instanceof Error) {
@@ -86,6 +88,13 @@ function loadFreshModule(options: {
     getHost: jest.fn().mockReturnValue({ name: "MyOrg" }),
   }));
 
+  const mockGetRestrictedProjects = jest
+    .fn()
+    .mockResolvedValue(options.restrictions ?? []);
+  jest.doMock("../../src/Hub/services/extensionSettingsService", () => ({
+    getRestrictedProjects: mockGetRestrictedProjects,
+  }));
+
   jest.doMock("../../src/Hub/services/locationService", () => ({
     getSearchServiceUrl: jest
       .fn()
@@ -101,7 +110,12 @@ function loadFreshModule(options: {
       discoverTemplates: () => Promise<DiscoveredTemplate[]>;
     };
 
-  return { discoverTemplates, mockFetch, mockReadTemplate };
+  return {
+    discoverTemplates,
+    mockFetch,
+    mockReadTemplate,
+    mockGetRestrictedProjects,
+  };
 }
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
@@ -283,6 +297,36 @@ describe("discoverTemplates", () => {
     const results = await discoverTemplates();
 
     expect(results[0].definition.templateCategories).toEqual(["Backend"]);
+  });
+
+  it("sends no Project filter when no restrictions are configured", async () => {
+    const { discoverTemplates, mockFetch } = loadFreshModule({
+      fetchResponse: buildSearchResponse([]),
+      restrictions: [],
+    });
+
+    await discoverTemplates();
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body as string);
+    expect(body.filters).toEqual({});
+  });
+
+  it("sends a Project filter with all restricted project names", async () => {
+    const restrictions: RestrictedProject[] = [
+      { id: "id-1", name: "Project Alpha" },
+      { id: "id-2", name: "Project Beta" },
+    ];
+    const { discoverTemplates, mockFetch } = loadFreshModule({
+      fetchResponse: buildSearchResponse([]),
+      restrictions,
+    });
+
+    await discoverTemplates();
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body as string);
+    expect(body.filters).toEqual({
+      Project: ["Project Alpha", "Project Beta"],
+    });
   });
 
   it("uses the collection URL from LocationService (supports /tfs/ prefix)", async () => {

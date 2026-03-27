@@ -1,7 +1,6 @@
 import React from "react";
 import { Button } from "azure-devops-ui/Components/Button/Button";
 import { Card } from "azure-devops-ui/Components/Card/Card";
-import { MessageCard } from "azure-devops-ui/Components/MessageCard/MessageCard";
 import { Spinner } from "azure-devops-ui/Components/Spinner/Spinner";
 import { SpinnerSize } from "azure-devops-ui/Components/Spinner/Spinner.Props";
 import { TextField } from "azure-devops-ui/Components/TextField/TextField";
@@ -47,12 +46,6 @@ export function TemplateCategorySettings() {
           configured category are listed under &ldquo;
           {OTHERS_CATEGORY_NAME}&rdquo;.
         </p>
-
-        {feedback && (
-          <MessageCard severity={feedback.severity}>
-            {feedback.text}
-          </MessageCard>
-        )}
 
         <div className="rhythm-vertical-8">
           {categories.map((category, index) => (
@@ -119,13 +112,25 @@ export function TemplateCategorySettings() {
           </div>
         </FormItem>
 
-        <div className="flex-row rhythm-horizontal-8">
+        <div className="flex-row flex-center" style={{ gap: 8 }}>
           <Button
             text="Save"
             primary
             disabled={!hasChanges || saving}
             onClick={() => void handleSave()}
           />
+          {feedback && (
+            <span
+              className="body-m"
+              style={
+                feedback.type === "error"
+                  ? { color: "var(--status-error-foreground)" }
+                  : { color: "var(--status-success-foreground)" }
+              }
+            >
+              {feedback.text}
+            </span>
+          )}
         </div>
       </div>
     </Card>

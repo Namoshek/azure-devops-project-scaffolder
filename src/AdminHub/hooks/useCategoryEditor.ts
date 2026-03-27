@@ -1,5 +1,4 @@
-import { useState, useEffect } from "react";
-import { MessageCardSeverity } from "azure-devops-ui/Components/MessageCard/MessageCard.Props";
+import { useState, useEffect, useRef } from "react";
 import { OTHERS_CATEGORY_NAME } from "../../Hub/types/templateTypes";
 import {
   getTemplateCategories,
@@ -11,7 +10,7 @@ export interface UseCategoryEditorResult {
   categories: string[];
   newCategoryName: string;
   saving: boolean;
-  feedback: { severity: MessageCardSeverity; text: string } | null;
+  feedback: { type: "success" | "error"; text: string } | null;
   canAdd: boolean;
   hasChanges: boolean;
   setNewCategoryName: (name: string) => void;
@@ -30,9 +29,10 @@ export function useCategoryEditor(): UseCategoryEditorResult {
   const [newCategoryName, setNewCategoryName] = useState("");
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<{
-    severity: MessageCardSeverity;
+    type: "success" | "error";
     text: string;
   } | null>(null);
+  const feedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -44,12 +44,20 @@ export function useCategoryEditor(): UseCategoryEditorResult {
       } catch (err) {
         setLoadingState("error");
         setFeedback({
-          severity: MessageCardSeverity.Error,
+          type: "error",
           text: `Failed to load template categories: ${(err as Error).message}`,
         });
       }
     }
     void load();
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (feedbackTimer.current !== null) {
+        clearTimeout(feedbackTimer.current);
+      }
+    };
   }, []);
 
   function handleAddCategory() {
@@ -79,17 +87,22 @@ export function useCategoryEditor(): UseCategoryEditorResult {
 
   async function handleSave() {
     setSaving(true);
+    if (feedbackTimer.current !== null) {
+      clearTimeout(feedbackTimer.current);
+      feedbackTimer.current = null;
+    }
     setFeedback(null);
     try {
       await setTemplateCategories(categories);
       setSavedCategories([...categories]);
-      setFeedback({
-        severity: MessageCardSeverity.Info,
-        text: "Template categories saved successfully.",
-      });
+      setFeedback({ type: "success", text: "Saved successfully" });
+      feedbackTimer.current = setTimeout(() => {
+        setFeedback(null);
+        feedbackTimer.current = null;
+      }, 3000);
     } catch (err) {
       setFeedback({
-        severity: MessageCardSeverity.Error,
+        type: "error",
         text: `Failed to save template categories: ${(err as Error).message}`,
       });
     } finally {

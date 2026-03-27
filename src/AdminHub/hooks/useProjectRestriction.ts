@@ -1,119 +1,112 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useRef } from "react";
 import { getClient } from "azure-devops-extension-api";
 import { CoreRestClient } from "azure-devops-extension-api/Core";
 import { TeamProjectReference } from "azure-devops-extension-api/Core/Core";
-import { IListBoxItem } from "azure-devops-ui/Components/ListBox/ListBox.Props";
-import { DropdownSelection } from "azure-devops-ui/Utilities/DropdownSelection";
-import { MessageCardSeverity } from "azure-devops-ui/Components/MessageCard/MessageCard.Props";
 import {
-  getRestrictedProject,
-  setRestrictedProject,
-  clearRestrictedProject,
+  getRestrictedProjects,
+  setRestrictedProjects,
   RestrictedProject,
 } from "../../Hub/services/extensionSettingsService";
-
-export const NO_RESTRICTION_ID = "__none__";
-
-function buildItems(projectList: TeamProjectReference[]): IListBoxItem[] {
-  return [
-    { id: NO_RESTRICTION_ID, text: "No restriction (entire collection)" },
-    ...projectList.map((p) => ({ id: p.id!, text: p.name })),
-  ];
-}
 
 export interface UseProjectRestrictionResult {
   loadingState: "loading" | "ready" | "error";
   saving: boolean;
-  feedback: { severity: MessageCardSeverity; text: string } | null;
-  dropdownItems: IListBoxItem[];
-  dropdownSelection: DropdownSelection;
+  feedback: { type: "success" | "error"; text: string } | null;
+  allProjects: TeamProjectReference[];
+  checkedIds: ReadonlySet<string>;
   hasChanges: boolean;
-  setSelectedProjectId: (id: string) => void;
-  handleSave: () => void;
+  handleToggle: (id: string) => void;
+  setAllChecked: (ids: ReadonlySet<string>) => void;
+  handleSave: () => Promise<void>;
 }
 
 export function useProjectRestriction(): UseProjectRestrictionResult {
   const [loadingState, setLoadingState] = useState<
     "loading" | "ready" | "error"
   >("loading");
-  const [projects, setProjects] = useState<TeamProjectReference[]>([]);
-  const [currentRestriction, setCurrentRestriction] =
-    useState<RestrictedProject | null>(null);
-  const [selectedProjectId, setSelectedProjectId] =
-    useState<string>(NO_RESTRICTION_ID);
+  const [allProjects, setAllProjects] = useState<TeamProjectReference[]>([]);
+  const [savedIds, setSavedIds] = useState<ReadonlySet<string>>(new Set());
+  const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<{
-    severity: MessageCardSeverity;
+    type: "success" | "error";
     text: string;
   } | null>(null);
-
-  const dropdownSelection = useMemo(() => new DropdownSelection(), []);
+  const feedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     async function load() {
       try {
-        const [allProjects, restriction] = await Promise.all([
+        const [projects, restrictions] = await Promise.all([
           getClient(CoreRestClient).getProjects(),
-          getRestrictedProject(),
+          getRestrictedProjects(),
         ]);
 
-        const sorted = [...allProjects].sort((a, b) =>
+        const sorted = [...projects].sort((a, b) =>
           a.name.localeCompare(b.name),
         );
+        setAllProjects(sorted);
 
-        setProjects(sorted);
-        setCurrentRestriction(restriction);
-
-        const initialId = restriction?.id ?? NO_RESTRICTION_ID;
-        setSelectedProjectId(initialId);
-
-        // Pre-select the correct dropdown item.
-        const items = buildItems(sorted);
-        const idx = items.findIndex((item) => item.id === initialId);
-        if (idx >= 0) {
-          dropdownSelection.select(idx);
-        }
-
+        const ids = new Set(restrictions.map((r: RestrictedProject) => r.id));
+        setSavedIds(ids);
+        setCheckedIds(new Set(ids));
         setLoadingState("ready");
       } catch (err) {
         setLoadingState("error");
         setFeedback({
-          severity: MessageCardSeverity.Error,
+          type: "error",
           text: `Failed to load settings: ${(err as Error).message}`,
         });
       }
     }
     void load();
-  }, [dropdownSelection]);
+  }, []);
 
-  const dropdownItems = useMemo(() => buildItems(projects), [projects]);
+  useEffect(() => {
+    return () => {
+      if (feedbackTimer.current !== null) {
+        clearTimeout(feedbackTimer.current);
+      }
+    };
+  }, []);
+
+  function handleToggle(id: string) {
+    setCheckedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }
+
+  function setAllChecked(ids: ReadonlySet<string>) {
+    setCheckedIds(new Set(ids));
+  }
 
   async function handleSave() {
     setSaving(true);
+    if (feedbackTimer.current !== null) {
+      clearTimeout(feedbackTimer.current);
+      feedbackTimer.current = null;
+    }
     setFeedback(null);
     try {
-      if (selectedProjectId === NO_RESTRICTION_ID) {
-        await clearRestrictedProject();
-        setCurrentRestriction(null);
-        setFeedback({
-          severity: MessageCardSeverity.Info,
-          text: "Restriction cleared. Template discovery will now search the entire collection.",
-        });
-      } else {
-        const project = projects.find((p) => p.id === selectedProjectId);
-        if (!project) {
-          throw new Error("Selected project not found.");
-        }
-        await setRestrictedProject(project.id!, project.name);
-        setCurrentRestriction({ id: project.id!, name: project.name });
-        setFeedback({
-          severity: MessageCardSeverity.Info,
-          text: `Template discovery restricted to project "${project.name}".`,
-        });
-      }
+      const selectedProjects: RestrictedProject[] = allProjects
+        .filter((p) => checkedIds.has(p.id!))
+        .map((p) => ({ id: p.id!, name: p.name }));
+      await setRestrictedProjects(selectedProjects);
+      setSavedIds(new Set(checkedIds));
+      setFeedback({ type: "success", text: "Saved successfully" });
+      feedbackTimer.current = setTimeout(() => {
+        setFeedback(null);
+        feedbackTimer.current = null;
+      }, 3000);
     } catch (err) {
       setFeedback({
-        severity: MessageCardSeverity.Error,
+        type: "error",
         text: `Failed to save settings: ${(err as Error).message}`,
       });
     } finally {
@@ -121,17 +114,23 @@ export function useProjectRestriction(): UseProjectRestrictionResult {
     }
   }
 
-  const hasChanges =
-    selectedProjectId !== (currentRestriction?.id ?? NO_RESTRICTION_ID);
+  const hasChanges = (() => {
+    if (checkedIds.size !== savedIds.size) return true;
+    for (const id of checkedIds) {
+      if (!savedIds.has(id)) return true;
+    }
+    return false;
+  })();
 
   return {
     loadingState,
     saving,
     feedback,
-    dropdownItems,
-    dropdownSelection,
+    allProjects,
+    checkedIds,
     hasChanges,
-    setSelectedProjectId,
+    handleToggle,
+    setAllChecked,
     handleSave,
   };
 }

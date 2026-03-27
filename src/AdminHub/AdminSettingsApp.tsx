@@ -10,13 +10,23 @@ import { Spinner } from "azure-devops-ui/Components/Spinner/Spinner";
 import { SpinnerSize } from "azure-devops-ui/Components/Spinner/Spinner.Props";
 import { MessageCard } from "azure-devops-ui/Components/MessageCard/MessageCard";
 import { MessageCardSeverity } from "azure-devops-ui/Components/MessageCard/MessageCard.Props";
+import { Tab as TabBase } from "azure-devops-ui/Components/Tabs/Tab";
+import { TabBar as TabBarBase } from "azure-devops-ui/Components/Tabs/TabBar";
 import { checkCollectionAdminPermission } from "../Hub/services/permissionService";
 import { ProjectRestrictionSettings } from "./components/ProjectRestrictionSettings";
 import { TemplateCategorySettings } from "./components/TemplateCategorySettings";
 
+const Tab = TabBase as React.ComponentType<
+  React.ComponentProps<typeof TabBase> & { children?: React.ReactNode }
+>;
+const TabBar = TabBarBase as React.ComponentType<
+  React.ComponentProps<typeof TabBarBase> & { children?: React.ReactNode }
+>;
+
 export function AdminSettingsApp() {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [selectedTabId, setSelectedTabId] = useState("restriction");
 
   useEffect(() => {
     async function init() {
@@ -44,7 +54,7 @@ export function AdminSettingsApp() {
         title="Project Scaffolding — Settings"
         titleSize={TitleSize.Large}
       />
-      <div className="page-content page-content-top rhythm-vertical-24">
+      <div className="page-content page-content-top rhythm-vertical-16">
         {!isAdmin && (
           <MessageCard severity={MessageCardSeverity.Warning}>
             You must be a collection administrator to manage Project Scaffolding
@@ -54,8 +64,15 @@ export function AdminSettingsApp() {
 
         {isAdmin && (
           <>
-            <ProjectRestrictionSettings />
-            <TemplateCategorySettings />
+            <TabBar
+              onSelectedTabChanged={setSelectedTabId}
+              selectedTabId={selectedTabId}
+            >
+              <Tab id="restriction" name="Template Source" />
+              <Tab id="categories" name="Categories" />
+            </TabBar>
+            {selectedTabId === "restriction" && <ProjectRestrictionSettings />}
+            {selectedTabId === "categories" && <TemplateCategorySettings />}
           </>
         )}
       </div>

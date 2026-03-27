@@ -44,9 +44,8 @@ function loadFreshModule(options: {
 
   const service =
     require("../../src/Hub/services/extensionSettingsService") as {
-      getRestrictedProject: () => Promise<RestrictedProject | null>;
-      setRestrictedProject: (id: string, name: string) => Promise<void>;
-      clearRestrictedProject: () => Promise<void>;
+      getRestrictedProjects: () => Promise<RestrictedProject[]>;
+      setRestrictedProjects: (projects: RestrictedProject[]) => Promise<void>;
       getTemplateCategories: () => Promise<string[]>;
       setTemplateCategories: (categories: string[]) => Promise<void>;
     };
@@ -64,63 +63,82 @@ afterEach(() => {
   jest.clearAllMocks();
 });
 
-describe("getRestrictedProject", () => {
-  it("returns null when no value is stored", async () => {
+describe("getRestrictedProjects", () => {
+  it("returns an empty array when no value is stored", async () => {
     const { service } = loadFreshModule({});
 
-    const result = await service.getRestrictedProject();
+    const result = await service.getRestrictedProjects();
 
-    expect(result).toBeNull();
+    expect(result).toEqual([]);
   });
 
-  it("returns the stored project when a restriction is set", async () => {
-    const stored: RestrictedProject = { id: "proj-id-1", name: "My Project" };
+  it("returns the stored projects array when restrictions are set", async () => {
+    const stored: RestrictedProject[] = [
+      { id: "proj-id-1", name: "My Project" },
+      { id: "proj-id-2", name: "Another Project" },
+    ];
     const { service } = loadFreshModule({
       managerOverrides: {
-        // The service stores values wrapped in { project: ... }
-        getValue: jest.fn().mockResolvedValue({ project: stored }),
+        getValue: jest.fn().mockResolvedValue({ projects: stored }),
       },
     });
 
-    const result = await service.getRestrictedProject();
+    const result = await service.getRestrictedProjects();
 
     expect(result).toEqual(stored);
   });
 
-  it("returns null when the manager cannot be obtained (fails open)", async () => {
+  it("returns an empty array when the manager cannot be obtained (fails open)", async () => {
     const { service } = loadFreshModule({
       managerError: new Error("Service unavailable"),
     });
 
-    const result = await service.getRestrictedProject();
+    const result = await service.getRestrictedProjects();
 
-    expect(result).toBeNull();
+    expect(result).toEqual([]);
   });
 
-  it("returns null when getValue rejects (fails open)", async () => {
+  it("returns an empty array when getValue rejects (fails open)", async () => {
     const { service } = loadFreshModule({
       managerOverrides: {
         getValue: jest.fn().mockRejectedValue(new Error("Storage error")),
       },
     });
 
-    const result = await service.getRestrictedProject();
+    const result = await service.getRestrictedProjects();
 
-    expect(result).toBeNull();
+    expect(result).toEqual([]);
   });
 });
 
-describe("setRestrictedProject", () => {
-  it("calls setValue with the correct key and value", async () => {
+describe("setRestrictedProjects", () => {
+  it("calls setValue with the correct key and wrapped value", async () => {
     const mockSetValue = jest.fn().mockResolvedValue(undefined);
     const { service } = loadFreshModule({
       managerOverrides: { setValue: mockSetValue },
     });
 
-    await service.setRestrictedProject("proj-abc", "Alpha Project");
+    const projects: RestrictedProject[] = [
+      { id: "proj-abc", name: "Alpha Project" },
+      { id: "proj-xyz", name: "Zeta Project" },
+    ];
+    await service.setRestrictedProjects(projects);
 
-    expect(mockSetValue).toHaveBeenCalledWith("restrictedProject", {
-      project: { id: "proj-abc", name: "Alpha Project" },
+    expect(mockSetValue).toHaveBeenCalledWith("restrictedProjects", {
+      projects,
+    });
+  });
+
+  it("persists an empty array to clear all restrictions", async () => {
+    const mockSetValue = jest.fn().mockResolvedValue(undefined);
+    const { service } = loadFreshModule({
+      managerOverrides: { setValue: mockSetValue },
+    });
+
+    await service.setRestrictedProjects([]);
+
+    expect(mockSetValue).toHaveBeenCalledWith("restrictedProjects", {
+      projects: [],
     });
   });
 
@@ -131,38 +149,9 @@ describe("setRestrictedProject", () => {
       },
     });
 
-    await expect(service.setRestrictedProject("id", "name")).rejects.toThrow(
-      "Permission denied",
-    );
-  });
-});
-
-describe("clearRestrictedProject", () => {
-  it("calls setValue with a { project: null } wrapper to clear the restriction", async () => {
-    const mockSetValue = jest.fn().mockResolvedValue(undefined);
-    const { service } = loadFreshModule({
-      managerOverrides: { setValue: mockSetValue },
-    });
-
-    await service.clearRestrictedProject();
-
-    // Must use a wrapper object — passing null directly causes
-    // "Cannot set properties of null" in the ADO extension data SDK serializer.
-    expect(mockSetValue).toHaveBeenCalledWith("restrictedProject", {
-      project: null,
-    });
-  });
-
-  it("throws when setValue rejects", async () => {
-    const { service } = loadFreshModule({
-      managerOverrides: {
-        setValue: jest.fn().mockRejectedValue(new Error("Write failed")),
-      },
-    });
-
-    await expect(service.clearRestrictedProject()).rejects.toThrow(
-      "Write failed",
-    );
+    await expect(
+      service.setRestrictedProjects([{ id: "id", name: "name" }]),
+    ).rejects.toThrow("Permission denied");
   });
 });
 
@@ -170,9 +159,9 @@ describe("manager caching", () => {
   it("obtains the manager only once across multiple calls", async () => {
     const { service, mockGetExtensionDataManager } = loadFreshModule({});
 
-    await service.getRestrictedProject();
-    await service.getRestrictedProject();
-    await service.setRestrictedProject("id", "name");
+    await service.getRestrictedProjects();
+    await service.getRestrictedProjects();
+    await service.setRestrictedProjects([]);
 
     expect(mockGetExtensionDataManager).toHaveBeenCalledTimes(1);
   });
@@ -205,16 +194,16 @@ describe("manager caching", () => {
 
     const service =
       require("../../src/Hub/services/extensionSettingsService") as {
-        getRestrictedProject: () => Promise<RestrictedProject | null>;
+        getRestrictedProjects: () => Promise<RestrictedProject[]>;
       };
 
-    // First call: manager creation fails → getRestrictedProject fails open → returns null
-    const result1 = await service.getRestrictedProject();
-    expect(result1).toBeNull();
+    // First call: manager creation fails → getRestrictedProjects fails open → returns []
+    const result1 = await service.getRestrictedProjects();
+    expect(result1).toEqual([]);
 
     // Second call: manager creation succeeds (cache was cleared after error)
-    const result2 = await service.getRestrictedProject();
-    expect(result2).toBeNull();
+    const result2 = await service.getRestrictedProjects();
+    expect(result2).toEqual([]);
 
     expect(mockGetExtensionDataManager).toHaveBeenCalledTimes(2);
   });

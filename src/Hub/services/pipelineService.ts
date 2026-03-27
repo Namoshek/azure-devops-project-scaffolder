@@ -11,6 +11,7 @@ import { GitRestClient } from "azure-devops-extension-api/Git";
 import { TaskAgentRestClient } from "azure-devops-extension-api/TaskAgent";
 import { TemplatePipeline } from "../types/templateTypes";
 import { renderTemplate } from "./templateEngineService";
+import { checkPipelineExists } from "./preflightCheckService";
 
 export type PipelineScaffoldStatus = "created" | "skipped" | "failed";
 
@@ -61,18 +62,19 @@ export async function scaffoldPipeline(
     };
   }
 
-  // 3. Check if pipeline already exists
-  try {
-    const existing = await buildClient.getDefinitions(projectId, pipelineName);
-    if (existing.length > 0) {
-      return {
-        pipelineName,
-        status: "skipped",
-        reason: `Pipeline '${pipelineName}' already exists.`,
-      };
-    }
-  } catch {
-    // If the check fails, proceed and let createDefinition surface any error.
+  // 3. Check if pipeline already exists (fresh=true bypasses preview cache)
+  const { exists: pipelineExists } = await checkPipelineExists(
+    projectId,
+    pipelineName,
+    folder,
+    { fresh: true },
+  );
+  if (pipelineExists) {
+    return {
+      pipelineName,
+      status: "skipped",
+      reason: `Pipeline '${pipelineName}' already exists.`,
+    };
   }
 
   // 4. Create the pipeline definition

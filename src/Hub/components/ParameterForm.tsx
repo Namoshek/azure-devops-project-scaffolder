@@ -1,4 +1,4 @@
-﻿import React, { useState } from "react";
+﻿import React, { useState, useEffect, useRef } from "react";
 import {
   TemplateDefinition,
   TemplateParameter,
@@ -8,6 +8,10 @@ import {
   evaluateWhenExpression,
   renderTemplate,
 } from "../services/templateEngineService";
+import {
+  checkTemplateResourcesExistence,
+  ResourceExistenceMap,
+} from "../services/preflightCheckService";
 import { Button } from "azure-devops-ui/Components/Button/Button";
 import { Card } from "azure-devops-ui/Components/Card/Card";
 import { MessageCard } from "azure-devops-ui/Components/MessageCard/MessageCard";
@@ -21,13 +25,18 @@ import { ParameterField } from "./ParameterField";
 interface ParameterFormProps {
   template: TemplateDefinition;
   permissions: TemplatePermissions | null;
+  projectId: string;
   onSubmit: (values: Record<string, unknown>) => void;
   onBack: () => void;
 }
 
+// ─── Color constants ───────────────────────────────────────────────────────────
+// green  = will be created successfully
+// yellow = excluded by user-controlled when-expression (user can change this)
+// red    = system-level blocker the user cannot resolve here
 const COLOR_INCLUDED = "var(--status-success-foreground)";
-const COLOR_EXCLUDED = "var(--status-error-foreground)";
-const COLOR_NO_PERMISSION = "var(--status-warning-foreground)";
+const COLOR_EXCLUDED = "var(--status-warning-foreground)";
+const COLOR_SYSTEM_ERROR = "var(--status-error-foreground)";
 
 interface ParameterSummarySubItem {
   name: string;
@@ -39,6 +48,10 @@ interface ParameterSummaryItem {
   name: string;
   included: boolean;
   permissionDenied: boolean;
+  /** True when the resource already exists and has content — will be skipped. */
+  existsWillSkip: boolean;
+  /** True while the existence check is still in-flight for this item. */
+  existsCheckPending: boolean;
   subItems?: ParameterSummarySubItem[];
 }
 
@@ -63,6 +76,7 @@ function buildDefaults(
 export function ParameterForm({
   template,
   permissions,
+  projectId,
   onSubmit,
   onBack,
 }: ParameterFormProps) {
@@ -71,6 +85,39 @@ export function ParameterForm({
   );
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
+
+  // ── Preflight existence checks ───────────────────────────────────────────────
+  const [preflightChecks, setPreflightChecks] =
+    useState<ResourceExistenceMap | null>(null);
+  const [preflightPending, setPreflightPending] = useState(true);
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    setPreflightPending(true);
+
+    if (debounceTimer.current !== null) {
+      clearTimeout(debounceTimer.current);
+    }
+
+    debounceTimer.current = setTimeout(() => {
+      void checkTemplateResourcesExistence(projectId, template, values).then(
+        (result) => {
+          setPreflightChecks(result);
+          setPreflightPending(false);
+        },
+        () => {
+          // Fail open: if checks error out, leave preflightChecks as null.
+          setPreflightPending(false);
+        },
+      );
+    }, 500);
+
+    return () => {
+      if (debounceTimer.current !== null) {
+        clearTimeout(debounceTimer.current);
+      }
+    };
+  }, [values, projectId, template]);
 
   function handleChange(id: string, value: unknown) {
     setValues((prev) => ({ ...prev, [id]: value }));
@@ -137,33 +184,64 @@ export function ParameterForm({
           included: !evaluateWhenExpression(e.when!, values),
         })),
       ];
+      const renderedName = renderTemplate(r.name, values);
+      const repoCheck = preflightChecks?.repos[renderedName.toLowerCase()];
+      const permissionDenied =
+        permissions !== null && !permissions.canCreateRepos;
+      const existsWillSkip =
+        included &&
+        !permissionDenied &&
+        (repoCheck?.exists && repoCheck.isNonEmpty) === true;
+      const existsCheckPending =
+        included &&
+        !permissionDenied &&
+        (preflightPending || repoCheck === undefined);
       return {
         type: "repository" as const,
-        name: renderTemplate(r.name, values),
+        name: renderedName,
         included,
-        permissionDenied: permissions !== null && !permissions.canCreateRepos,
+        permissionDenied,
+        existsWillSkip,
+        existsCheckPending,
         subItems,
       };
     }),
-    ...(template.pipelines ?? []).map((p) => ({
-      type: "pipeline" as const,
-      name: renderTemplate(p.name, values),
-      included: !p.when || evaluateWhenExpression(p.when, values),
-      permissionDenied: permissions !== null && !permissions.canCreatePipelines,
-    })),
+    ...(template.pipelines ?? []).map((p) => {
+      const included = !p.when || evaluateWhenExpression(p.when, values);
+      const renderedName = renderTemplate(p.name, values);
+      const folder = p.folder ?? "\\";
+      const pipelineKey = `${folder.toLowerCase()}::${renderedName.toLowerCase()}`;
+      const pipelineCheck = preflightChecks?.pipelines[pipelineKey];
+      const permissionDenied =
+        permissions !== null && !permissions.canCreatePipelines;
+      const existsWillSkip =
+        included && !permissionDenied && pipelineCheck?.exists === true;
+      const existsCheckPending =
+        included &&
+        !permissionDenied &&
+        (preflightPending || pipelineCheck === undefined);
+      return {
+        type: "pipeline" as const,
+        name: renderedName,
+        included,
+        permissionDenied,
+        existsWillSkip,
+        existsCheckPending,
+      };
+    }),
   ];
 
   // Submit is disabled when permissions are still loading, or when every
   // when-included resource is also permission-denied (nothing can be created).
   const includedItems = summaryItems.filter((i) => i.included);
-  const allDenied =
+  const allBlocked =
     permissions !== null &&
     includedItems.length > 0 &&
-    includedItems.every((i) => i.permissionDenied);
-  const submitDisabled = permissions === null || allDenied;
+    includedItems.every((i) => i.permissionDenied || i.existsWillSkip);
+  const submitDisabled = permissions === null || allBlocked;
 
-  const submitTooltip = allDenied
-    ? "You don't have the required permissions for any of this template's resources."
+  const submitTooltip = allBlocked
+    ? "All resources are either permission-denied or already exist — nothing will be created."
     : permissions === null
       ? "Checking permissions..."
       : undefined;
@@ -255,15 +333,19 @@ export function ParameterForm({
                   ? "flex-column justify-start"
                   : "flex-column justify-start separator-line-bottom";
 
-                // Determine visual state: permission-denied overrides included style
-                // but only applies to when-included items.
-                const effectivelyBlocked =
-                  item.included && item.permissionDenied;
-                const iconColor = !item.included
-                  ? COLOR_EXCLUDED
-                  : effectivelyBlocked
-                    ? COLOR_NO_PERMISSION
-                    : COLOR_INCLUDED;
+                // Determine which system-level blocker applies (highest priority first).
+                // Only one badge is shown per resource.
+                const isSkipped =
+                  !item.included ||
+                  item.permissionDenied ||
+                  item.existsWillSkip;
+
+                const iconColor =
+                  item.permissionDenied || item.existsWillSkip
+                    ? COLOR_SYSTEM_ERROR
+                    : !item.included
+                      ? COLOR_EXCLUDED
+                      : COLOR_INCLUDED;
 
                 return (
                   <div
@@ -285,16 +367,53 @@ export function ParameterForm({
                         />
                       </span>
                       <span
-                        style={
-                          !item.included
-                            ? { textDecoration: "line-through", opacity: 0.5 }
-                            : undefined
-                        }
+                        className={isSkipped ? "secondary-text" : undefined}
+                        style={isSkipped ? { opacity: 0.7 } : undefined}
                       >
                         {item.type === "repository" ? "Repository" : "Pipeline"}
                         : {item.name}
+                        {isSkipped && (
+                          <span style={{ marginLeft: 4 }}>(skipped)</span>
+                        )}
                       </span>
-                      {!item.included && (
+                      {/* Existence check spinner — only for included, non-blocked items */}
+                      {item.existsCheckPending && (
+                        <Spinner
+                          size={SpinnerSize.xSmall}
+                          ariaLabel="Checking existence..."
+                        />
+                      )}
+                      {/* Badge: priority order — system error > user-exclusion > success */}
+                      {item.permissionDenied && (
+                        <>
+                          <Icon size={IconSize.small} iconName="Lock" />
+                          <span
+                            style={{
+                              fontSize: 11,
+                              color: COLOR_SYSTEM_ERROR,
+                              fontWeight: 600,
+                              textTransform: "uppercase",
+                              letterSpacing: "0.05em",
+                            }}
+                          >
+                            No permission
+                          </span>
+                        </>
+                      )}
+                      {!item.permissionDenied && item.existsWillSkip && (
+                        <span
+                          style={{
+                            fontSize: 11,
+                            color: COLOR_SYSTEM_ERROR,
+                            fontWeight: 600,
+                            textTransform: "uppercase",
+                            letterSpacing: "0.05em",
+                          }}
+                        >
+                          Already exists
+                        </span>
+                      )}
+                      {!item.included && !item.permissionDenied && (
                         <span
                           style={{
                             fontSize: 11,
@@ -307,22 +426,6 @@ export function ParameterForm({
                           Excluded
                         </span>
                       )}
-                      {effectivelyBlocked && (
-                        <>
-                          <Icon size={IconSize.small} iconName="Lock" />
-                          <span
-                            style={{
-                              fontSize: 11,
-                              color: COLOR_NO_PERMISSION,
-                              fontWeight: 600,
-                              textTransform: "uppercase",
-                              letterSpacing: "0.05em",
-                            }}
-                          >
-                            No permission
-                          </span>
-                        </>
-                      )}
                     </div>
                     {/* File sub-items (repositories only) */}
                     {item.subItems && (
@@ -331,7 +434,7 @@ export function ParameterForm({
                         style={{
                           paddingLeft: 24,
                           gap: 4,
-                          opacity: item.included ? 1 : 0.4,
+                          opacity: isSkipped ? 0.4 : 1,
                         }}
                       >
                         {item.subItems.map((sub, si) => (
@@ -350,17 +453,17 @@ export function ParameterForm({
                               <Icon size={IconSize.small} iconName="Page" />
                             </span>
                             <span
-                              className="body-s"
+                              className={
+                                sub.included ? undefined : "secondary-text"
+                              }
                               style={
-                                sub.included
-                                  ? undefined
-                                  : {
-                                      textDecoration: "line-through",
-                                      opacity: 0.6,
-                                    }
+                                sub.included ? undefined : { opacity: 0.7 }
                               }
                             >
                               {sub.name}
+                              {!sub.included && (
+                                <span style={{ marginLeft: 4 }}>(skipped)</span>
+                              )}
                             </span>
                             {!sub.included && (
                               <span

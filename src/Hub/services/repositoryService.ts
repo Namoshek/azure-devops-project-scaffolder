@@ -11,6 +11,7 @@ import {
   renderTemplate,
   evaluateWhenExpression,
 } from "./templateEngineService";
+import { checkRepoExists } from "./preflightCheckService";
 
 export type RepoScaffoldStatus = "created" | "skipped" | "failed";
 
@@ -36,42 +37,32 @@ export async function scaffoldRepository(
   const repoName = renderTemplate(repoTemplate.name, parameterValues);
   const gitClient = getClient(GitRestClient);
 
-  // 1. Check if the repo already exists
-  let repos: Awaited<ReturnType<GitRestClient["getRepositories"]>>;
+  // 1. Check if the repo already exists (fresh=true bypasses preview cache)
+  let existenceCheck: Awaited<ReturnType<typeof checkRepoExists>>;
   try {
-    repos = await gitClient.getRepositories(projectId);
+    existenceCheck = await checkRepoExists(projectId, repoName, {
+      fresh: true,
+    });
   } catch (err) {
     return {
       repoName,
       status: "failed",
-      reason: `Failed to list repositories: ${(err as Error).message}`,
+      reason: `Failed to check repository existence: ${(err as Error).message}`,
     };
   }
 
-  const existing = repos.find(
-    (r) => r.name?.toLowerCase() === repoName.toLowerCase(),
-  );
-
-  if (existing) {
-    // Check if non-empty (has at least one ref / commit)
-    try {
-      const refs = await gitClient.getRefs(existing.id!, projectId, "heads");
-      if (refs.length > 0) {
-        return {
-          repoName,
-          status: "skipped",
-          reason: `Repository '${repoName}' already exists and is not empty.`,
-        };
-      }
-    } catch {
-      // If ref listing fails, fall through and treat repo as empty.
-    }
+  if (existenceCheck.exists && existenceCheck.isNonEmpty) {
+    return {
+      repoName,
+      status: "skipped",
+      reason: `Repository '${repoName}' already exists and is not empty.`,
+    };
   }
 
   // 2. Create the repository if it doesn't exist
   let repoId: string;
 
-  if (!existing) {
+  if (!existenceCheck.exists) {
     let created: Awaited<ReturnType<GitRestClient["createRepository"]>>;
     try {
       created = await gitClient.createRepository(
@@ -87,7 +78,27 @@ export async function scaffoldRepository(
     }
     repoId = created.id!;
   } else {
-    repoId = existing.id!;
+    // Repo exists but is empty — look up its ID to push the initial commit.
+    try {
+      const repos = await gitClient.getRepositories(projectId);
+      const found = repos.find(
+        (r) => r.name?.toLowerCase() === repoName.toLowerCase(),
+      );
+      if (!found?.id) {
+        return {
+          repoName,
+          status: "failed",
+          reason: `Repository '${repoName}' found during existence check but could not be located again.`,
+        };
+      }
+      repoId = found.id;
+    } catch (err) {
+      return {
+        repoName,
+        status: "failed",
+        reason: `Failed to resolve existing repository ID: ${(err as Error).message}`,
+      };
+    }
   }
 
   // 3. Fetch template files

@@ -101,6 +101,7 @@ export function ScaffoldApp() {
           <ParameterForm
             template={selectedTemplate}
             permissions={permissions}
+            projectId={projectId!}
             onSubmit={handleFormSubmit}
             onBack={handleBack}
           />

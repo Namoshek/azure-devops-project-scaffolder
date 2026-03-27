@@ -16,11 +16,17 @@ jest.mock("../../src/Hub/services/templateReaderService", () => ({
   fetchTemplateFiles: jest.fn(),
 }));
 
+jest.mock("../../src/Hub/services/preflightCheckService", () => ({
+  checkRepoExists: jest.fn(),
+}));
+
 import { getClient } from "azure-devops-extension-api";
 import { fetchTemplateFiles } from "../../src/Hub/services/templateReaderService";
+import { checkRepoExists } from "../../src/Hub/services/preflightCheckService";
 
 const mockGetClient = getClient as jest.Mock;
 const mockFetchTemplateFiles = fetchTemplateFiles as jest.Mock;
+const mockCheckRepoExists = checkRepoExists as jest.Mock;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -38,7 +44,6 @@ function makeRepoTemplate(
 function makeGitClient(
   overrides: Partial<{
     getRepositories: jest.Mock;
-    getRefs: jest.Mock;
     createRepository: jest.Mock;
     createPush: jest.Mock;
   }> = {},
@@ -46,7 +51,6 @@ function makeGitClient(
   return {
     getRepositories:
       overrides.getRepositories ?? jest.fn().mockResolvedValue([]),
-    getRefs: overrides.getRefs ?? jest.fn().mockResolvedValue([]),
     createRepository:
       overrides.createRepository ??
       jest.fn().mockResolvedValue({ id: "new-repo-id" }),
@@ -60,6 +64,8 @@ const PARAMS = { projectName: "my-app" };
 
 beforeEach(() => {
   jest.clearAllMocks();
+  // Default: repo does not exist
+  mockCheckRepoExists.mockResolvedValue({ exists: false, isNonEmpty: false });
 });
 
 describe("scaffoldRepository", () => {
@@ -229,12 +235,8 @@ describe("scaffoldRepository", () => {
   // ─── Existing repository (non-empty) → skipped ────────────────────────────
 
   it("returns 'skipped' when the repo already exists and has refs", async () => {
-    const gitClient = makeGitClient({
-      getRepositories: jest
-        .fn()
-        .mockResolvedValue([{ id: "existing-id", name: "my-app-api" }]),
-      getRefs: jest.fn().mockResolvedValue([{ name: "refs/heads/main" }]),
-    });
+    mockCheckRepoExists.mockResolvedValue({ exists: true, isNonEmpty: true });
+    const gitClient = makeGitClient();
     mockGetClient.mockReturnValue(gitClient);
 
     const result = await scaffoldRepository(
@@ -271,10 +273,9 @@ describe("scaffoldRepository", () => {
 
   // ─── Error paths ───────────────────────────────────────────────────────────
 
-  it("returns 'failed' when getRepositories throws", async () => {
-    const gitClient = makeGitClient({
-      getRepositories: jest.fn().mockRejectedValue(new Error("Network error")),
-    });
+  it("returns 'failed' when checkRepoExists throws", async () => {
+    mockCheckRepoExists.mockRejectedValue(new Error("Network error"));
+    const gitClient = makeGitClient();
     mockGetClient.mockReturnValue(gitClient);
 
     const result = await scaffoldRepository(
@@ -286,7 +287,7 @@ describe("scaffoldRepository", () => {
     );
 
     expect(result.status).toBe("failed");
-    expect(result.reason).toMatch(/Failed to list repositories/);
+    expect(result.reason).toMatch(/Failed to check repository existence/);
   });
 
   it("returns 'failed' when createRepository throws", async () => {

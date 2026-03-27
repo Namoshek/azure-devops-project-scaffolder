@@ -21,11 +21,17 @@ jest.mock("azure-devops-extension-api/TaskAgent", () => ({
   TaskAgentRestClient: jest.fn(),
 }));
 
+jest.mock("../../src/Hub/services/preflightCheckService", () => ({
+  checkPipelineExists: jest.fn(),
+}));
+
 import { getClient } from "azure-devops-extension-api";
 import { BuildRestClient } from "azure-devops-extension-api/Build";
 import { TaskAgentRestClient } from "azure-devops-extension-api/TaskAgent";
+import { checkPipelineExists } from "../../src/Hub/services/preflightCheckService";
 
 const mockGetClient = getClient as jest.Mock;
+const mockCheckPipelineExists = checkPipelineExists as jest.Mock;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -43,7 +49,6 @@ function makePipelineTemplate(
 function makeClients(overrides: {
   repos?: { id: string; name: string }[];
   queues?: { id: number; name: string }[];
-  existingDefinitions?: { id: number; name: string }[];
   createDefinitionResult?: object;
   createDefinitionError?: Error;
 }) {
@@ -62,9 +67,6 @@ function makeClients(overrides: {
   };
 
   const buildClient = {
-    getDefinitions: jest
-      .fn()
-      .mockResolvedValue(overrides.existingDefinitions ?? []),
     createDefinition: overrides.createDefinitionError
       ? jest.fn().mockRejectedValue(overrides.createDefinitionError)
       : jest
@@ -91,6 +93,8 @@ const PARAMS = { projectName: "my-app" };
 
 beforeEach(() => {
   jest.clearAllMocks();
+  // Default: pipeline does not exist
+  mockCheckPipelineExists.mockResolvedValue({ exists: false });
 });
 
 describe("scaffoldPipeline", () => {
@@ -127,9 +131,8 @@ describe("scaffoldPipeline", () => {
   // ─── Pipeline already exists → skipped ────────────────────────────────────
 
   it("returns 'skipped' when a pipeline with the same name already exists", async () => {
-    makeClients({
-      existingDefinitions: [{ id: 1, name: "my-app-ci" }],
-    });
+    mockCheckPipelineExists.mockResolvedValue({ exists: true });
+    makeClients({});
 
     const result = await scaffoldPipeline(
       "proj1",

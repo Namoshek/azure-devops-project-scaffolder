@@ -165,7 +165,7 @@ export function ParameterForm({
   const submitTooltip = allDenied
     ? "You don't have the required permissions for any of this template's resources."
     : permissions === null
-      ? "Checking permissionsâ€¦"
+      ? "Checking permissions..."
       : undefined;
 
   return (
@@ -244,7 +244,7 @@ export function ParameterForm({
             >
               <Spinner size={SpinnerSize.small} />
               <span className="body-s secondary-text">
-                Checking permissionsâ€¦
+                Checking permissions...
               </span>
             </div>
           ) : (

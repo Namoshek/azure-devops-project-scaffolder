@@ -2,6 +2,7 @@ import * as SDK from "azure-devops-extension-sdk";
 import { DiscoveredTemplate } from "../types/templateTypes";
 import { readTemplateFromRepo } from "./templateReaderService";
 import { getRestrictedProject } from "./extensionSettingsService";
+import { getSearchServiceUrl } from "./locationService";
 
 interface CodeSearchResult {
   fileName: string;
@@ -46,15 +47,18 @@ export function discoverTemplates(): Promise<DiscoveredTemplate[]> {
 
 async function fetchTemplates(): Promise<DiscoveredTemplate[]> {
   const accessToken = await SDK.getAccessToken();
-  const collection = SDK.getHost().name;
+  // On Azure DevOps Services (cloud) the Code Search service is hosted at a
+  // separate resource area URL; getSearchServiceUrl() resolves it via
+  // ILocationService and falls back to the collection URL on-prem.
+  const searchBaseUrl = await getSearchServiceUrl();
 
   // Check whether a collection admin has restricted discovery to a specific
   // project. Errors are swallowed inside getRestrictedProject() and treated
   // as "no restriction" so discovery still works for regular users.
   const restriction = await getRestrictedProject();
 
-  // Code Search API: POST /_apis/search/codesearchresults?api-version=7.1
-  const searchUrl = `${window.location.origin}/${collection}/_apis/search/codesearchresults?api-version=7.1`;
+  // Code Search API: POST /_apis/search/codesearchresults
+  const searchUrl = `${searchBaseUrl}/_apis/search/codesearchresults?api-version=7.0`;
 
   const body = {
     searchText: "file:project-template.yml",

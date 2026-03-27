@@ -147,7 +147,7 @@ export function TemplateList({ onTemplateSelected }: TemplateListProps) {
     return (
       <MessageCard severity={MessageCardSeverity.Error}>
         <strong>Template discovery failed</strong>
-        <p style={{ margin: "8px 0 0" }}>{error}</p>
+        <p style={{ paddingLeft: 8 }}>{error}</p>
       </MessageCard>
     );
   }

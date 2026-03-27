@@ -1,8 +1,11 @@
 ﻿import * as SDK from "azure-devops-extension-sdk";
+import { getClient } from "azure-devops-extension-api";
+import { GraphRestClient } from "azure-devops-extension-api/Graph";
 import {
   TemplateDefinition,
   TemplatePermissions,
 } from "../types/templateTypes";
+import { getCollectionUrl } from "./locationService";
 
 // ─── Security namespace GUIDs (constant across all ADO instances) ─────────────
 
@@ -52,21 +55,23 @@ interface AclResponse {
 
 // ─── Internal helpers ─────────────────────────────────────────────────────────
 
-function baseUrl(): string {
-  return `${window.location.origin}/${SDK.getHost().name}`;
-}
-
 /**
- * Fetches the full identity record for a user and returns the descriptor string
- * in the form "IdentityType;Identifier" required by the ACL API.
+ * Resolves a subject descriptor for the given user via the on-premises
+ * Identity API (IMS). This endpoint is co-hosted with the collection on
+ * Azure DevOps Server / TFS but is **not reachable** from the extension
+ * iframe on Azure DevOps Services (cloud) because IMS lives on a separate
+ * origin (vssps.dev.azure.com).
  *
  * Throws on any error so callers can fail closed.
  */
-async function resolveUserDescriptor(userId: string): Promise<string> {
+async function resolveDescriptorViaIdentityApi(
+  userId: string,
+): Promise<string> {
   const accessToken = await SDK.getAccessToken();
+  const collectionUrl = await getCollectionUrl();
   const url =
-    `${baseUrl()}/_apis/identities/${encodeURIComponent(userId)}` +
-    `?api-version=7.1`;
+    `${collectionUrl}/_apis/identities/${encodeURIComponent(userId)}` +
+    `?api-version=6.0`;
 
   const response = await fetch(url, {
     headers: { Authorization: `Bearer ${accessToken}` },
@@ -78,6 +83,36 @@ async function resolveUserDescriptor(userId: string): Promise<string> {
 
   const data: IdentityApiResponse = await response.json();
   return data.descriptor;
+}
+
+/**
+ * Resolves a subject descriptor for the given user via the Azure DevOps
+ * Services Graph API. The SDK REST client automatically routes requests to
+ * the correct VSSPS origin, so this works from the extension iframe on
+ * cloud instances.
+ *
+ * The Graph API is **not available** on Azure DevOps Server (on-premises).
+ *
+ * Throws on any error so callers can fail closed.
+ */
+async function resolveDescriptorViaGraphApi(userId: string): Promise<string> {
+  const result = await getClient(GraphRestClient).getDescriptor(userId);
+  return result.value;
+}
+
+/**
+ * Resolves the subject descriptor for the given user, choosing the
+ * appropriate API based on the current hosting environment:
+ * - Azure DevOps Services (cloud): Graph API
+ * - Azure DevOps Server / TFS (on-prem): Identity API
+ *
+ * Throws on any error so callers can fail closed.
+ */
+async function resolveUserDescriptor(userId: string): Promise<string> {
+  if (SDK.getHost().isHosted) {
+    return resolveDescriptorViaGraphApi(userId);
+  }
+  return resolveDescriptorViaIdentityApi(userId);
 }
 
 /**
@@ -96,12 +131,13 @@ async function checkPermission(
 ): Promise<boolean> {
   try {
     const accessToken = await SDK.getAccessToken();
+    const collectionUrl = await getCollectionUrl();
 
     const url =
-      `${baseUrl()}/_apis/accesscontrollists/${namespaceId}` +
+      `${collectionUrl}/_apis/accesscontrollists/${namespaceId}` +
       `?token=${encodeURIComponent(token)}` +
       `&descriptors=${encodeURIComponent(userDescriptor)}` +
-      `&includeExtendedInfo=true&recurse=false&api-version=7.1`;
+      `&includeExtendedInfo=true&recurse=false&api-version=6.0`;
 
     const response = await fetch(url, {
       headers: { Authorization: `Bearer ${accessToken}` },
@@ -248,10 +284,11 @@ export async function checkTemplatePermissions(
 export async function checkCollectionAdminPermission(): Promise<boolean> {
   try {
     const accessToken = await SDK.getAccessToken();
+    const collectionUrl = await getCollectionUrl();
 
     const url =
-      `${baseUrl()}/_apis/permissions/${COLLECTION_SECURITY_NAMESPACE}/${EDIT_COLLECTION_PERMISSION_BIT}` +
-      `?token=${encodeURIComponent("$COLLECTION")}&alwaysAllowAdministrators=false&api-version=7.1`;
+      `${collectionUrl}/_apis/permissions/${COLLECTION_SECURITY_NAMESPACE}/${EDIT_COLLECTION_PERMISSION_BIT}` +
+      `?token=${encodeURIComponent("$COLLECTION")}&alwaysAllowAdministrators=false&api-version=6.0`;
 
     const response = await fetch(url, {
       headers: { Authorization: `Bearer ${accessToken}` },

@@ -3,8 +3,9 @@
 
 import type { DiscoveredTemplate } from "../../src/Hub/types/templateTypes";
 
-const ORIGIN = "https://dev.azure.com";
-const COLLECTION = "MyOrg";
+const COLLECTION_URL = "https://dev.azure.com/MyOrg";
+// On cloud, Code Search is served from a separate resource area host.
+const SEARCH_URL = "https://almsearch.dev.azure.com/MyOrg";
 
 // Minimal valid template definition used across tests
 const MOCK_DEFINITION = {
@@ -56,10 +57,8 @@ function loadFreshModule(options: {
   fetchResponse?: object | "network-error";
   fetchStatus?: number;
   readTemplateResult?: object | Error;
+  collectionUrl?: string;
 }) {
-  // Set up window mock before module load
-  (global as any).window = { location: { origin: ORIGIN } };
-
   const mockReadTemplate = jest.fn();
   if (options.readTemplateResult instanceof Error) {
     mockReadTemplate.mockRejectedValue(options.readTemplateResult);
@@ -84,7 +83,13 @@ function loadFreshModule(options: {
 
   jest.doMock("azure-devops-extension-sdk", () => ({
     getAccessToken: jest.fn().mockResolvedValue("test-token"),
-    getHost: jest.fn().mockReturnValue({ name: COLLECTION }),
+    getHost: jest.fn().mockReturnValue({ name: "MyOrg" }),
+  }));
+
+  jest.doMock("../../src/Hub/services/locationService", () => ({
+    getSearchServiceUrl: jest
+      .fn()
+      .mockResolvedValue(options.collectionUrl ?? SEARCH_URL),
   }));
 
   jest.doMock("../../src/Hub/services/templateReaderService", () => ({
@@ -127,7 +132,7 @@ describe("discoverTemplates", () => {
     await discoverTemplates();
 
     expect(mockFetch).toHaveBeenCalledWith(
-      `${ORIGIN}/${COLLECTION}/_apis/search/codesearchresults?api-version=7.1`,
+      `${SEARCH_URL}/_apis/search/codesearchresults?api-version=7.0`,
       expect.objectContaining({
         method: "POST",
         headers: expect.objectContaining({
@@ -278,5 +283,20 @@ describe("discoverTemplates", () => {
     const results = await discoverTemplates();
 
     expect(results[0].definition.templateCategories).toEqual(["Backend"]);
+  });
+
+  it("uses the collection URL from LocationService (supports /tfs/ prefix)", async () => {
+    const tfsUrl = "https://myserver.contoso.com/tfs/DefaultCollection";
+    const { discoverTemplates, mockFetch } = loadFreshModule({
+      fetchResponse: buildSearchResponse([]),
+      collectionUrl: tfsUrl,
+    });
+
+    await discoverTemplates();
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      `${tfsUrl}/_apis/search/codesearchresults?api-version=7.0`,
+      expect.anything(),
+    );
   });
 });

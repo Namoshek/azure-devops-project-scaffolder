@@ -2,6 +2,8 @@
 
 Scaffold repositories and Azure Pipelines across your Azure DevOps projects from your own templates — guided, parameterized, and non-destructive.
 
+![Project Scaffolder - Template Selection](https://raw.githubusercontent.com/Namoshek/azure-devops-project-scaffolder/refs/heads/main/images/screenshot_template_selection.png)
+
 ---
 
 ## Overview

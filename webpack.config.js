@@ -1,4 +1,5 @@
 const path = require("path");
+const CopyPlugin = require("copy-webpack-plugin");
 
 module.exports = {
   entry: {
@@ -45,6 +46,14 @@ module.exports = {
       },
     ],
   },
+  plugins: [
+    new CopyPlugin({
+      patterns: [
+        { from: "src/Hub/index.html", to: "Hub/index.html" },
+        { from: "src/AdminHub/index.html", to: "AdminHub/index.html" },
+      ],
+    }),
+  ],
   performance: {
     hints: false,
   },

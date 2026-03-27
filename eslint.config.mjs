@@ -7,7 +7,7 @@ import reactHooksPlugin from "eslint-plugin-react-hooks";
 export default tseslint.config(
   // Ignore build output and dependencies
   {
-    ignores: ["dist/**", "node_modules/**"],
+    ignores: ["dist/**", "node_modules/**", "webpack.config.js"],
   },
 
   // Base JavaScript recommended rules

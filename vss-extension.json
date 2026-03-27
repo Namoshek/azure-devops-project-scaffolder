@@ -2,12 +2,23 @@
   "manifestVersion": 1,
   "id": "ado-project-scaffolder",
   "publisher": "namoshek",
-  "version": "0.9.7",
+  "version": "0.10.0",
   "name": "Project Scaffolder",
-  "description": "Scaffold project resources from curated templates — creates repositories, pipelines, and more in a guided, non-destructive flow.",
+  "description": "Scaffold repositories and pipelines across your Azure DevOps projects from your own templates — guided, parameterized, and non-destructive.",
   "public": false,
   "categories": ["Azure Repos", "Azure Pipelines"],
-  "tags": ["scaffolding", "templates", "projects", "repos", "pipelines"],
+  "tags": [
+    "scaffolding",
+    "templates",
+    "projects",
+    "repos",
+    "pipelines",
+    "automation",
+    "generator",
+    "boilerplate",
+    "yaml",
+    "devops"
+  ],
   "icons": {
     "default": "images/logo.png"
   },
@@ -16,8 +27,43 @@
       "id": "Microsoft.VisualStudio.Services"
     }
   ],
-  "demands": [
-    "api-version/6.0"
+  "demands": ["api-version/6.0"],
+  "branding": {
+    "color": "rgb(32, 31, 30)",
+    "theme": "dark"
+  },
+  "content": {
+    "details": {
+      "path": "docs/overview.md"
+    }
+  },
+  "links": {
+    "getstarted": {
+      "uri": "https://github.com/Namoshek/azure-devops-project-scaffolder"
+    },
+    "learn": {
+      "uri": "https://github.com/Namoshek/azure-devops-project-scaffolder/blob/main/docs/template_authoring.md"
+    },
+    "support": {
+      "uri": "https://github.com/Namoshek/azure-devops-project-scaffolder/issues"
+    },
+    "issues": {
+      "uri": "https://github.com/Namoshek/azure-devops-project-scaffolder/issues"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "uri": "https://github.com/Namoshek/azure-devops-project-scaffolder"
+  },
+  "CustomerQnASupport": {
+    "enablemarketplaceqna": "false",
+    "url": "https://github.com/Namoshek/azure-devops-project-scaffolder/issues"
+  },
+  "screenshots": [
+    { "path": "images/screenshot_template_selection.png" },
+    { "path": "images/screenshot_template_parameterization.png" },
+    { "path": "images/screenshot_template_scaffolding_progress.png" },
+    { "path": "images/screenshot_admin_hub.png" }
   ],
   "contributions": [
     {
@@ -58,6 +104,10 @@
     },
     {
       "path": "images",
+      "addressable": true
+    },
+    {
+      "path": "docs",
       "addressable": true
     }
   ]

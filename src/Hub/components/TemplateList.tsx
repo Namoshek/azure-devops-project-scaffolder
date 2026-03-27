@@ -1,13 +1,6 @@
-import React, { useState, useEffect, useMemo } from "react";
-import {
-  TemplateDefinition,
-  DiscoveredTemplate,
-  ALL_CATEGORY_NAME,
-  OTHERS_CATEGORY_NAME,
-} from "../types/templateTypes";
+import React from "react";
+import { TemplateDefinition } from "../types/templateTypes";
 import { TextField } from "azure-devops-ui/Components/TextField/TextField";
-import { discoverTemplates } from "../services/templateDiscoveryService";
-import { getTemplateCategories } from "../services/extensionSettingsService";
 import { MessageCard } from "azure-devops-ui/Components/MessageCard/MessageCard";
 import { MessageCardSeverity } from "azure-devops-ui/Components/MessageCard/MessageCard.Props";
 import { Spinner } from "azure-devops-ui/Components/Spinner/Spinner";
@@ -20,124 +13,26 @@ import {
   SingleLayerMasterPanelHeader,
 } from "azure-devops-ui/MasterDetails";
 import { List, ListItem } from "azure-devops-ui/List";
-import { ListSelection } from "azure-devops-ui/List";
-import { ArrayItemProvider } from "azure-devops-ui/Utilities/Provider";
+import { TemplateCategory } from "../utils/templateGrouping";
+import { useTemplateData } from "../hooks/useTemplateData";
 
 interface TemplateListProps {
   onTemplateSelected: (template: TemplateDefinition) => void;
 }
 
-interface TemplateCategory {
-  name: string;
-  templates: DiscoveredTemplate[];
-  isEmpty: boolean;
-}
-
-function groupTemplates(
-  templates: DiscoveredTemplate[],
-  configuredCategories: string[],
-): TemplateCategory[] {
-  // Prepend the virtual "All" category that shows every filtered template.
-  const result: TemplateCategory[] = [
-    {
-      name: ALL_CATEGORY_NAME,
-      templates,
-      isEmpty: templates.length === 0,
-    },
-  ];
-
-  const grouped: Record<string, DiscoveredTemplate[]> = {};
-  for (const category of configuredCategories) {
-    grouped[category] = [];
-  }
-
-  const others: DiscoveredTemplate[] = [];
-
-  for (const t of templates) {
-    const cats = t.definition.templateCategories ?? [];
-    let matchedAny = false;
-    for (const cat of cats) {
-      if (grouped[cat] !== undefined) {
-        grouped[cat].push(t);
-        matchedAny = true;
-      }
-    }
-    if (!matchedAny) {
-      others.push(t);
-    }
-  }
-
-  for (const name of configuredCategories) {
-    result.push({
-      name,
-      templates: grouped[name],
-      isEmpty: grouped[name].length === 0,
-    });
-  }
-
-  result.push({
-    name: OTHERS_CATEGORY_NAME,
-    templates: others,
-    isEmpty: others.length === 0,
-  });
-
-  return result;
-}
-
 export function TemplateList({ onTemplateSelected }: TemplateListProps) {
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [templates, setTemplates] = useState<DiscoveredTemplate[]>([]);
-  const [configuredCategories, setConfiguredCategories] = useState<string[]>(
-    [],
-  );
-  const [selectedCategory, setSelectedCategory] =
-    useState<string>(ALL_CATEGORY_NAME);
-  const [searchQuery, setSearchQuery] = useState("");
-
-  // Stable selection object for the ADO List component — must not change between renders.
-  const groupSelection = useMemo(
-    () => new ListSelection({ selectOnFocus: false }),
-    [],
-  );
-
-  // Filter templates by name and description based on the search query.
-  const filteredTemplates = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
-    if (!q) return templates;
-    return templates.filter(
-      (t) =>
-        t.definition.name.toLowerCase().includes(q) ||
-        (t.definition.description ?? "").toLowerCase().includes(q),
-    );
-  }, [templates, searchQuery]);
-
-  // Derive categories from state — placed before early returns to satisfy Rules of Hooks.
-  const groups = useMemo(
-    () => groupTemplates(filteredTemplates, configuredCategories),
-    [filteredTemplates, configuredCategories],
-  );
-
-  const groupItemProvider = useMemo(
-    () => new ArrayItemProvider(groups),
-    [groups],
-  );
-
-  useEffect(() => {
-    Promise.all([discoverTemplates(), getTemplateCategories()])
-      .then(([discovered, cats]) => {
-        setTemplates(discovered);
-        setConfiguredCategories(cats);
-        // Always start on the "All" category (index 0).
-        setSelectedCategory(ALL_CATEGORY_NAME);
-        groupSelection.select(0);
-        setLoading(false);
-      })
-      .catch((err) => {
-        setLoading(false);
-        setError((err as Error).message);
-      });
-  }, [groupSelection]);
+  const {
+    loading,
+    error,
+    templates,
+    selectedCategory,
+    setSelectedCategory,
+    searchQuery,
+    setSearchQuery,
+    groups,
+    groupItemProvider,
+    groupSelection,
+  } = useTemplateData();
 
   if (loading) {
     return <Spinner size={SpinnerSize.large} label="Discovering templates…" />;

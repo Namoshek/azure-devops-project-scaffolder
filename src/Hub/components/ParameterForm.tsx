@@ -1,17 +1,8 @@
-﻿import React, { useState, useEffect, useRef } from "react";
+﻿import React from "react";
 import {
   TemplateDefinition,
-  TemplateParameter,
   TemplatePermissions,
 } from "../types/templateTypes";
-import {
-  evaluateWhenExpression,
-  renderTemplate,
-} from "../services/templateEngineService";
-import {
-  checkTemplateResourcesExistence,
-  ResourceExistenceMap,
-} from "../services/preflightCheckService";
 import { Button } from "azure-devops-ui/Components/Button/Button";
 import { Card } from "azure-devops-ui/Components/Card/Card";
 import { MessageCard } from "azure-devops-ui/Components/MessageCard/MessageCard";
@@ -21,6 +12,7 @@ import { SpinnerSize } from "azure-devops-ui/Components/Spinner/Spinner.Props";
 import { TitleSize } from "azure-devops-ui/Header";
 import { Icon, IconSize } from "azure-devops-ui/Icon";
 import { ParameterField } from "./ParameterField";
+import { useParameterForm } from "../hooks/useParameterForm";
 
 interface ParameterFormProps {
   template: TemplateDefinition;
@@ -38,41 +30,6 @@ const COLOR_INCLUDED = "var(--status-success-foreground)";
 const COLOR_EXCLUDED = "var(--status-warning-foreground)";
 const COLOR_SYSTEM_ERROR = "var(--status-error-foreground)";
 
-interface ParameterSummarySubItem {
-  name: string;
-  included: boolean;
-}
-
-interface ParameterSummaryItem {
-  type: "repository" | "pipeline";
-  name: string;
-  included: boolean;
-  permissionDenied: boolean;
-  /** True when the resource already exists and has content — will be skipped. */
-  existsWillSkip: boolean;
-  /** True while the existence check is still in-flight for this item. */
-  existsCheckPending: boolean;
-  subItems?: ParameterSummarySubItem[];
-}
-
-function buildDefaults(
-  parameters: TemplateParameter[],
-): Record<string, unknown> {
-  const defaults: Record<string, unknown> = {};
-  for (const p of parameters) {
-    if (p.defaultValue !== undefined) {
-      defaults[p.id] = p.defaultValue;
-    } else if (p.type === "boolean") {
-      defaults[p.id] = false;
-    } else if (p.type === "choice" && p.options && p.options.length > 0) {
-      defaults[p.id] = p.options[0];
-    } else {
-      defaults[p.id] = "";
-    }
-  }
-  return defaults;
-}
-
 export function ParameterForm({
   template,
   permissions,
@@ -80,171 +37,17 @@ export function ParameterForm({
   onSubmit,
   onBack,
 }: ParameterFormProps) {
-  const [values, setValues] = useState<Record<string, unknown>>(() =>
-    buildDefaults(template.parameters),
-  );
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [submitted, setSubmitted] = useState(false);
-
-  // ── Preflight existence checks ───────────────────────────────────────────────
-  const [preflightChecks, setPreflightChecks] =
-    useState<ResourceExistenceMap | null>(null);
-  const [preflightPending, setPreflightPending] = useState(true);
-  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    setPreflightPending(true);
-
-    if (debounceTimer.current !== null) {
-      clearTimeout(debounceTimer.current);
-    }
-
-    debounceTimer.current = setTimeout(() => {
-      void checkTemplateResourcesExistence(projectId, template, values).then(
-        (result) => {
-          setPreflightChecks(result);
-          setPreflightPending(false);
-        },
-        () => {
-          // Fail open: if checks error out, leave preflightChecks as null.
-          setPreflightPending(false);
-        },
-      );
-    }, 500);
-
-    return () => {
-      if (debounceTimer.current !== null) {
-        clearTimeout(debounceTimer.current);
-      }
-    };
-  }, [values, projectId, template]);
-
-  function handleChange(id: string, value: unknown) {
-    setValues((prev) => ({ ...prev, [id]: value }));
-    setErrors((prev) => ({ ...prev, [id]: "" }));
-  }
-
-  function validate(): Record<string, string> {
-    const errs: Record<string, string> = {};
-
-    for (const param of template.parameters) {
-      if (param.when && !evaluateWhenExpression(param.when, values)) continue;
-
-      const value = values[param.id];
-
-      if (param.required) {
-        if (
-          param.type === "string" &&
-          (value === "" || value === undefined || value === null)
-        ) {
-          errs[param.id] = `${param.label} is required.`;
-          continue;
-        }
-      }
-
-      if (param.validation && typeof value === "string" && value !== "") {
-        try {
-          const regex = new RegExp(param.validation.regex);
-          if (!regex.test(value)) {
-            errs[param.id] = param.validation.message;
-          }
-        } catch {
-          // Invalid regex in template -- skip validation
-        }
-      }
-    }
-
-    return errs;
-  }
-
-  function handleSubmit() {
-    setSubmitted(true);
-
-    const errs = validate();
-    if (Object.keys(errs).length > 0) {
-      setErrors(errs);
-      return;
-    }
-
-    onSubmit(values);
-  }
-
-  const visibleParams = template.parameters.filter(
-    (p) => !p.when || evaluateWhenExpression(p.when, values),
-  );
-
-  const summaryItems: ParameterSummaryItem[] = [
-    ...(template.repositories ?? []).map((r) => {
-      const included = !r.when || evaluateWhenExpression(r.when, values);
-      const conditionalExcludes = (r.exclude ?? []).filter((e) => !!e.when);
-      const subItems: ParameterSummarySubItem[] = [
-        { name: "All non-conditional files", included },
-        ...conditionalExcludes.map((e) => ({
-          name: e.path,
-          included: !evaluateWhenExpression(e.when!, values),
-        })),
-      ];
-      const renderedName = renderTemplate(r.name, values);
-      const repoCheck = preflightChecks?.repos[renderedName.toLowerCase()];
-      const permissionDenied =
-        permissions !== null && !permissions.canCreateRepos;
-      const existsWillSkip =
-        included &&
-        !permissionDenied &&
-        (repoCheck?.exists && repoCheck.isNonEmpty) === true;
-      const existsCheckPending =
-        included &&
-        !permissionDenied &&
-        (preflightPending || repoCheck === undefined);
-      return {
-        type: "repository" as const,
-        name: renderedName,
-        included,
-        permissionDenied,
-        existsWillSkip,
-        existsCheckPending,
-        subItems,
-      };
-    }),
-    ...(template.pipelines ?? []).map((p) => {
-      const included = !p.when || evaluateWhenExpression(p.when, values);
-      const renderedName = renderTemplate(p.name, values);
-      const folder = p.folder ?? "\\";
-      const pipelineKey = `${folder.toLowerCase()}::${renderedName.toLowerCase()}`;
-      const pipelineCheck = preflightChecks?.pipelines[pipelineKey];
-      const permissionDenied =
-        permissions !== null && !permissions.canCreatePipelines;
-      const existsWillSkip =
-        included && !permissionDenied && pipelineCheck?.exists === true;
-      const existsCheckPending =
-        included &&
-        !permissionDenied &&
-        (preflightPending || pipelineCheck === undefined);
-      return {
-        type: "pipeline" as const,
-        name: renderedName,
-        included,
-        permissionDenied,
-        existsWillSkip,
-        existsCheckPending,
-      };
-    }),
-  ];
-
-  // Submit is disabled when permissions are still loading, or when every
-  // when-included resource is also permission-denied (nothing can be created).
-  const includedItems = summaryItems.filter((i) => i.included);
-  const allBlocked =
-    permissions !== null &&
-    includedItems.length > 0 &&
-    includedItems.every((i) => i.permissionDenied || i.existsWillSkip);
-  const submitDisabled = permissions === null || allBlocked;
-
-  const submitTooltip = allBlocked
-    ? "All resources are either permission-denied or already exist — nothing will be created."
-    : permissions === null
-      ? "Checking permissions..."
-      : undefined;
+  const {
+    values,
+    errors,
+    submitted,
+    visibleParams,
+    summaryItems,
+    submitDisabled,
+    submitTooltip,
+    handleChange,
+    handleSubmit,
+  } = useParameterForm(template, permissions, projectId, onSubmit);
 
   return (
     <div className="flex-row" style={{ gap: 48 }}>

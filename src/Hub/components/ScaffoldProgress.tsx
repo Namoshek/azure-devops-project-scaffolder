@@ -1,22 +1,14 @@
-import React, { useState, useEffect, useRef } from "react";
-import * as SDK from "azure-devops-extension-sdk";
-import {
-  CommonServiceIds,
-  IProjectPageService,
-} from "azure-devops-extension-api";
+import React from "react";
 import {
   TemplateDefinition,
   TemplatePermissions,
 } from "../types/templateTypes";
-import {
-  runScaffold,
-  ScaffoldResult,
-  ScaffoldStep,
-} from "../services/scaffoldingOrchestrator";
+import { ScaffoldResult } from "../services/scaffoldingOrchestrator";
 import { Button } from "azure-devops-ui/Components/Button/Button";
 import { MessageCard } from "azure-devops-ui/Components/MessageCard/MessageCard";
 import { MessageCardSeverity } from "azure-devops-ui/Components/MessageCard/MessageCard.Props";
 import { StepRow } from "./StepRow";
+import { useScaffoldExecution } from "../hooks/useScaffoldExecution";
 
 interface ScaffoldProgressProps {
   template: TemplateDefinition;
@@ -35,65 +27,14 @@ export function ScaffoldProgress({
   onComplete,
   onScaffoldAgain,
 }: ScaffoldProgressProps) {
-  const [steps, setSteps] = useState<ScaffoldStep[]>(
-    results.length > 0 ? results : [],
-  );
-  const [running, setRunning] = useState(results.length === 0);
-  const [done, setDone] = useState(results.length > 0);
-  const [fatalError, setFatalError] = useState<string | null>(null);
-  const stepsRef = useRef<ScaffoldStep[]>(steps);
-
-  useEffect(() => {
-    if (results.length > 0) return;
-    void runOrchestration();
-  }, []);
-
-  async function runOrchestration() {
-    let projectId: string;
-    try {
-      const projectService = await SDK.getService<IProjectPageService>(
-        CommonServiceIds.ProjectPageService,
-      );
-      const project = await projectService.getProject();
-      if (!project) throw new Error("Could not determine current project.");
-      projectId = project.id;
-    } catch (err) {
-      setRunning(false);
-      setDone(true);
-      setFatalError(
-        `Failed to determine current project: ${(err as Error).message}`,
-      );
-      return;
-    }
-
-    try {
-      await runScaffold(
-        projectId,
-        template,
-        parameterValues,
-        (updatedSteps) => {
-          const copy = [...updatedSteps];
-          stepsRef.current = copy;
-          setSteps(copy);
-        },
-        permissions,
-      );
-    } catch (err) {
-      setFatalError(`Unexpected error: ${(err as Error).message}`);
-    }
-
-    onComplete(stepsRef.current);
-    setRunning(false);
-    setDone(true);
-  }
-
-  const hasFailures = steps.some((s) => s.status === "failed");
-
-  const titleText = running
-    ? "Scaffolding in progress..."
-    : done && !hasFailures
-      ? "Scaffold complete!"
-      : "Scaffold finished with issues";
+  const { steps, done, fatalError, hasFailures, titleText } =
+    useScaffoldExecution(
+      template,
+      parameterValues,
+      permissions,
+      results,
+      onComplete,
+    );
 
   return (
     <div className="flex-column rhythm-vertical-16" style={{ maxWidth: 720 }}>

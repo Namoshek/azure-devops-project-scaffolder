@@ -1,109 +1,37 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { Button } from "azure-devops-ui/Components/Button/Button";
 import { Card } from "azure-devops-ui/Components/Card/Card";
 import { MessageCard } from "azure-devops-ui/Components/MessageCard/MessageCard";
-import { MessageCardSeverity } from "azure-devops-ui/Components/MessageCard/MessageCard.Props";
 import { Spinner } from "azure-devops-ui/Components/Spinner/Spinner";
 import { SpinnerSize } from "azure-devops-ui/Components/Spinner/Spinner.Props";
 import { TextField } from "azure-devops-ui/Components/TextField/TextField";
 import { FormItem as FormItemBase } from "azure-devops-ui/Components/FormItem/FormItem";
 import { OTHERS_CATEGORY_NAME } from "../../Hub/types/templateTypes";
-import {
-  getTemplateCategories,
-  setTemplateCategories,
-} from "../../Hub/services/extensionSettingsService";
+import { useCategoryEditor } from "../hooks/useCategoryEditor";
 
 const FormItem = FormItemBase as React.ComponentType<
   React.ComponentProps<typeof FormItemBase> & { children?: React.ReactNode }
 >;
 
 export function TemplateCategorySettings() {
-  const [loadingState, setLoadingState] = useState<
-    "loading" | "ready" | "error"
-  >("loading");
-  const [categories, setCategories] = useState<string[]>([]);
-  const [savedCategories, setSavedCategories] = useState<string[]>([]);
-  const [newCategoryName, setNewCategoryName] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [feedback, setFeedback] = useState<{
-    severity: MessageCardSeverity;
-    text: string;
-  } | null>(null);
-
-  useEffect(() => {
-    async function load() {
-      try {
-        const stored = await getTemplateCategories();
-        setCategories(stored);
-        setSavedCategories(stored);
-        setLoadingState("ready");
-      } catch (err) {
-        setLoadingState("error");
-        setFeedback({
-          severity: MessageCardSeverity.Error,
-          text: `Failed to load template categories: ${(err as Error).message}`,
-        });
-      }
-    }
-    void load();
-  }, []);
-
-  function handleAddCategory() {
-    const trimmed = newCategoryName.trim();
-    if (!trimmed) return;
-    setCategories((prev) => [...prev, trimmed]);
-    setNewCategoryName("");
-    setFeedback(null);
-  }
-
-  function handleRemoveCategory(index: number) {
-    setCategories((prev) => prev.filter((_, i) => i !== index));
-    setFeedback(null);
-  }
-
-  function handleMoveCategory(index: number, direction: "up" | "down") {
-    setCategories((prev) => {
-      const next = [...prev];
-      const swapWith = direction === "up" ? index - 1 : index + 1;
-      [next[index], next[swapWith]] = [next[swapWith], next[index]];
-      return next;
-    });
-    setFeedback(null);
-  }
-
-  async function handleSave() {
-    setSaving(true);
-    setFeedback(null);
-    try {
-      await setTemplateCategories(categories);
-      setSavedCategories([...categories]);
-      setFeedback({
-        severity: MessageCardSeverity.Info,
-        text: "Template categories saved successfully.",
-      });
-    } catch (err) {
-      setFeedback({
-        severity: MessageCardSeverity.Error,
-        text: `Failed to save template categories: ${(err as Error).message}`,
-      });
-    } finally {
-      setSaving(false);
-    }
-  }
+  const {
+    loadingState,
+    categories,
+    newCategoryName,
+    saving,
+    feedback,
+    canAdd,
+    hasChanges,
+    setNewCategoryName,
+    handleAddCategory,
+    handleRemoveCategory,
+    handleMoveCategory,
+    handleSave,
+  } = useCategoryEditor();
 
   if (loadingState === "loading") {
     return <Spinner size={SpinnerSize.large} label="Loading settings…" />;
   }
-
-  const trimmedNew = newCategoryName.trim();
-  const isDuplicate =
-    trimmedNew.toLowerCase() === OTHERS_CATEGORY_NAME.toLowerCase() ||
-    categories.some((c) => c.toLowerCase() === trimmedNew.toLowerCase());
-  const canAdd = trimmedNew.length > 0 && !isDuplicate;
-
-  const hasChanges =
-    categories.length !== savedCategories.length ||
-    categories.some((c, i) => c !== savedCategories[i]);
 
   return (
     <Card

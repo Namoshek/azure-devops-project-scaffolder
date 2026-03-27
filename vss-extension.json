@@ -62,6 +62,7 @@
   "screenshots": [
     { "path": "images/screenshot_template_selection.png" },
     { "path": "images/screenshot_template_parameterization.png" },
+    { "path": "images/screenshot_template_summary_permission_error.png" },
     { "path": "images/screenshot_template_scaffolding_progress.png" },
     { "path": "images/screenshot_admin_hub.png" }
   ],

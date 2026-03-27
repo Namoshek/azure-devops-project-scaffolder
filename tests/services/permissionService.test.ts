@@ -8,22 +8,9 @@ import type { TemplateDefinition } from "../../src/Hub/types/templateTypes";
 
 // --- Mocks -------------------------------------------------------------------
 
-const mockGetDescriptor = jest.fn();
-
 jest.mock("azure-devops-extension-sdk", () => ({
   getAccessToken: jest.fn(),
   getHost: jest.fn(),
-  getUser: jest.fn(),
-}));
-
-jest.mock("azure-devops-extension-api", () => ({
-  getClient: jest.fn().mockReturnValue({
-    getDescriptor: (...args: unknown[]) => mockGetDescriptor(...args),
-  }),
-}));
-
-jest.mock("azure-devops-extension-api/Graph", () => ({
-  GraphRestClient: jest.fn(),
 }));
 
 jest.mock("../../src/Hub/services/locationService", () => ({
@@ -35,7 +22,6 @@ import { getCollectionUrl } from "../../src/Hub/services/locationService";
 
 const mockGetAccessToken = SDK.getAccessToken as jest.Mock;
 const mockGetHost = SDK.getHost as jest.Mock;
-const mockGetUser = SDK.getUser as jest.Mock;
 const mockGetCollectionUrl = getCollectionUrl as jest.Mock;
 
 // --- Constants ---------------------------------------------------------------
@@ -43,52 +29,15 @@ const mockGetCollectionUrl = getCollectionUrl as jest.Mock;
 const COLLECTION_URL = "https://myserver.contoso.com/DefaultCollection";
 const TFS_COLLECTION_URL = "https://myserver.contoso.com/tfs/DefaultCollection";
 const CLOUD_COLLECTION_URL = "https://dev.azure.com/MyOrg";
-
 const PROJECT_ID = "proj-id-123";
-const USER_ID = "5828435a-0bfd-493d-afe1-a04fdb7bf090";
-
-// On-prem descriptor format (Identity API)
-const IDENTITY_DESCRIPTOR =
-  "System.Security.Principal.WindowsIdentity;S-1-5-21-12345-67890-111";
-// Cloud descriptor format (Graph API)
-const GRAPH_DESCRIPTOR = "aad.NWQyMzRlOWUtYTQ5ZS03MDc0LTk3ZmItOWIzYjRmZjVm";
 
 // --- Helpers -----------------------------------------------------------------
 
-function makeIdentityResponse(descriptor = IDENTITY_DESCRIPTOR) {
-  return {
-    ok: true,
-    json: () => Promise.resolve({ descriptor }),
-  };
-}
-
-function makeAclResponse(effectiveAllow: number, descriptor: string) {
+function makeBatchResponse(values: boolean[]) {
   return {
     ok: true,
     json: () =>
-      Promise.resolve({
-        count: 1,
-        value: [
-          {
-            token: "...",
-            acesDictionary: {
-              [descriptor]: {
-                descriptor,
-                allow: 0,
-                deny: 0,
-                extendedInfo: { effectiveAllow, effectiveDeny: 0 },
-              },
-            },
-          },
-        ],
-      }),
-  };
-}
-
-function makePermissionsResponse(allowed: boolean) {
-  return {
-    ok: true,
-    json: () => Promise.resolve({ value: [allowed] }),
+      Promise.resolve({ evaluations: values.map((value) => ({ value })) }),
   };
 }
 
@@ -149,15 +98,13 @@ function makeTemplate(
 beforeEach(() => {
   jest.clearAllMocks();
   mockGetAccessToken.mockResolvedValue("mock-token");
-  mockGetUser.mockReturnValue({ id: USER_ID });
-  mockGetDescriptor.mockReset();
 });
 
 // =============================================================================
-// On-premises (Identity API path)
+// On-premises
 // =============================================================================
 
-describe("On-premises (Identity API)", () => {
+describe("On-premises", () => {
   beforeEach(() => {
     setupOnPrem();
   });
@@ -165,171 +112,109 @@ describe("On-premises (Identity API)", () => {
   // --- checkRepoPermission -------------------------------------------------
 
   describe("checkRepoPermission", () => {
-    it("returns true when effectiveAllow has all required bits set", async () => {
-      (global as any).fetch = mockFetchSequence(
-        makeIdentityResponse(),
-        makeAclResponse(260, IDENTITY_DESCRIPTOR),
-      );
+    it("returns true when batch API grants the permission", async () => {
+      (global as any).fetch = mockFetchSequence(makeBatchResponse([true]));
       expect(await checkRepoPermission(PROJECT_ID)).toBe(true);
     });
 
-    it("returns true when effectiveAllow has more bits than required", async () => {
-      (global as any).fetch = mockFetchSequence(
-        makeIdentityResponse(),
-        makeAclResponse(491382, IDENTITY_DESCRIPTOR),
-      );
-      expect(await checkRepoPermission(PROJECT_ID)).toBe(true);
-    });
-
-    it("returns false when effectiveAllow is missing a required bit", async () => {
-      (global as any).fetch = mockFetchSequence(
-        makeIdentityResponse(),
-        makeAclResponse(4, IDENTITY_DESCRIPTOR),
-      );
+    it("returns false when batch API denies the permission", async () => {
+      (global as any).fetch = mockFetchSequence(makeBatchResponse([false]));
       expect(await checkRepoPermission(PROJECT_ID)).toBe(false);
     });
 
-    it("returns false when effectiveAllow is 0", async () => {
-      (global as any).fetch = mockFetchSequence(
-        makeIdentityResponse(),
-        makeAclResponse(0, IDENTITY_DESCRIPTOR),
-      );
+    it("returns false on non-ok response (fail-closed)", async () => {
+      (global as any).fetch = mockFetchSequence({ ok: false, status: 403 });
       expect(await checkRepoPermission(PROJECT_ID)).toBe(false);
     });
 
-    it("returns false when ACL response has no entries (fail-closed)", async () => {
-      (global as any).fetch = mockFetchSequence(makeIdentityResponse(), {
-        ok: true,
-        json: () => Promise.resolve({ count: 0, value: [] }),
-      });
-      expect(await checkRepoPermission(PROJECT_ID)).toBe(false);
-    });
-
-    it("returns false when ACL endpoint returns non-ok (fail-closed)", async () => {
-      (global as any).fetch = mockFetchSequence(makeIdentityResponse(), {
-        ok: false,
-        status: 403,
-      });
-      expect(await checkRepoPermission(PROJECT_ID)).toBe(false);
-    });
-
-    it("returns false when identity lookup fails (fail-closed)", async () => {
-      (global as any).fetch = jest
-        .fn()
-        .mockResolvedValue({ ok: false, status: 401 });
-      expect(await checkRepoPermission(PROJECT_ID)).toBe(false);
-    });
-
-    it("returns false on a network error (fail-closed)", async () => {
+    it("returns false on network error (fail-closed)", async () => {
       (global as any).fetch = jest
         .fn()
         .mockRejectedValue(new Error("Network down"));
       expect(await checkRepoPermission(PROJECT_ID)).toBe(false);
     });
 
-    it("calls the Identity endpoint then the ACL endpoint with correct args", async () => {
-      const mockFetch = mockFetchSequence(
-        makeIdentityResponse(),
-        makeAclResponse(260, IDENTITY_DESCRIPTOR),
-      );
+    it("calls permissionevaluationbatch with correct namespace, token and permission bits", async () => {
+      const mockFetch = mockFetchSequence(makeBatchResponse([true]));
       (global as any).fetch = mockFetch;
       await checkRepoPermission(PROJECT_ID);
 
-      const [identityUrl] = mockFetch.mock.calls[0];
-      expect(identityUrl).toContain(`_apis/identities/${USER_ID}`);
-      expect(identityUrl).toContain("api-version=6.0");
-
-      const [aclUrl, options] = mockFetch.mock.calls[1];
-      expect(aclUrl).toContain(
-        `_apis/accesscontrollists/2e9eb7ed-3c0a-47d4-87c1-0ffdd275fd87`,
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      const [url, options] = mockFetch.mock.calls[0];
+      expect(url).toBe(
+        `${COLLECTION_URL}/_apis/security/permissionevaluationbatch?api-version=7.0`,
       );
-      expect(aclUrl).toContain(encodeURIComponent(`repoV2/${PROJECT_ID}`));
-      expect(aclUrl).toContain(encodeURIComponent(IDENTITY_DESCRIPTOR));
-      expect(aclUrl).toContain("includeExtendedInfo=true");
-      expect(aclUrl).toContain("api-version=6.0");
+      expect(options.method).toBe("POST");
       expect(options.headers.Authorization).toBe("Bearer mock-token");
+      expect(JSON.parse(options.body).evaluations).toEqual([
+        expect.objectContaining({
+          securityNamespaceId: "2e9eb7ed-3c0a-47d4-87c1-0ffdd275fd87",
+          token: `repoV2/${PROJECT_ID}`,
+          permissions: 260,
+        }),
+      ]);
     });
 
-    it("does not call the Graph API", async () => {
-      (global as any).fetch = mockFetchSequence(
-        makeIdentityResponse(),
-        makeAclResponse(260, IDENTITY_DESCRIPTOR),
-      );
+    it("does not call the resource areas endpoint for on-premises", async () => {
+      const mockFetch = mockFetchSequence(makeBatchResponse([true]));
+      (global as any).fetch = mockFetch;
       await checkRepoPermission(PROJECT_ID);
-      expect(mockGetDescriptor).not.toHaveBeenCalled();
+
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(mockFetch.mock.calls[0][0]).not.toContain("resourceAreas");
     });
   });
 
   // --- checkPipelinePermission ---------------------------------------------
 
   describe("checkPipelinePermission", () => {
-    it("returns true when effectiveAllow has EditBuildDefinition bit", async () => {
-      (global as any).fetch = mockFetchSequence(
-        makeIdentityResponse(),
-        makeAclResponse(2048, IDENTITY_DESCRIPTOR),
-      );
+    it("returns true when batch API grants the permission", async () => {
+      (global as any).fetch = mockFetchSequence(makeBatchResponse([true]));
       expect(await checkPipelinePermission(PROJECT_ID)).toBe(true);
     });
 
-    it("returns false when effectiveAllow is missing the bit", async () => {
-      (global as any).fetch = mockFetchSequence(
-        makeIdentityResponse(),
-        makeAclResponse(1024, IDENTITY_DESCRIPTOR),
-      );
+    it("returns false when batch API denies the permission", async () => {
+      (global as any).fetch = mockFetchSequence(makeBatchResponse([false]));
       expect(await checkPipelinePermission(PROJECT_ID)).toBe(false);
     });
 
-    it("returns false on non-ok ACL response (fail-closed)", async () => {
-      (global as any).fetch = mockFetchSequence(makeIdentityResponse(), {
-        ok: false,
-        status: 500,
-      });
+    it("returns false on non-ok response (fail-closed)", async () => {
+      (global as any).fetch = mockFetchSequence({ ok: false, status: 500 });
       expect(await checkPipelinePermission(PROJECT_ID)).toBe(false);
     });
 
-    it("returns false when identity lookup fails (fail-closed)", async () => {
-      (global as any).fetch = jest
-        .fn()
-        .mockResolvedValue({ ok: false, status: 401 });
-      expect(await checkPipelinePermission(PROJECT_ID)).toBe(false);
-    });
-
-    it("returns false on a network error (fail-closed)", async () => {
+    it("returns false on network error (fail-closed)", async () => {
       (global as any).fetch = jest
         .fn()
         .mockRejectedValue(new Error("Network down"));
       expect(await checkPipelinePermission(PROJECT_ID)).toBe(false);
     });
 
-    it("calls Identity endpoint then ACL endpoint with correct args", async () => {
-      const mockFetch = mockFetchSequence(
-        makeIdentityResponse(),
-        makeAclResponse(2048, IDENTITY_DESCRIPTOR),
-      );
+    it("calls permissionevaluationbatch with correct namespace, token and permission bits", async () => {
+      const mockFetch = mockFetchSequence(makeBatchResponse([true]));
       (global as any).fetch = mockFetch;
       await checkPipelinePermission(PROJECT_ID);
 
-      const [identityUrl] = mockFetch.mock.calls[0];
-      expect(identityUrl).toContain(`_apis/identities/${USER_ID}`);
-
-      const [aclUrl] = mockFetch.mock.calls[1];
-      expect(aclUrl).toContain(
-        `_apis/accesscontrollists/33344d9c-fc72-4d6f-aba5-fa317101a7e9`,
+      const [url, options] = mockFetch.mock.calls[0];
+      expect(url).toBe(
+        `${COLLECTION_URL}/_apis/security/permissionevaluationbatch?api-version=7.0`,
       );
-      expect(aclUrl).toContain(encodeURIComponent(PROJECT_ID));
-      expect(aclUrl).toContain(encodeURIComponent(IDENTITY_DESCRIPTOR));
-      expect(aclUrl).toContain("api-version=6.0");
+      expect(JSON.parse(options.body).evaluations).toEqual([
+        expect.objectContaining({
+          securityNamespaceId: "33344d9c-fc72-4d6f-aba5-fa317101a7e9",
+          token: PROJECT_ID,
+          permissions: 2048,
+        }),
+      ]);
     });
   });
 
   // --- checkTemplatePermissions --------------------------------------------
 
   describe("checkTemplatePermissions", () => {
-    it("returns both true when effectiveAllow covers both required bits", async () => {
+    it("returns both true when batch grants both permissions", async () => {
       (global as any).fetch = mockFetchSequence(
-        makeIdentityResponse(),
-        makeAclResponse(491382, IDENTITY_DESCRIPTOR),
-        makeAclResponse(491382, IDENTITY_DESCRIPTOR),
+        makeBatchResponse([true, true]),
       );
       const result = await checkTemplatePermissions(PROJECT_ID, makeTemplate());
       expect(result).toEqual({
@@ -338,76 +223,63 @@ describe("On-premises (Identity API)", () => {
       });
     });
 
-    it("resolves descriptor once then checks both ACLs in parallel (3 fetch calls)", async () => {
-      const mockFetch = mockFetchSequence(
-        makeIdentityResponse(),
-        makeAclResponse(491382, IDENTITY_DESCRIPTOR),
-        makeAclResponse(491382, IDENTITY_DESCRIPTOR),
-      );
-      (global as any).fetch = mockFetch;
-      await checkTemplatePermissions(PROJECT_ID, makeTemplate());
-      expect(mockFetch).toHaveBeenCalledTimes(3);
-    });
-
-    it("returns canCreateRepos:false when repo bits are missing", async () => {
+    it("returns canCreateRepos:false when repo result is false", async () => {
       (global as any).fetch = mockFetchSequence(
-        makeIdentityResponse(),
-        makeAclResponse(0, IDENTITY_DESCRIPTOR),
-        makeAclResponse(2048, IDENTITY_DESCRIPTOR),
+        makeBatchResponse([false, true]),
       );
       const result = await checkTemplatePermissions(PROJECT_ID, makeTemplate());
       expect(result.canCreateRepos).toBe(false);
       expect(result.canCreatePipelines).toBe(true);
     });
 
-    it("returns canCreatePipelines:false when pipeline bits are missing", async () => {
+    it("returns canCreatePipelines:false when pipeline result is false", async () => {
       (global as any).fetch = mockFetchSequence(
-        makeIdentityResponse(),
-        makeAclResponse(260, IDENTITY_DESCRIPTOR),
-        makeAclResponse(0, IDENTITY_DESCRIPTOR),
+        makeBatchResponse([true, false]),
       );
       const result = await checkTemplatePermissions(PROJECT_ID, makeTemplate());
       expect(result.canCreateRepos).toBe(true);
       expect(result.canCreatePipelines).toBe(false);
     });
 
-    it("returns false for both when identity lookup fails", async () => {
-      (global as any).fetch = jest
-        .fn()
-        .mockResolvedValue({ ok: false, status: 401 });
-      const result = await checkTemplatePermissions(PROJECT_ID, makeTemplate());
-      expect(result).toEqual({
-        canCreateRepos: false,
-        canCreatePipelines: false,
-      });
+    it("sends a single batch request for both repo and pipeline checks", async () => {
+      const mockFetch = mockFetchSequence(makeBatchResponse([true, true]));
+      (global as any).fetch = mockFetch;
+      await checkTemplatePermissions(PROJECT_ID, makeTemplate());
+
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(
+        JSON.parse(mockFetch.mock.calls[0][1].body).evaluations,
+      ).toHaveLength(2);
     });
 
-    it("skips repo ACL when template has no repositories (2 fetch calls)", async () => {
-      const mockFetch = mockFetchSequence(
-        makeIdentityResponse(),
-        makeAclResponse(2048, IDENTITY_DESCRIPTOR),
-      );
+    it("omits the repo evaluation when template has no repositories", async () => {
+      const mockFetch = mockFetchSequence(makeBatchResponse([true]));
       (global as any).fetch = mockFetch;
       const result = await checkTemplatePermissions(
         PROJECT_ID,
         makeTemplate({ repositories: [] }),
       );
       expect(result.canCreateRepos).toBe(true);
-      expect(mockFetch).toHaveBeenCalledTimes(2);
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body).evaluations;
+      expect(body).toHaveLength(1);
+      expect(body[0].securityNamespaceId).toBe(
+        "33344d9c-fc72-4d6f-aba5-fa317101a7e9",
+      );
     });
 
-    it("skips pipeline ACL when template has no pipelines (2 fetch calls)", async () => {
-      const mockFetch = mockFetchSequence(
-        makeIdentityResponse(),
-        makeAclResponse(260, IDENTITY_DESCRIPTOR),
-      );
+    it("omits the pipeline evaluation when template has no pipelines", async () => {
+      const mockFetch = mockFetchSequence(makeBatchResponse([true]));
       (global as any).fetch = mockFetch;
       const result = await checkTemplatePermissions(
         PROJECT_ID,
         makeTemplate({ pipelines: [] }),
       );
       expect(result.canCreatePipelines).toBe(true);
-      expect(mockFetch).toHaveBeenCalledTimes(2);
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body).evaluations;
+      expect(body).toHaveLength(1);
+      expect(body[0].securityNamespaceId).toBe(
+        "2e9eb7ed-3c0a-47d4-87c1-0ffdd275fd87",
+      );
     });
 
     it("returns all true without any API calls when template needs nothing", async () => {
@@ -423,29 +295,34 @@ describe("On-premises (Identity API)", () => {
       });
       expect(mockFetch).not.toHaveBeenCalled();
     });
+
+    it("fails closed (both false) on batch API error", async () => {
+      (global as any).fetch = jest
+        .fn()
+        .mockResolvedValue({ ok: false, status: 500 });
+      const result = await checkTemplatePermissions(PROJECT_ID, makeTemplate());
+      expect(result).toEqual({
+        canCreateRepos: false,
+        canCreatePipelines: false,
+      });
+    });
   });
 
   // --- checkCollectionAdminPermission --------------------------------------
 
   describe("checkCollectionAdminPermission", () => {
-    it("returns true when user has the collection admin bit", async () => {
-      (global as any).fetch = jest
-        .fn()
-        .mockResolvedValue(makePermissionsResponse(true));
+    it("returns true when batch API grants the permission", async () => {
+      (global as any).fetch = mockFetchSequence(makeBatchResponse([true]));
       expect(await checkCollectionAdminPermission()).toBe(true);
     });
 
-    it("returns false when user does not have the bit", async () => {
-      (global as any).fetch = jest
-        .fn()
-        .mockResolvedValue(makePermissionsResponse(false));
+    it("returns false when batch API denies the permission", async () => {
+      (global as any).fetch = mockFetchSequence(makeBatchResponse([false]));
       expect(await checkCollectionAdminPermission()).toBe(false);
     });
 
     it("returns false on non-ok response (fail-closed)", async () => {
-      (global as any).fetch = jest
-        .fn()
-        .mockResolvedValue({ ok: false, status: 403 });
+      (global as any).fetch = mockFetchSequence({ ok: false, status: 403 });
       expect(await checkCollectionAdminPermission()).toBe(false);
     });
 
@@ -456,173 +333,126 @@ describe("On-premises (Identity API)", () => {
       expect(await checkCollectionAdminPermission()).toBe(false);
     });
 
-    it("calls the permissions endpoint with correct args and api-version=6.0", async () => {
-      const mockFetch = jest
-        .fn()
-        .mockResolvedValue(makePermissionsResponse(true));
+    it("calls permissionevaluationbatch with correct namespace and $COLLECTION token", async () => {
+      const mockFetch = mockFetchSequence(makeBatchResponse([true]));
       (global as any).fetch = mockFetch;
       await checkCollectionAdminPermission();
 
       const [url, options] = mockFetch.mock.calls[0];
-      expect(url).toContain(
-        `_apis/permissions/3e65f728-f8bc-4ecd-8764-7e378b19bfa7/2`,
+      expect(url).toBe(
+        `${COLLECTION_URL}/_apis/security/permissionevaluationbatch?api-version=7.0`,
       );
-      expect(url).toContain(encodeURIComponent("$COLLECTION"));
-      expect(url).toContain("api-version=6.0");
       expect(options.headers.Authorization).toBe("Bearer mock-token");
+      expect(JSON.parse(options.body).evaluations).toEqual([
+        expect.objectContaining({
+          securityNamespaceId: "3e65f728-f8bc-4ecd-8764-7e378b19bfa7",
+          token: "$COLLECTION",
+          permissions: 2,
+        }),
+      ]);
     });
   });
 
   // --- /tfs/ path support --------------------------------------------------
 
   describe("/tfs/ path support", () => {
-    it("includes /tfs/ prefix from LocationService in identity URL", async () => {
+    it("uses /tfs/ path from LocationService in permissionsBatch URL", async () => {
       setupOnPrem(TFS_COLLECTION_URL);
-      const mockFetch = mockFetchSequence(
-        makeIdentityResponse(),
-        makeAclResponse(260, IDENTITY_DESCRIPTOR),
-      );
+      const mockFetch = mockFetchSequence(makeBatchResponse([true]));
       (global as any).fetch = mockFetch;
       await checkRepoPermission(PROJECT_ID);
 
-      const [identityUrl] = mockFetch.mock.calls[0];
-      expect(identityUrl).toMatch(
-        /^https:\/\/myserver\.contoso\.com\/tfs\/DefaultCollection\/_apis\/identities\//,
+      const [url] = mockFetch.mock.calls[0];
+      expect(url).toMatch(
+        /^https:\/\/myserver\.contoso\.com\/tfs\/DefaultCollection\/_apis\/security\/permissionevaluationbatch/,
       );
     });
 
-    it("includes /tfs/ prefix in ACL URL", async () => {
+    it("uses /tfs/ path for collection admin check", async () => {
       setupOnPrem(TFS_COLLECTION_URL);
-      const mockFetch = mockFetchSequence(
-        makeIdentityResponse(),
-        makeAclResponse(260, IDENTITY_DESCRIPTOR),
-      );
-      (global as any).fetch = mockFetch;
-      await checkRepoPermission(PROJECT_ID);
-
-      const [aclUrl] = mockFetch.mock.calls[1];
-      expect(aclUrl).toMatch(
-        /^https:\/\/myserver\.contoso\.com\/tfs\/DefaultCollection\/_apis\/accesscontrollists\//,
-      );
-    });
-
-    it("includes /tfs/ prefix in collection admin permission URL", async () => {
-      setupOnPrem(TFS_COLLECTION_URL);
-      const mockFetch = jest
-        .fn()
-        .mockResolvedValue(makePermissionsResponse(true));
+      const mockFetch = mockFetchSequence(makeBatchResponse([true]));
       (global as any).fetch = mockFetch;
       await checkCollectionAdminPermission();
 
       const [url] = mockFetch.mock.calls[0];
       expect(url).toMatch(
-        /^https:\/\/myserver\.contoso\.com\/tfs\/DefaultCollection\/_apis\/permissions\//,
+        /^https:\/\/myserver\.contoso\.com\/tfs\/DefaultCollection\/_apis\/security\/permissionevaluationbatch/,
       );
     });
   });
 });
 
 // =============================================================================
-// Cloud (Graph API path)
+// Cloud
 // =============================================================================
 
-describe("Cloud (Graph API)", () => {
+describe("Cloud", () => {
   beforeEach(() => {
     setupCloud();
-    mockGetDescriptor.mockResolvedValue({ value: GRAPH_DESCRIPTOR });
   });
 
   // --- checkRepoPermission -------------------------------------------------
 
   describe("checkRepoPermission", () => {
-    it("returns true when effectiveAllow has all required bits", async () => {
-      (global as any).fetch = mockFetchSequence(
-        makeAclResponse(260, GRAPH_DESCRIPTOR),
-      );
+    it("returns true when batch API grants the permission", async () => {
+      (global as any).fetch = mockFetchSequence(makeBatchResponse([true]));
       expect(await checkRepoPermission(PROJECT_ID)).toBe(true);
     });
 
-    it("returns false when effectiveAllow is missing a required bit", async () => {
-      (global as any).fetch = mockFetchSequence(
-        makeAclResponse(4, GRAPH_DESCRIPTOR),
-      );
+    it("returns false when batch API denies the permission", async () => {
+      (global as any).fetch = mockFetchSequence(makeBatchResponse([false]));
       expect(await checkRepoPermission(PROJECT_ID)).toBe(false);
     });
 
-    it("calls Graph API (not Identity fetch) for descriptor resolution", async () => {
-      const mockFetch = mockFetchSequence(
-        makeAclResponse(260, GRAPH_DESCRIPTOR),
-      );
-      (global as any).fetch = mockFetch;
-      await checkRepoPermission(PROJECT_ID);
-
-      expect(mockGetDescriptor).toHaveBeenCalledWith(USER_ID);
-      // Only 1 fetch call (ACL), not 2 (no Identity fetch)
-      expect(mockFetch).toHaveBeenCalledTimes(1);
-    });
-
-    it("uses the Graph descriptor in the ACL request", async () => {
-      const mockFetch = mockFetchSequence(
-        makeAclResponse(260, GRAPH_DESCRIPTOR),
-      );
-      (global as any).fetch = mockFetch;
-      await checkRepoPermission(PROJECT_ID);
-
-      const [aclUrl] = mockFetch.mock.calls[0];
-      expect(aclUrl).toContain(encodeURIComponent(GRAPH_DESCRIPTOR));
-      expect(aclUrl).toContain("api-version=6.0");
-    });
-
-    it("returns false when Graph API throws (fail-closed)", async () => {
-      mockGetDescriptor.mockRejectedValue(new Error("Graph unavailable"));
-      (global as any).fetch = jest.fn();
+    it("returns false on non-ok batch response (fail-closed)", async () => {
+      (global as any).fetch = mockFetchSequence({ ok: false, status: 403 });
       expect(await checkRepoPermission(PROJECT_ID)).toBe(false);
     });
 
-    it("returns false on a network error (fail-closed)", async () => {
+    it("returns false on network error (fail-closed)", async () => {
       (global as any).fetch = jest
         .fn()
         .mockRejectedValue(new Error("Network down"));
       expect(await checkRepoPermission(PROJECT_ID)).toBe(false);
+    });
+
+    it("makes exactly 1 fetch call (batch only) with no descriptor lookup", async () => {
+      const mockFetch = mockFetchSequence(makeBatchResponse([true]));
+      (global as any).fetch = mockFetch;
+      await checkRepoPermission(PROJECT_ID);
+
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      const urls: string[] = mockFetch.mock.calls.map((c: any[]) => c[0]);
+      expect(urls[0]).toContain("permissionevaluationbatch");
+      expect(urls).not.toEqual(
+        expect.arrayContaining([expect.stringContaining("identities")]),
+      );
+      expect(urls).not.toEqual(
+        expect.arrayContaining([expect.stringContaining("graph")]),
+      );
     });
   });
 
   // --- checkPipelinePermission ---------------------------------------------
 
   describe("checkPipelinePermission", () => {
-    it("returns true when effectiveAllow has EditBuildDefinition bit", async () => {
-      (global as any).fetch = mockFetchSequence(
-        makeAclResponse(2048, GRAPH_DESCRIPTOR),
-      );
+    it("returns true when batch API grants the permission", async () => {
+      (global as any).fetch = mockFetchSequence(makeBatchResponse([true]));
       expect(await checkPipelinePermission(PROJECT_ID)).toBe(true);
     });
 
-    it("returns false when effectiveAllow is missing the bit", async () => {
-      (global as any).fetch = mockFetchSequence(
-        makeAclResponse(1024, GRAPH_DESCRIPTOR),
-      );
+    it("returns false when batch API denies the permission", async () => {
+      (global as any).fetch = mockFetchSequence(makeBatchResponse([false]));
       expect(await checkPipelinePermission(PROJECT_ID)).toBe(false);
-    });
-
-    it("calls Graph API for descriptor then ACL endpoint (1 fetch call)", async () => {
-      const mockFetch = mockFetchSequence(
-        makeAclResponse(2048, GRAPH_DESCRIPTOR),
-      );
-      (global as any).fetch = mockFetch;
-      await checkPipelinePermission(PROJECT_ID);
-
-      expect(mockGetDescriptor).toHaveBeenCalledWith(USER_ID);
-      expect(mockFetch).toHaveBeenCalledTimes(1);
     });
   });
 
   // --- checkTemplatePermissions --------------------------------------------
 
   describe("checkTemplatePermissions", () => {
-    it("returns both true when effectiveAllow covers both required bits", async () => {
+    it("returns both true when batch grants both permissions", async () => {
       (global as any).fetch = mockFetchSequence(
-        makeAclResponse(491382, GRAPH_DESCRIPTOR),
-        makeAclResponse(491382, GRAPH_DESCRIPTOR),
+        makeBatchResponse([true, true]),
       );
       const result = await checkTemplatePermissions(PROJECT_ID, makeTemplate());
       expect(result).toEqual({
@@ -631,25 +461,11 @@ describe("Cloud (Graph API)", () => {
       });
     });
 
-    it("resolves descriptor once via Graph then checks ACLs in parallel (2 fetch calls)", async () => {
-      const mockFetch = mockFetchSequence(
-        makeAclResponse(491382, GRAPH_DESCRIPTOR),
-        makeAclResponse(491382, GRAPH_DESCRIPTOR),
-      );
+    it("sends a single batch request (1 fetch call)", async () => {
+      const mockFetch = mockFetchSequence(makeBatchResponse([true, true]));
       (global as any).fetch = mockFetch;
       await checkTemplatePermissions(PROJECT_ID, makeTemplate());
-      expect(mockGetDescriptor).toHaveBeenCalledTimes(1);
-      expect(mockFetch).toHaveBeenCalledTimes(2);
-    });
-
-    it("returns false for both when Graph API throws (fail-closed)", async () => {
-      mockGetDescriptor.mockRejectedValue(new Error("Graph unavailable"));
-      (global as any).fetch = jest.fn();
-      const result = await checkTemplatePermissions(PROJECT_ID, makeTemplate());
-      expect(result).toEqual({
-        canCreateRepos: false,
-        canCreatePipelines: false,
-      });
+      expect(mockFetch).toHaveBeenCalledTimes(1);
     });
 
     it("returns all true without any API calls when template needs nothing", async () => {
@@ -664,39 +480,45 @@ describe("Cloud (Graph API)", () => {
         canCreatePipelines: true,
       });
       expect(mockFetch).not.toHaveBeenCalled();
-      expect(mockGetDescriptor).not.toHaveBeenCalled();
+    });
+
+    it("fails closed (both false) on batch API error", async () => {
+      (global as any).fetch = mockFetchSequence({ ok: false, status: 500 });
+      const result = await checkTemplatePermissions(PROJECT_ID, makeTemplate());
+      expect(result).toEqual({
+        canCreateRepos: false,
+        canCreatePipelines: false,
+      });
     });
   });
 
   // --- checkCollectionAdminPermission --------------------------------------
 
   describe("checkCollectionAdminPermission", () => {
-    it("returns true when user has the collection admin bit", async () => {
-      (global as any).fetch = jest
-        .fn()
-        .mockResolvedValue(makePermissionsResponse(true));
+    it("returns true when batch API grants the permission", async () => {
+      (global as any).fetch = mockFetchSequence(makeBatchResponse([true]));
       expect(await checkCollectionAdminPermission()).toBe(true);
     });
 
-    it("returns false when user does not have the bit", async () => {
-      (global as any).fetch = jest
-        .fn()
-        .mockResolvedValue(makePermissionsResponse(false));
+    it("returns false when batch API denies the permission", async () => {
+      (global as any).fetch = mockFetchSequence(makeBatchResponse([false]));
       expect(await checkCollectionAdminPermission()).toBe(false);
     });
 
-    it("uses cloud collection URL in the permissions endpoint", async () => {
-      const mockFetch = jest
-        .fn()
-        .mockResolvedValue(makePermissionsResponse(true));
+    it("uses the collection URL for the batch endpoint", async () => {
+      const mockFetch = mockFetchSequence(makeBatchResponse([true]));
       (global as any).fetch = mockFetch;
       await checkCollectionAdminPermission();
 
-      const [url] = mockFetch.mock.calls[0];
-      expect(url).toMatch(
-        /^https:\/\/dev\.azure\.com\/MyOrg\/_apis\/permissions\//,
+      const [batchUrl] = mockFetch.mock.calls[0];
+      expect(batchUrl).toMatch(
+        /^https:\/\/dev\.azure\.com\/MyOrg\/_apis\/security\/permissionevaluationbatch/,
       );
-      expect(url).toContain("api-version=6.0");
+    });
+
+    it("returns false on non-ok response (fail-closed)", async () => {
+      (global as any).fetch = mockFetchSequence({ ok: false, status: 403 });
+      expect(await checkCollectionAdminPermission()).toBe(false);
     });
   });
 });

@@ -82,7 +82,7 @@ async function fetchTemplates(): Promise<DiscoveredTemplate[]> {
       },
       body: JSON.stringify(body),
     });
-  } catch (networkError) {
+  } catch {
     throw new Error(
       "Failed to reach the Code Search API. Ensure the Code Search extension is installed on this Azure DevOps Server instance.",
     );

@@ -45,7 +45,7 @@ export function ParameterField({
     return (
       <FormItem label={param.label} message={param.hint}>
         <Checkbox
-          label={Boolean(value) ? "Yes" : "No"}
+          label={value ? "Yes" : "No"}
           checked={Boolean(value)}
           onChange={(_e, checked) => onChange(param.id, checked)}
         />

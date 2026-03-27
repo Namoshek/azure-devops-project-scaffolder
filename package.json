@@ -10,7 +10,9 @@
     "package": "npm run build && tfx extension create --manifest-globs vss-extension.json",
     "clean": "rimraf dist",
     "test": "jest",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "lint": "eslint src tests",
+    "lint:fix": "eslint src tests --fix"
   },
   "dependencies": {
     "azure-devops-extension-api": "^4.0.0",
@@ -22,11 +24,16 @@
     "react-dom": "^18.2.0"
   },
   "devDependencies": {
+    "@eslint/compat": "^2.0.3",
+    "@eslint/js": "^10.0.1",
     "@types/jest": "^30.0.0",
     "@types/js-yaml": "^4.0.9",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
     "css-loader": "^6.8.1",
+    "eslint": "^10.1.0",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.0.1",
     "jest": "^30.3.0",
     "rimraf": "^5.0.5",
     "style-loader": "^3.3.3",
@@ -34,6 +41,7 @@
     "ts-jest": "^29.4.6",
     "ts-loader": "^9.5.1",
     "typescript": "^5.3.2",
+    "typescript-eslint": "^8.57.2",
     "webpack": "^5.89.0",
     "webpack-cli": "^5.1.4"
   }

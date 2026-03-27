@@ -4,7 +4,6 @@
 import type { DiscoveredTemplate } from "../../src/Hub/types/templateTypes";
 import type { RestrictedProject } from "../../src/Hub/services/extensionSettingsService";
 
-const COLLECTION_URL = "https://dev.azure.com/MyOrg";
 // On cloud, Code Search is served from a separate resource area host.
 const SEARCH_URL = "https://almsearch.dev.azure.com/MyOrg";
 

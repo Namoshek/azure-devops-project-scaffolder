@@ -156,6 +156,7 @@ function parseTemplateYaml(raw: string): TemplateDefinition {
   try {
     parsed = yaml.load(raw);
   } catch (err) {
+    // eslint-disable-next-line preserve-caught-error
     throw new Error(`YAML parse error: ${(err as Error).message}`);
   }
 

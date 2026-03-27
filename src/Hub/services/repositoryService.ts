@@ -66,6 +66,7 @@ export async function scaffoldRepository(
     let created: Awaited<ReturnType<GitRestClient["createRepository"]>>;
     try {
       created = await gitClient.createRepository(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         { name: repoName, project: { id: projectId } } as any,
         projectId,
       );

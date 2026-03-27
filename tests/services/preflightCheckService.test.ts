@@ -18,7 +18,6 @@ jest.mock("azure-devops-extension-api/Build", () => ({
 }));
 
 import { getClient } from "azure-devops-extension-api";
-import { GitRestClient } from "azure-devops-extension-api/Git";
 import { BuildRestClient } from "azure-devops-extension-api/Build";
 
 const mockGetClient = getClient as jest.Mock;

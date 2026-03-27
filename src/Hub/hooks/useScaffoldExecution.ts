@@ -42,49 +42,50 @@ export function useScaffoldExecution(
     if (existingResults.length > 0) {
       return;
     }
-    void runOrchestration();
-  }, []);
 
-  async function runOrchestration() {
-    let projectId: string;
-    try {
-      const projectService = await SDK.getService<IProjectPageService>(
-        CommonServiceIds.ProjectPageService,
-      );
-      const project = await projectService.getProject();
-      if (!project) {
-        throw new Error("Could not determine current project.");
+    const runOrchestration = async function () {
+      let projectId: string;
+      try {
+        const projectService = await SDK.getService<IProjectPageService>(
+          CommonServiceIds.ProjectPageService,
+        );
+        const project = await projectService.getProject();
+        if (!project) {
+          throw new Error("Could not determine current project.");
+        }
+        projectId = project.id;
+      } catch (err) {
+        setRunning(false);
+        setDone(true);
+        setFatalError(
+          `Failed to determine current project: ${(err as Error).message}`,
+        );
+        return;
       }
-      projectId = project.id;
-    } catch (err) {
+
+      try {
+        await runScaffold(
+          projectId,
+          template,
+          parameterValues,
+          (updatedSteps) => {
+            const copy = [...updatedSteps];
+            stepsRef.current = copy;
+            setSteps(copy);
+          },
+          permissions,
+        );
+      } catch (err) {
+        setFatalError(`Unexpected error: ${(err as Error).message}`);
+      }
+
+      onComplete(stepsRef.current);
       setRunning(false);
       setDone(true);
-      setFatalError(
-        `Failed to determine current project: ${(err as Error).message}`,
-      );
-      return;
-    }
+    };
 
-    try {
-      await runScaffold(
-        projectId,
-        template,
-        parameterValues,
-        (updatedSteps) => {
-          const copy = [...updatedSteps];
-          stepsRef.current = copy;
-          setSteps(copy);
-        },
-        permissions,
-      );
-    } catch (err) {
-      setFatalError(`Unexpected error: ${(err as Error).message}`);
-    }
-
-    onComplete(stepsRef.current);
-    setRunning(false);
-    setDone(true);
-  }
+    void runOrchestration();
+  }, [existingResults, onComplete, parameterValues, permissions, template]);
 
   const hasFailures = steps.some((s) => s.status === "failed");
 

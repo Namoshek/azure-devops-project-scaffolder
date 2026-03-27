@@ -21,7 +21,6 @@ export function TemplateCard({ template, onSelect }: TemplateCardProps) {
   const { definition, sourceProjectName, sourceRepoName } = template;
 
   return (
-    // eslint-disable-next-line jsx-a11y/interactive-supports-focus
     <div
       role="button"
       tabIndex={0}

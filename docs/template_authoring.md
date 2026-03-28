@@ -6,12 +6,13 @@ This guide explains how to create project templates for the **Project Scaffoldin
 
 ## Overview
 
-A template is any repository in the collection that contains a `project-template.yml` file in its root. The extension discovers these automatically via Code Search and presents them to project administrators in the "Project Scaffolding" page under Project Settings.
+A template is any repository in the collection that contains a `project-template.yml` file in its root. The extension discovers these automatically via Code Search and presents them to project administrators in the "Project Scaffolding" page under Project Settings. If project restrictions are configured, only templates from allowed projects will be shown.
+Users can only see templates from projects they have at least read access to.
 
 When a user selects a template and fills in the parameter form, the extension:
 
-1. Creates new repositories by copying files from `sourcePath` subfolders, rendering all content and file names through [Handlebars.js](https://handlebarsjs.com/).
-2. Creates YAML pipeline definitions pointing to the created repositories.
+1. Creates new repositories by copying files from `sourcePath` subfolders (or the template repository root if `sourcePath` is empty), rendering all content and file names through [Handlebars.js](https://handlebarsjs.com/).
+2. Creates YAML pipeline definitions pointing to designated files in the created repositories.
 
 Everything is **non-destructive**: if a repository already exists and has commits, it is skipped (not overwritten).
 
@@ -20,17 +21,35 @@ Everything is **non-destructive**: if a repository already exists and has commit
 ## `project-template.yml` Schema Reference
 
 ```yaml
-# ── Required ──────────────────────────────────────────────────────────
-id: "04bd1234-5678-90ab-cdef-1234567890ab" # Unique GUID — generate once and never change
+# ── Template metadata ──────────────────────────────────────────────────────────────
+id: "04bd1234-5678-90ab-cdef-1234567890ab" # UUID, generate once and never change
 name: "My Template" # Display name shown to users
-version: "1.0.0" # Informational; shown in the template card
-
-# ── Optional ──────────────────────────────────────────────────────────
+version: "1.0.0" # Currently only informational, shown in the template card
 description: "Short description shown in the template card"
+templateCategories:
+  - "Backend"
+  - "Docker"
 maintainers:
   - "Your Team Name"
+  - "Or individual names or contact info"
 
-# ── Parameters ────────────────────────────────────────────────────────
+# ── Optional notes (displayed before and after scaffolding) ────────────────────────
+
+preScaffoldNotes:
+  - |-
+    Make sure your project name matches the naming convention agreed upon by the Platform Team.
+    Use kebab-case (e.g. my-awesome-service).
+  - "You will need at least Project Administrator permissions in the target project."
+
+postScaffoldNotes:
+  - |-
+    Your repositories have been created and the CI pipelines are ready.
+    The first pipeline run will be triggered automatically on the next commit to main.
+  - |-
+    Remember to configure your service connections and environment-specific variable
+    groups before deploying to production.
+
+# ── Parameters used by Handlebars.js ───────────────────────────────────────────────
 parameters:
   - id: projectName # Used in Handlebars: {{projectName}}
     label: "Project Name"
@@ -59,11 +78,11 @@ parameters:
     type: string
     when: "includeDocker == true" # Only shown when includeDocker is checked
 
-# ── Repositories ──────────────────────────────────────────────────────
+# ── Repositories ───────────────────────────────────────────────────────────────────
 repositories:
   - name: "{{projectName}}.backend" # Handlebars in repo name ✔
-    sourcePath: "templates/backend" # Subfolder in THIS repository
-    defaultBranch: "main"
+    sourcePath: "templates/backend" # Subfolder in the template repository
+    defaultBranch: "main" # Optional, the default is 'main'
     exclude: # Optional: exclude individual files
       - path: "Dockerfile"
         when: "!includeDocker" # excluded when includeDocker is false
@@ -75,12 +94,12 @@ repositories:
     defaultBranch: "main"
     when: "includeDocker" # Optional: skip this entire repo when false
 
-# ── Pipelines ─────────────────────────────────────────────────────────
+# ── Pipelines ──────────────────────────────────────────────────────────────────────
 pipelines:
   - name: "{{projectName}}-ci"
-    repository: "{{projectName}}.backend" # Must match a repository name above (after rendering)
+    repository: "{{projectName}}.backend" # Must match a repository name above
     yamlPath: "pipelines/ci.yml" # Path within the target repo
-    folder: "\\CI" # Pipeline folder in ADO (optional)
+    folder: "\\CI" # Pipeline folder in ADO (optional, default is root)
 
   - name: "{{projectName}}-docker-build"
     repository: "{{projectName}}.backend"
@@ -93,11 +112,15 @@ pipelines:
 
 ## File Structure
 
-Place template files in subfolders referenced by `sourcePath`. The `project-template.yml` itself is **never** copied into the created repositories.
+Place template files either in the template repository root or in subfolders referenced by `sourcePath`. The latter is useful if multiple repositories will be scaffolded from a single template, e.g. a frontend and a backend.
+
+Note: the `project-template.yml` itself is **never** copied into the created repositories. Excluding it manually is not necessary.
+
+**Example repository structure:**
 
 ```
-your-template-repo/
-├── project-template.yml          ← required at root
+/
+├── project-template.yml          ← must be placed in the template repository root
 └── templates/
     ├── backend/
     │   ├── README.md
@@ -115,16 +138,21 @@ your-template-repo/
 
 ## Handlebars in File Content
 
-All text files are rendered through [Handlebars.js](https://handlebarsjs.com/). Every parameter `id` is available as a variable:
+All text files are rendered through [Handlebars.js](https://handlebarsjs.com/). Every parameter is available as a variable.
 
-```yaml
-# In any text file:
+**Use `string` and `choice` parameters:**
+
+```xml
 <PackageId>{{projectName}}</PackageId>
 <Authors>{{teamName}}</Authors>
+```
 
+**Use `boolean` parameters for conditions:**
+
+```xml
 {{#if includeDocker}}
-# Docker support enabled
-FROM mcr.microsoft.com/dotnet/runtime:8.0
+<ContainerImageName>{{projectName}}-backend</ContainerImageName>
+<ContainerImageTag>1.0.0</ContainerImageTag>
 {{/if}}
 ```
 
@@ -200,13 +228,3 @@ repositories:
 - Omitting `when` always excludes the file.
 
 > **Tip:** Use `{{#if}}` blocks inside files for inline optional content, and `exclude` for entirely optional files.
-
----
-
-## Tips for Template Authors
-
-1. **Use globally unique GUIDs** for the `id` field. Generate one at [uuidgenerator.net](https://www.uuidgenerator.net/) and never reuse it across templates.
-2. **Validate with Code Search** — after adding your `project-template.yml`, open the Project Scaffolding page and confirm your template appears. If it doesn't, check the browser console for parse errors.
-3. **Test non-destructive re-runs** — scaffold the same template twice. All repos with commits should appear as "skipped" on the second run.
-4. **Keep `sourcePath` relative** — e.g. `templates/backend`, not `/templates/backend`.
-5. **Binary files** — any file with a non-text extension (`.png`, `.zip`, `.dll`, etc.) is copied using base64 encoding. No Handlebars processing is applied.

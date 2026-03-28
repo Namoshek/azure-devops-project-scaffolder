@@ -26,7 +26,7 @@ export interface TemplateFileExclude {
 export interface TemplateRepository {
   name: string; // may contain Handlebars expressions
   sourcePath: string; // subfolder within the template repo
-  defaultBranch: string;
+  defaultBranch: string; // defaults to "main" if not specified
   when?: string; // skip this entire repository when expression is false
   exclude?: TemplateFileExclude[]; // individual files to exclude based on conditions
 }

@@ -92,8 +92,6 @@ The extension requests these OAuth scopes:
 | `vso.code_manage`   | Required to read template files and create repositories                  |
 | `vso.build_execute` | Required to read and create YAML pipeline definitions                    |
 | `vso.agentpools`    | Required to read agent queues for pipeline registration                  |
-| `vso.identity`      | Required to resolve the user's identity descriptor for permission checks |
-| `vso.graph`         | Required to read user and group information for permission evaluation    |
 | `vso.project`       | Required to read project list (used in the admin restriction dropdown)   |
 
 ## Development

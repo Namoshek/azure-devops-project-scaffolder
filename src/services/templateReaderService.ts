@@ -183,7 +183,6 @@ function parseRepositories(raw: unknown): TemplateRepository[] {
     }
     const r = item as Record<string, unknown>;
     if (typeof r.name !== "string") throw new Error(`repositories[${index}].name must be a string`);
-    if (typeof r.sourcePath !== "string") throw new Error(`repositories[${index}].sourcePath must be a string`);
 
     const repo: TemplateRepository = {
       name: r.name,

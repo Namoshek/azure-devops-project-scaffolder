@@ -12,6 +12,7 @@ import { SpinnerSize } from "azure-devops-ui/Components/Spinner/Spinner.Props";
 import { DropdownMultiSelection } from "azure-devops-ui/Utilities/DropdownSelection";
 import { ISelectionRange } from "azure-devops-ui/Utilities/Selection";
 import { useProjectRestriction } from "../hooks/useProjectRestriction";
+import { statusColors } from "../../statusColors";
 
 const FormItem = FormItemBase as React.ComponentType<
   React.ComponentProps<typeof FormItemBase> & { children?: React.ReactNode }
@@ -115,11 +116,7 @@ export function ProjectRestrictionTab() {
           {feedback && (
             <span
               className="body-m"
-              style={
-                feedback.type === "error"
-                  ? { color: "var(--status-error-foreground)" }
-                  : { color: "var(--status-success-foreground)" }
-              }
+              style={feedback.type === "error" ? { color: statusColors.error } : { color: statusColors.success }}
             >
               {feedback.text}
             </span>

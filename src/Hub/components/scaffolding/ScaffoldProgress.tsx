@@ -58,7 +58,11 @@ export function ScaffoldProgress({
         <div className="flex-column rhythm-vertical-8">
           {template.postScaffoldNotes.map((note, i) => (
             <MessageCard key={i} severity={MessageCardSeverity.Info}>
-              {note}
+              {note.split("\n").map((line, li) => (
+                <div key={li} style={{ width: "100%" }}>
+                  {line}
+                </div>
+              ))}
             </MessageCard>
           ))}
         </div>
@@ -66,7 +70,7 @@ export function ScaffoldProgress({
 
       {done && (
         <div>
-          <Button text="Scaffold Another Project" onClick={onScaffoldAgain} />
+          <Button text="Scaffold Another Template" onClick={onScaffoldAgain} />
         </div>
       )}
     </div>

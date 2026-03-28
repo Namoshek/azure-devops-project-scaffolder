@@ -9,6 +9,7 @@ import { ArrayItemProvider } from "azure-devops-ui/Utilities/Provider";
 import { Tooltip as TooltipBase } from "azure-devops-ui/TooltipEx";
 import { AuditRecord } from "../../Hub/types/auditTypes";
 import { getAllAuditRecords } from "../../Hub/services/auditService";
+import { statusColors } from "../../statusColors";
 
 const Tooltip = TooltipBase as React.ComponentType<
   React.ComponentProps<typeof TooltipBase> & { children?: React.ReactNode }
@@ -25,11 +26,11 @@ function formatTimestamp(ts: string): string {
 function statusStyle(status: string): React.CSSProperties {
   switch (status) {
     case "success":
-      return { color: "var(--status-success-foreground)", fontWeight: 600 };
+      return { color: statusColors.success, fontWeight: 600 };
     case "failed":
-      return { color: "var(--status-error-foreground)", fontWeight: 600 };
+      return { color: statusColors.error, fontWeight: 600 };
     case "inProgress":
-      return { color: "var(--status-info-foreground)", fontWeight: 600 };
+      return { color: statusColors.info, fontWeight: 600 };
     default:
       return { fontWeight: 600 };
   }

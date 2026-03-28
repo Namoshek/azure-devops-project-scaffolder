@@ -1,8 +1,8 @@
 // Discovery service has module-level state (cache), so each test resets modules
 // and loads a fresh instance via doMock + require.
 
-import type { DiscoveredTemplate } from "../../src/Hub/types/templateTypes";
-import type { RestrictedProject } from "../../src/Hub/services/extensionSettingsService";
+import type { DiscoveredTemplate } from "../../src/types/templateTypes";
+import type { RestrictedProject } from "../../src/services/extensionSettingsService";
 
 // On cloud, Code Search is served from a separate resource area host.
 const SEARCH_URL = "https://almsearch.dev.azure.com/MyOrg";
@@ -87,19 +87,19 @@ function loadFreshModule(options: {
   }));
 
   const mockGetRestrictedProjects = jest.fn().mockResolvedValue(options.restrictions ?? []);
-  jest.doMock("../../src/Hub/services/extensionSettingsService", () => ({
+  jest.doMock("../../src/services/extensionSettingsService", () => ({
     getRestrictedProjects: mockGetRestrictedProjects,
   }));
 
-  jest.doMock("../../src/Hub/services/locationService", () => ({
+  jest.doMock("../../src/services/locationService", () => ({
     getSearchServiceUrl: jest.fn().mockResolvedValue(options.collectionUrl ?? SEARCH_URL),
   }));
 
-  jest.doMock("../../src/Hub/services/templateReaderService", () => ({
+  jest.doMock("../../src/services/templateReaderService", () => ({
     readTemplateFromRepo: mockReadTemplate,
   }));
 
-  const { discoverTemplates } = require("../../src/Hub/services/templateDiscoveryService") as {
+  const { discoverTemplates } = require("../../src/services/templateDiscoveryService") as {
     discoverTemplates: () => Promise<DiscoveredTemplate[]>;
   };
 

@@ -2,8 +2,8 @@ import {
   checkRepoExists,
   checkPipelineExists,
   checkTemplateResourcesExistence,
-} from "../../src/Hub/services/preflightCheckService";
-import type { TemplateDefinition } from "../../src/Hub/types/templateTypes";
+} from "../../src/services/preflightCheckService";
+import type { TemplateDefinition } from "../../src/types/templateTypes";
 
 jest.mock("azure-devops-extension-api", () => ({
   getClient: jest.fn(),

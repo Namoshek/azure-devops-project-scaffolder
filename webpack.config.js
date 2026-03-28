@@ -3,8 +3,8 @@ const CopyPlugin = require("copy-webpack-plugin");
 
 module.exports = {
   entry: {
-    Hub: "./src/Hub/index.tsx",
-    AdminHub: "./src/AdminHub/index.tsx",
+    ProjectHub: "./src/Hubs/ProjectHub/index.tsx",
+    AdminHub: "./src/Hubs/AdminHub/index.tsx",
   },
   output: {
     filename: "[name]/[name].js",
@@ -46,8 +46,8 @@ module.exports = {
   plugins: [
     new CopyPlugin({
       patterns: [
-        { from: "src/Hub/index.html", to: "Hub/index.html" },
-        { from: "src/AdminHub/index.html", to: "AdminHub/index.html" },
+        { from: "src/Hubs/ProjectHub/index.html", to: "ProjectHub/index.html" },
+        { from: "src/Hubs/AdminHub/index.html", to: "AdminHub/index.html" },
       ],
     }),
   ],

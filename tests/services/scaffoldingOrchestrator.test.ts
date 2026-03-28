@@ -1,16 +1,16 @@
-import { runScaffold } from "../../src/Hub/services/scaffoldingOrchestrator";
-import type { TemplateDefinition } from "../../src/Hub/types/templateTypes";
+import { runScaffold } from "../../src/services/scaffoldingOrchestrator";
+import type { TemplateDefinition } from "../../src/types/templateTypes";
 
-jest.mock("../../src/Hub/services/repositoryService", () => ({
+jest.mock("../../src/services/repositoryService", () => ({
   scaffoldRepository: jest.fn(),
 }));
 
-jest.mock("../../src/Hub/services/pipelineService", () => ({
+jest.mock("../../src/services/pipelineService", () => ({
   scaffoldPipeline: jest.fn(),
 }));
 
-import { scaffoldRepository } from "../../src/Hub/services/repositoryService";
-import { scaffoldPipeline } from "../../src/Hub/services/pipelineService";
+import { scaffoldRepository } from "../../src/services/repositoryService";
+import { scaffoldPipeline } from "../../src/services/pipelineService";
 
 const mockScaffoldRepository = scaffoldRepository as jest.Mock;
 const mockScaffoldPipeline = scaffoldPipeline as jest.Mock;

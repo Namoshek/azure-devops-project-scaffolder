@@ -29,7 +29,7 @@ function loadFreshModule(serviceLocationUrl: string, resourceAreaUrl: string | "
     }),
   }));
 
-  const { getCollectionUrl, getSearchServiceUrl } = require("../../src/Hub/services/locationService") as {
+  const { getCollectionUrl, getSearchServiceUrl } = require("../../src/services/locationService") as {
     getCollectionUrl: () => Promise<string>;
     getSearchServiceUrl: () => Promise<string>;
   };

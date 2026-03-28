@@ -3,8 +3,8 @@ import {
   checkPipelinePermission,
   checkTemplatePermissions,
   checkCollectionAdminPermission,
-} from "../../src/Hub/services/permissionService";
-import type { TemplateDefinition } from "../../src/Hub/types/templateTypes";
+} from "../../src/services/permissionService";
+import type { TemplateDefinition } from "../../src/types/templateTypes";
 
 // --- Mocks -------------------------------------------------------------------
 
@@ -13,12 +13,12 @@ jest.mock("azure-devops-extension-sdk", () => ({
   getHost: jest.fn(),
 }));
 
-jest.mock("../../src/Hub/services/locationService", () => ({
+jest.mock("../../src/services/locationService", () => ({
   getCollectionUrl: jest.fn(),
 }));
 
 import * as SDK from "azure-devops-extension-sdk";
-import { getCollectionUrl } from "../../src/Hub/services/locationService";
+import { getCollectionUrl } from "../../src/services/locationService";
 
 const mockGetAccessToken = SDK.getAccessToken as jest.Mock;
 const mockGetHost = SDK.getHost as jest.Mock;

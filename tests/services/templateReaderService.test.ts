@@ -1,4 +1,4 @@
-import { readTemplateFromRepo } from "../../src/Hub/services/templateReaderService";
+import { readTemplateFromRepo } from "../../src/services/templateReaderService";
 
 // Mock the ADO Git client
 jest.mock("azure-devops-extension-api", () => ({

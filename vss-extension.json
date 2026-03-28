@@ -2,7 +2,7 @@
   "manifestVersion": 1,
   "id": "ado-project-scaffolder",
   "publisher": "namoshek",
-  "version": "0.13.5",
+  "version": "0.13.7",
   "name": "Project Scaffolder",
   "description": "Scaffold repositories and pipelines across your Azure DevOps projects from your own templates — guided, parameterized, and non-destructive.",
   "public": false,
@@ -27,7 +27,7 @@
       "id": "Microsoft.VisualStudio.Services"
     }
   ],
-  "demands": ["api-version/6.0"],
+  "demands": ["api-version/7.0"],
   "branding": {
     "color": "rgb(32, 31, 30)",
     "theme": "dark"
@@ -75,7 +75,7 @@
       "properties": {
         "name": "Project Scaffolding",
         "order": 100,
-        "uri": "dist/Hub/index.html"
+        "uri": "dist/ProjectHub/index.html"
       }
     },
     {

@@ -1,7 +1,7 @@
 // The settings service has module-level state (manager cache), so each test
 // resets modules and loads a fresh instance via doMock + require.
 
-import type { RestrictedProject } from "../../src/Hub/services/extensionSettingsService";
+import type { RestrictedProject } from "../../src/services/extensionSettingsService";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -37,7 +37,7 @@ function loadFreshModule(options: {
     },
   }));
 
-  const service = require("../../src/Hub/services/extensionSettingsService") as {
+  const service = require("../../src/services/extensionSettingsService") as {
     getRestrictedProjects: () => Promise<RestrictedProject[]>;
     setRestrictedProjects: (projects: RestrictedProject[]) => Promise<void>;
     getTemplateCategories: () => Promise<string[]>;
@@ -182,7 +182,7 @@ describe("manager caching", () => {
       },
     }));
 
-    const service = require("../../src/Hub/services/extensionSettingsService") as {
+    const service = require("../../src/services/extensionSettingsService") as {
       getRestrictedProjects: () => Promise<RestrictedProject[]>;
     };
 

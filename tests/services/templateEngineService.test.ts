@@ -1,4 +1,4 @@
-import { renderTemplate, evaluateWhenExpression } from "../../src/Hub/services/templateEngineService";
+import { renderTemplate, evaluateWhenExpression } from "../../src/services/templateEngineService";
 
 // ─── renderTemplate ────────────────────────────────────────────────────────────
 

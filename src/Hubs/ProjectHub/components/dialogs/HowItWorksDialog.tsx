@@ -68,8 +68,9 @@ export function HowItWorksDialog() {
             <h3>Creating a template</h3>
             <p>
               Create a repository in any project, add a <code>project-template.yml</code> at the root, and place your
-              file templates in subfolders referenced by <code>sourcePath</code>. The template will appear here
-              automatically within minutes, as soon as the code search has indexed the template repository.
+              file templates in subfolders referenced by <code>sourcePath</code> (or leave empty if the entire
+              repository is a template). The template will appear here automatically within minutes, as soon as the code
+              search has indexed the template repository.
             </p>
 
             <h3>

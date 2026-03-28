@@ -187,7 +187,7 @@ function parseRepositories(raw: unknown): TemplateRepository[] {
 
     const repo: TemplateRepository = {
       name: r.name,
-      sourcePath: r.sourcePath,
+      sourcePath: typeof r.sourcePath === "string" ? r.sourcePath : "",
       defaultBranch: typeof r.defaultBranch === "string" ? r.defaultBranch : "main",
     };
 

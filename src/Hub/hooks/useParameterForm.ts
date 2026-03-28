@@ -59,7 +59,7 @@ export function useParameterForm(
     permissions !== null &&
     includedItems.length > 0 &&
     includedItems.every((i) => i.permissionDenied || i.existsWillSkip);
-  const submitDisabled = permissions === null || allBlocked;
+  const submitDisabled = permissions === null || allBlocked || preflightPending;
 
   const submitTooltip = allBlocked
     ? "All resources are either permission-denied or already exist — nothing will be created."

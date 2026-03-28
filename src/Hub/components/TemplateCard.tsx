@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { DiscoveredTemplate } from "../types/templateTypes";
+import { getCollectionUrl } from "../services/locationService";
 import { Card } from "azure-devops-ui/Components/Card/Card";
 import { TitleSize } from "azure-devops-ui/Components/Header/Header.Props";
 import { Pill as PillBase } from "azure-devops-ui/Components/Pill/Pill";
@@ -19,6 +20,16 @@ export interface TemplateCardProps {
 
 export function TemplateCard({ template, onSelect }: TemplateCardProps) {
   const { definition, sourceProjectName, sourceRepoName } = template;
+
+  const [repoUrl, setRepoUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    getCollectionUrl().then((base) => {
+      setRepoUrl(
+        `${base}/${encodeURIComponent(sourceProjectName)}/_git/${encodeURIComponent(sourceRepoName)}`,
+      );
+    });
+  }, [sourceProjectName, sourceRepoName]);
 
   return (
     <div
@@ -45,7 +56,20 @@ export function TemplateCard({ template, onSelect }: TemplateCardProps) {
             </p>
           )}
           <p className="secondary-text caption" style={{ marginBottom: 0 }}>
-            Source repository: {sourceProjectName} / {sourceRepoName}
+            Source repository:{" "}
+            {repoUrl ? (
+              <a
+                href={repoUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                onKeyDown={(e) => e.stopPropagation()}
+              >
+                {sourceProjectName} / {sourceRepoName}
+              </a>
+            ) : (
+              `${sourceProjectName} / ${sourceRepoName}`
+            )}
           </p>
           {definition.maintainers && definition.maintainers.length > 0 && (
             <p className="secondary-text caption" style={{ marginTop: 0 }}>

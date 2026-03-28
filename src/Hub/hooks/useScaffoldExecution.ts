@@ -13,6 +13,12 @@ import {
   ScaffoldResult,
   ScaffoldStep,
 } from "../services/scaffoldingOrchestrator";
+import { AuditRecord } from "../types/auditTypes";
+import {
+  createAuditRecord,
+  updateAuditRecord,
+  redactSecretParams,
+} from "../services/auditService";
 
 export interface UseScaffoldExecutionResult {
   steps: ScaffoldStep[];
@@ -37,6 +43,7 @@ export function useScaffoldExecution(
   const [done, setDone] = useState(existingResults.length > 0);
   const [fatalError, setFatalError] = useState<string | null>(null);
   const stepsRef = useRef<ScaffoldStep[]>(steps);
+  const auditRecordRef = useRef<AuditRecord | null>(null);
 
   useEffect(() => {
     if (existingResults.length > 0) {
@@ -45,6 +52,7 @@ export function useScaffoldExecution(
 
     const runOrchestration = async function () {
       let projectId: string;
+      let projectName: string;
       try {
         const projectService = await SDK.getService<IProjectPageService>(
           CommonServiceIds.ProjectPageService,
@@ -54,6 +62,7 @@ export function useScaffoldExecution(
           throw new Error("Could not determine current project.");
         }
         projectId = project.id;
+        projectName = project.name;
       } catch (err) {
         setRunning(false);
         setDone(true);
@@ -63,6 +72,27 @@ export function useScaffoldExecution(
         return;
       }
 
+      const user = SDK.getUser();
+      // Create an audit record with "inProgress" status before scaffolding
+      // starts. Audit errors must not block or affect the scaffolding process.
+      try {
+        auditRecordRef.current = await createAuditRecord({
+          timestamp: new Date().toISOString(),
+          projectId,
+          projectName,
+          templateId: template.id,
+          templateName: template.name,
+          templateSourceProject: template._sourceProjectName ?? "",
+          userId: user.id,
+          userDisplayName: user.displayName,
+          parameterValues: redactSecretParams(template, parameterValues),
+          status: "inProgress",
+        });
+      } catch (auditErr) {
+        console.warn("Failed to create audit record:", auditErr);
+      }
+
+      let runFailed = false;
       try {
         await runScaffold(
           projectId,
@@ -76,7 +106,22 @@ export function useScaffoldExecution(
           permissions,
         );
       } catch (err) {
+        runFailed = true;
         setFatalError(`Unexpected error: ${(err as Error).message}`);
+      }
+
+      // Update the audit record with the final outcome.
+      if (auditRecordRef.current) {
+        const finalSteps = stepsRef.current;
+        const failed =
+          runFailed || finalSteps.some((s) => s.status === "failed");
+        updateAuditRecord({
+          ...auditRecordRef.current,
+          status: failed ? "failed" : "success",
+          steps: finalSteps,
+        }).catch((auditErr) =>
+          console.warn("Failed to update audit record:", auditErr),
+        );
       }
 
       onComplete(stepsRef.current);

@@ -120,6 +120,10 @@ npm run package
 
 This produces a `.vsix` file that can be uploaded to the Marketplace or installed directly into an Azure DevOps Server instance.
 
+### Development Resources
+
+- [Azure DevOps Design System](https://developer.microsoft.com/en-us/azure-devops/)
+
 ## License
 
 The MIT License (MIT). Please see [License File](LICENSE.md) for more information.

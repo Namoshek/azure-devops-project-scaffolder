@@ -8,6 +8,7 @@ import { SpinnerSize } from "azure-devops-ui/Components/Spinner/Spinner.Props";
 import { ZeroData } from "azure-devops-ui/Components/ZeroData/ZeroData";
 import { TemplateCard } from "./TemplateCard";
 import { HowItWorksDialog } from "./HowItWorksDialog";
+import { ScaffoldingHistoryDialog } from "./ScaffoldingHistoryDialog";
 import {
   SingleLayerMasterPanel,
   SingleLayerMasterPanelHeader,
@@ -76,6 +77,7 @@ export function TemplateList({ onTemplateSelected }: TemplateListProps) {
         <p className="body-l secondary-text" style={{ margin: 0, flex: 1 }}>
           Select a template to scaffold a new project.
         </p>
+        <ScaffoldingHistoryDialog />
         <HowItWorksDialog />
       </div>
 

@@ -15,6 +15,7 @@ import { TabBar as TabBarBase } from "azure-devops-ui/Components/Tabs/TabBar";
 import { checkCollectionAdminPermission } from "../Hub/services/permissionService";
 import { ProjectRestrictionSettings } from "./components/ProjectRestrictionSettings";
 import { TemplateCategorySettings } from "./components/TemplateCategorySettings";
+import { AuditSettings } from "./components/AuditSettings";
 
 const Tab = TabBase as React.ComponentType<
   React.ComponentProps<typeof TabBase> & { children?: React.ReactNode }
@@ -51,7 +52,7 @@ export function AdminSettingsApp() {
   return (
     <Page>
       <Header
-        title="Project Scaffolding — Settings"
+        title="Project Scaffolding"
         titleSize={TitleSize.Large}
       />
       <div className="page-content page-content-top rhythm-vertical-16">
@@ -70,9 +71,11 @@ export function AdminSettingsApp() {
             >
               <Tab id="restriction" name="Template Source" />
               <Tab id="categories" name="Categories" />
+              <Tab id="audit" name="Audit" />
             </TabBar>
             {selectedTabId === "restriction" && <ProjectRestrictionSettings />}
             {selectedTabId === "categories" && <TemplateCategorySettings />}
+            {selectedTabId === "audit" && <AuditSettings />}
           </>
         )}
       </div>

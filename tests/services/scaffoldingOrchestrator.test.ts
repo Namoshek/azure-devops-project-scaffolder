@@ -17,9 +17,7 @@ const mockScaffoldPipeline = scaffoldPipeline as jest.Mock;
 
 // ─── Test fixtures ────────────────────────────────────────────────────────────
 
-function makeTemplate(
-  overrides: Partial<TemplateDefinition> = {},
-): TemplateDefinition {
+function makeTemplate(overrides: Partial<TemplateDefinition> = {}): TemplateDefinition {
   return {
     id: "tpl-1",
     name: "Test Template",
@@ -73,8 +71,7 @@ describe("runScaffold", () => {
     // Initial (pending) + running + final (success) → at least 3 calls
     expect(onProgress.mock.calls.length).toBeGreaterThanOrEqual(3);
     // The final progress snapshot should show the step as success
-    const lastSteps =
-      onProgress.mock.calls[onProgress.mock.calls.length - 1][0];
+    const lastSteps = onProgress.mock.calls[onProgress.mock.calls.length - 1][0];
     expect(lastSteps[0].status).toBe("success");
   });
 
@@ -156,12 +153,7 @@ describe("runScaffold", () => {
       pipelines: [],
     });
 
-    const steps = await runScaffold(
-      "proj1",
-      template,
-      { includeDocker: false },
-      jest.fn(),
-    );
+    const steps = await runScaffold("proj1", template, { includeDocker: false }, jest.fn());
     expect(steps[0].status).toBe("skipped");
     expect(mockScaffoldRepository).not.toHaveBeenCalled();
   });
@@ -184,12 +176,7 @@ describe("runScaffold", () => {
       pipelines: [],
     });
 
-    const steps = await runScaffold(
-      "proj1",
-      template,
-      { includeDocker: true },
-      jest.fn(),
-    );
+    const steps = await runScaffold("proj1", template, { includeDocker: true }, jest.fn());
     expect(steps[0].status).toBe("success");
     expect(mockScaffoldRepository).toHaveBeenCalledTimes(1);
   });
@@ -245,9 +232,7 @@ describe("runScaffold", () => {
 
     const template = makeTemplate({
       repositories: [],
-      pipelines: [
-        { name: "ci", repository: "api", yamlPath: "azure-pipelines.yml" },
-      ],
+      pipelines: [{ name: "ci", repository: "api", yamlPath: "azure-pipelines.yml" }],
     });
 
     const steps = await runScaffold("proj1", template, PARAMS, jest.fn());
@@ -268,12 +253,7 @@ describe("runScaffold", () => {
       ],
     });
 
-    const steps = await runScaffold(
-      "proj1",
-      template,
-      { includeDocker: false },
-      jest.fn(),
-    );
+    const steps = await runScaffold("proj1", template, { includeDocker: false }, jest.fn());
     expect(steps[0].status).toBe("skipped");
     expect(mockScaffoldPipeline).not.toHaveBeenCalled();
   });
@@ -291,12 +271,8 @@ describe("runScaffold", () => {
     });
 
     const template = makeTemplate({
-      repositories: [
-        { name: "api", sourcePath: "/src", defaultBranch: "main" },
-      ],
-      pipelines: [
-        { name: "ci", repository: "api", yamlPath: "azure-pipelines.yml" },
-      ],
+      repositories: [{ name: "api", sourcePath: "/src", defaultBranch: "main" }],
+      pipelines: [{ name: "ci", repository: "api", yamlPath: "azure-pipelines.yml" }],
     });
 
     const steps = await runScaffold("proj1", template, PARAMS, jest.fn());
@@ -314,12 +290,8 @@ describe("runScaffold", () => {
     });
 
     const template = makeTemplate({
-      repositories: [
-        { name: "api", sourcePath: "/src", defaultBranch: "main" },
-      ],
-      pipelines: [
-        { name: "ci", repository: "api", yamlPath: "azure-pipelines.yml" },
-      ],
+      repositories: [{ name: "api", sourcePath: "/src", defaultBranch: "main" }],
+      pipelines: [{ name: "ci", repository: "api", yamlPath: "azure-pipelines.yml" }],
     });
 
     const steps = await runScaffold("proj1", template, PARAMS, jest.fn());
@@ -441,13 +413,10 @@ describe("runScaffold — permission skipping", () => {
       status: "created",
     });
 
-    const steps = await runScaffold(
-      "proj1",
-      template,
-      { includeDocker: false },
-      jest.fn(),
-      { canCreateRepos: true, canCreatePipelines: true },
-    );
+    const steps = await runScaffold("proj1", template, { includeDocker: false }, jest.fn(), {
+      canCreateRepos: true,
+      canCreatePipelines: true,
+    });
 
     expect(steps[0].status).toBe("skipped");
     expect(steps[0].detail).toMatch(/Condition/);

@@ -23,18 +23,12 @@ export function useTemplateData(): UseTemplateDataResult {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [templates, setTemplates] = useState<DiscoveredTemplate[]>([]);
-  const [configuredCategories, setConfiguredCategories] = useState<string[]>(
-    [],
-  );
-  const [selectedCategory, setSelectedCategory] =
-    useState<string>(ALL_CATEGORY_NAME);
+  const [configuredCategories, setConfiguredCategories] = useState<string[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string>(ALL_CATEGORY_NAME);
   const [searchQuery, setSearchQuery] = useState("");
 
   // Stable selection object for the ADO List component — must not change between renders.
-  const groupSelection = useMemo(
-    () => new ListSelection({ selectOnFocus: false }),
-    [],
-  );
+  const groupSelection = useMemo(() => new ListSelection({ selectOnFocus: false }), []);
 
   // Filter templates by name and description based on the search query.
   const filteredTemplates = useMemo(() => {
@@ -56,10 +50,7 @@ export function useTemplateData(): UseTemplateDataResult {
     [filteredTemplates, configuredCategories],
   );
 
-  const groupItemProvider = useMemo(
-    () => new ArrayItemProvider(groups),
-    [groups],
-  );
+  const groupItemProvider = useMemo(() => new ArrayItemProvider(groups), [groups]);
 
   useEffect(() => {
     Promise.all([discoverTemplates(), getTemplateCategories()])

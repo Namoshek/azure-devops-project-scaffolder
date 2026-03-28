@@ -1,8 +1,5 @@
 ﻿import React from "react";
-import {
-  TemplateDefinition,
-  TemplatePermissions,
-} from "../types/templateTypes";
+import { TemplateDefinition, TemplatePermissions } from "../../types/templateTypes";
 import { Button } from "azure-devops-ui/Components/Button/Button";
 import { Card } from "azure-devops-ui/Components/Card/Card";
 import { MessageCard } from "azure-devops-ui/Components/MessageCard/MessageCard";
@@ -12,7 +9,7 @@ import { SpinnerSize } from "azure-devops-ui/Components/Spinner/Spinner.Props";
 import { TitleSize } from "azure-devops-ui/Header";
 import { Icon, IconSize } from "azure-devops-ui/Icon";
 import { ParameterField } from "./ParameterField";
-import { useParameterForm } from "../hooks/useParameterForm";
+import { useParameterForm } from "../../hooks/useParameterForm";
 
 interface ParameterFormProps {
   template: TemplateDefinition;
@@ -30,13 +27,7 @@ const COLOR_INCLUDED = "var(--status-success-foreground)";
 const COLOR_EXCLUDED = "var(--status-warning-foreground)";
 const COLOR_SYSTEM_ERROR = "var(--status-error-foreground)";
 
-export function ParameterForm({
-  template,
-  permissions,
-  projectId,
-  onSubmit,
-  onBack,
-}: ParameterFormProps) {
+export function ParameterForm({ template, permissions, projectId, onSubmit, onBack }: ParameterFormProps) {
   const {
     values,
     errors,
@@ -52,17 +43,11 @@ export function ParameterForm({
   return (
     <div className="flex-row" style={{ gap: 48 }}>
       <div>
-        <div
-          className="flex-row rhythm-horizontal-8"
-          style={{ marginBottom: 24 }}
-        >
+        <div className="flex-row rhythm-horizontal-8" style={{ marginBottom: 24 }}>
           <div>
             <div className="title-m">Selected Template: {template.name}</div>
             {template.description && (
-              <p
-                className="body-m secondary-text"
-                style={{ margin: "4px 0 0" }}
-              >
+              <p className="body-m secondary-text" style={{ margin: "4px 0 0" }}>
                 {template.description}
               </p>
             )}
@@ -70,10 +55,7 @@ export function ParameterForm({
         </div>
 
         {template.preScaffoldNotes && template.preScaffoldNotes.length > 0 && (
-          <div
-            className="flex-column rhythm-vertical-8"
-            style={{ marginBottom: 20 }}
-          >
+          <div className="flex-column rhythm-vertical-8" style={{ marginBottom: 20 }}>
             {template.preScaffoldNotes.map((note, i) => (
               <MessageCard key={i} severity={MessageCardSeverity.Info}>
                 {note}
@@ -96,8 +78,7 @@ export function ParameterForm({
 
         <div className="flex-row rhythm-horizontal-8" style={{ marginTop: 32 }}>
           <p className="body-m secondary-text" style={{ margin: 0 }}>
-            By submitting this form, the resources will be created as displayed
-            on the right side.
+            By submitting this form, the resources will be created as displayed on the right side.
           </p>
         </div>
 
@@ -114,19 +95,11 @@ export function ParameterForm({
       </div>
 
       <div style={{ minWidth: 400 }}>
-        <Card
-          className="bolt-card-white"
-          titleProps={{ text: "Summary", size: TitleSize.Medium }}
-        >
+        <Card className="bolt-card-white" titleProps={{ text: "Summary", size: TitleSize.Medium }}>
           {permissions === null ? (
-            <div
-              className="flex-row flex-center"
-              style={{ gap: 8, padding: "8px 0" }}
-            >
+            <div className="flex-row flex-center" style={{ gap: 8, padding: "8px 0" }}>
               <Spinner size={SpinnerSize.small} />
-              <span className="body-s secondary-text">
-                Checking permissions...
-              </span>
+              <span className="body-s secondary-text">Checking permissions...</span>
             </div>
           ) : (
             <div className="rhythm-vertical-8" style={{ width: "100%" }}>
@@ -138,10 +111,7 @@ export function ParameterForm({
 
                 // Determine which system-level blocker applies (highest priority first).
                 // Only one badge is shown per resource.
-                const isSkipped =
-                  !item.included ||
-                  item.permissionDenied ||
-                  item.existsWillSkip;
+                const isSkipped = !item.included || item.permissionDenied || item.existsWillSkip;
 
                 const iconColor =
                   item.permissionDenied || item.existsWillSkip
@@ -151,40 +121,22 @@ export function ParameterForm({
                       : COLOR_INCLUDED;
 
                 return (
-                  <div
-                    key={index}
-                    className={wrapperClass}
-                    style={{ gap: 6, paddingBottom: isLastItem ? 0 : 12 }}
-                  >
+                  <div key={index} className={wrapperClass} style={{ gap: 6, paddingBottom: isLastItem ? 0 : 12 }}>
                     {/* Main resource row */}
-                    <div
-                      className="flex-row"
-                      style={{ gap: 8, alignItems: "center" }}
-                    >
+                    <div className="flex-row" style={{ gap: 8, alignItems: "center" }}>
                       <span style={{ color: iconColor }}>
-                        <Icon
-                          size={IconSize.medium}
-                          iconName={
-                            item.type === "repository" ? "OpenSource" : "Build"
-                          }
-                        />
+                        <Icon size={IconSize.medium} iconName={item.type === "repository" ? "OpenSource" : "Build"} />
                       </span>
                       <span
                         className={isSkipped ? "secondary-text" : undefined}
                         style={isSkipped ? { opacity: 0.7 } : undefined}
                       >
-                        {item.type === "repository" ? "Repository" : "Pipeline"}
-                        : {item.name}
-                        {isSkipped && (
-                          <span style={{ marginLeft: 4 }}>(skipped)</span>
-                        )}
+                        {item.type === "repository" ? "Repository" : "Pipeline"}: {item.name}
+                        {isSkipped && <span style={{ marginLeft: 4 }}>(skipped)</span>}
                       </span>
                       {/* Existence check spinner — only for included, non-blocked items */}
                       {item.existsCheckPending && (
-                        <Spinner
-                          size={SpinnerSize.xSmall}
-                          ariaLabel="Checking existence..."
-                        />
+                        <Spinner size={SpinnerSize.xSmall} ariaLabel="Checking existence..." />
                       )}
                       {/* Badge: priority order — system error > user-exclusion > success */}
                       {item.permissionDenied && (
@@ -241,32 +193,20 @@ export function ParameterForm({
                         }}
                       >
                         {item.subItems.map((sub, si) => (
-                          <div
-                            key={si}
-                            className="flex-row"
-                            style={{ gap: 8, alignItems: "center" }}
-                          >
+                          <div key={si} className="flex-row" style={{ gap: 8, alignItems: "center" }}>
                             <span
                               style={{
-                                color: sub.included
-                                  ? COLOR_INCLUDED
-                                  : COLOR_EXCLUDED,
+                                color: sub.included ? COLOR_INCLUDED : COLOR_EXCLUDED,
                               }}
                             >
                               <Icon size={IconSize.small} iconName="Page" />
                             </span>
                             <span
-                              className={
-                                sub.included ? undefined : "secondary-text"
-                              }
-                              style={
-                                sub.included ? undefined : { opacity: 0.7 }
-                              }
+                              className={sub.included ? undefined : "secondary-text"}
+                              style={sub.included ? undefined : { opacity: 0.7 }}
                             >
                               {sub.name}
-                              {!sub.included && (
-                                <span style={{ marginLeft: 4 }}>(skipped)</span>
-                              )}
+                              {!sub.included && <span style={{ marginLeft: 4 }}>(skipped)</span>}
                             </span>
                             {!sub.included && (
                               <span

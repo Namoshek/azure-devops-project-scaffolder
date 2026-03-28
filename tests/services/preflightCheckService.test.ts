@@ -64,18 +64,14 @@ function makeBuildClient(
         ) => {
           let filtered = defs;
           if (name) filtered = filtered.filter((d) => d.name === name);
-          if (path)
-            filtered = filtered.filter((d) => (d.path ?? "\\") === path);
+          if (path) filtered = filtered.filter((d) => (d.path ?? "\\") === path);
           return Promise.resolve(filtered);
         },
       ),
   };
 }
 
-function setupClients(
-  gitClient: ReturnType<typeof makeGitClient>,
-  buildClient: ReturnType<typeof makeBuildClient>,
-) {
+function setupClients(gitClient: ReturnType<typeof makeGitClient>, buildClient: ReturnType<typeof makeBuildClient>) {
   mockGetClient.mockImplementation((clientClass: unknown) => {
     if (clientClass === BuildRestClient) return buildClient;
     return gitClient;
@@ -293,10 +289,7 @@ describe("checkPipelineExists", () => {
 // ─── checkTemplateResourcesExistence ─────────────────────────────────────────
 
 describe("checkTemplateResourcesExistence", () => {
-  function makeTemplate(
-    repos: string[],
-    pipelines: { name: string; folder?: string }[],
-  ): TemplateDefinition {
+  function makeTemplate(repos: string[], pipelines: { name: string; folder?: string }[]): TemplateDefinition {
     return {
       id: "tpl-1",
       name: "Test",
@@ -319,11 +312,7 @@ describe("checkTemplateResourcesExistence", () => {
   it("returns empty maps when template has no repos or pipelines", async () => {
     setupClients(makeGitClient(), makeBuildClient());
 
-    const result = await checkTemplateResourcesExistence(
-      "proj-c1",
-      makeTemplate([], []),
-      {},
-    );
+    const result = await checkTemplateResourcesExistence("proj-c1", makeTemplate([], []), {});
 
     expect(result.repos).toEqual({});
     expect(result.pipelines).toEqual({});
@@ -346,11 +335,7 @@ describe("checkTemplateResourcesExistence", () => {
         { name: "Backend-CI" },
       ],
     );
-    const result = await checkTemplateResourcesExistence(
-      "proj-c2",
-      template,
-      {},
-    );
+    const result = await checkTemplateResourcesExistence("proj-c2", template, {});
 
     expect(result.repos["frontend"]).toEqual({
       exists: true,
@@ -382,11 +367,7 @@ describe("checkTemplateResourcesExistence", () => {
         { name: "CI", folder: "\\TeamC" },
       ],
     );
-    const result = await checkTemplateResourcesExistence(
-      "proj-c4",
-      template,
-      {},
-    );
+    const result = await checkTemplateResourcesExistence("proj-c4", template, {});
 
     expect(result.pipelines["\\teama::ci"]).toEqual({ exists: true });
     expect(result.pipelines["\\teamb::ci"]).toEqual({ exists: true });

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ScaffoldStep } from "../services/scaffoldingOrchestrator";
+import { ScaffoldStep } from "../../services/scaffoldingOrchestrator";
 import { Button } from "azure-devops-ui/Components/Button/Button";
 import { Card } from "azure-devops-ui/Components/Card/Card";
 import { StepStatusIcon } from "./StepStatusIcon";
@@ -27,10 +27,7 @@ export function StepRow({ step }: StepRowProps) {
           )}
         </div>
         {expanded && step.detail && (
-          <div
-            className="body-s secondary-text"
-            style={{ marginTop: 8, paddingLeft: 32 }}
-          >
+          <div className="body-s secondary-text" style={{ marginTop: 8, paddingLeft: 32 }}>
             {step.detail}
           </div>
         )}

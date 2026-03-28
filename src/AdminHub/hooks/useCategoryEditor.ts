@@ -1,9 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { OTHERS_CATEGORY_NAME } from "../../Hub/types/templateTypes";
-import {
-  getTemplateCategories,
-  setTemplateCategories,
-} from "../../Hub/services/extensionSettingsService";
+import { getTemplateCategories, setTemplateCategories } from "../../Hub/services/extensionSettingsService";
 
 export interface UseCategoryEditorResult {
   loadingState: "loading" | "ready" | "error";
@@ -21,9 +18,7 @@ export interface UseCategoryEditorResult {
 }
 
 export function useCategoryEditor(): UseCategoryEditorResult {
-  const [loadingState, setLoadingState] = useState<
-    "loading" | "ready" | "error"
-  >("loading");
+  const [loadingState, setLoadingState] = useState<"loading" | "ready" | "error">("loading");
   const [categories, setCategories] = useState<string[]>([]);
   const [savedCategories, setSavedCategories] = useState<string[]>([]);
   const [newCategoryName, setNewCategoryName] = useState("");
@@ -117,8 +112,7 @@ export function useCategoryEditor(): UseCategoryEditorResult {
   const canAdd = trimmedNew.length > 0 && !isDuplicate;
 
   const hasChanges =
-    categories.length !== savedCategories.length ||
-    categories.some((c, i) => c !== savedCategories[i]);
+    categories.length !== savedCategories.length || categories.some((c, i) => c !== savedCategories[i]);
 
   return {
     loadingState,

@@ -1,9 +1,7 @@
 import { TemplateParameter } from "../types/templateTypes";
 import { evaluateWhenExpression } from "../services/templateEngineService";
 
-export function buildDefaults(
-  parameters: TemplateParameter[],
-): Record<string, unknown> {
+export function buildDefaults(parameters: TemplateParameter[]): Record<string, unknown> {
   const defaults: Record<string, unknown> = {};
   for (const p of parameters) {
     if (p.defaultValue !== undefined) {
@@ -19,10 +17,7 @@ export function buildDefaults(
   return defaults;
 }
 
-export function validate(
-  parameters: TemplateParameter[],
-  values: Record<string, unknown>,
-): Record<string, string> {
+export function validate(parameters: TemplateParameter[], values: Record<string, unknown>): Record<string, string> {
   const errs: Record<string, string> = {};
 
   for (const parameter of parameters) {
@@ -34,10 +29,7 @@ export function validate(
     const value = values[parameter.id];
 
     if (parameter.required) {
-      if (
-        parameter.type === "string" &&
-        (value === "" || value === undefined || value === null)
-      ) {
+      if (parameter.type === "string" && (value === "" || value === undefined || value === null)) {
         errs[parameter.id] = `${parameter.label} is required.`;
         continue;
       }

@@ -1,9 +1,6 @@
 import { useState, useEffect } from "react";
 import * as SDK from "azure-devops-extension-sdk";
-import {
-  TemplateDefinition,
-  TemplatePermissions,
-} from "../types/templateTypes";
+import { TemplateDefinition, TemplatePermissions } from "../types/templateTypes";
 import { ScaffoldResult } from "../services/scaffoldingOrchestrator";
 import { checkTemplatePermissions } from "../services/permissionService";
 
@@ -26,14 +23,9 @@ export interface UseScaffoldNavigationResult {
 export function useScaffoldNavigation(): UseScaffoldNavigationResult {
   const [screen, setScreen] = useState<Screen>("list");
   const [projectId, setProjectId] = useState<string | null>(null);
-  const [selectedTemplate, setSelectedTemplate] =
-    useState<TemplateDefinition | null>(null);
-  const [permissions, setPermissions] = useState<TemplatePermissions | null>(
-    null,
-  );
-  const [parameterValues, setParameterValues] = useState<
-    Record<string, unknown>
-  >({});
+  const [selectedTemplate, setSelectedTemplate] = useState<TemplateDefinition | null>(null);
+  const [permissions, setPermissions] = useState<TemplatePermissions | null>(null);
+  const [parameterValues, setParameterValues] = useState<Record<string, unknown>>({});
   const [scaffoldResults, setScaffoldResults] = useState<ScaffoldResult[]>([]);
 
   useEffect(() => {

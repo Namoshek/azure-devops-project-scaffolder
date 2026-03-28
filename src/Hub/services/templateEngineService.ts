@@ -4,10 +4,7 @@ import * as Handlebars from "handlebars";
  * Renders a Handlebars template string with the provided parameter values.
  * Used for both file content and file path/name templating.
  */
-export function renderTemplate(
-  templateStr: string,
-  values: Record<string, unknown>,
-): string {
+export function renderTemplate(templateStr: string, values: Record<string, unknown>): string {
   const compiled = Handlebars.compile(templateStr, { noEscape: true });
   return compiled(values);
 }
@@ -24,10 +21,7 @@ export function renderTemplate(
  *
  * Returns true if the expression is satisfied (field should be visible).
  */
-export function evaluateWhenExpression(
-  expression: string,
-  values: Record<string, unknown>,
-): boolean {
+export function evaluateWhenExpression(expression: string, values: Record<string, unknown>): boolean {
   try {
     return evalOr(expression.trim(), values);
   } catch {
@@ -149,10 +143,7 @@ function parseLiteral(raw: string): unknown {
   if (raw === "false") return false;
   if (raw === "null") return null;
   if (raw === "undefined") return undefined;
-  if (
-    (raw.startsWith('"') && raw.endsWith('"')) ||
-    (raw.startsWith("'") && raw.endsWith("'"))
-  ) {
+  if ((raw.startsWith('"') && raw.endsWith('"')) || (raw.startsWith("'") && raw.endsWith("'"))) {
     return raw.slice(1, -1);
   }
   const num = Number(raw);

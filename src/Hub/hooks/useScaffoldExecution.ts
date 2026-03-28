@@ -1,24 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import * as SDK from "azure-devops-extension-sdk";
-import {
-  CommonServiceIds,
-  IProjectPageService,
-} from "azure-devops-extension-api";
-import {
-  TemplateDefinition,
-  TemplatePermissions,
-} from "../types/templateTypes";
-import {
-  runScaffold,
-  ScaffoldResult,
-  ScaffoldStep,
-} from "../services/scaffoldingOrchestrator";
+import { CommonServiceIds, IProjectPageService } from "azure-devops-extension-api";
+import { TemplateDefinition, TemplatePermissions } from "../types/templateTypes";
+import { runScaffold, ScaffoldResult, ScaffoldStep } from "../services/scaffoldingOrchestrator";
 import { AuditRecord } from "../types/auditTypes";
-import {
-  createAuditRecord,
-  updateAuditRecord,
-  redactSecretParams,
-} from "../services/auditService";
+import { createAuditRecord, updateAuditRecord, redactSecretParams } from "../services/auditService";
 
 export interface UseScaffoldExecutionResult {
   steps: ScaffoldStep[];
@@ -36,9 +22,7 @@ export function useScaffoldExecution(
   existingResults: ScaffoldResult[],
   onComplete: (results: ScaffoldResult[]) => void,
 ): UseScaffoldExecutionResult {
-  const [steps, setSteps] = useState<ScaffoldStep[]>(
-    existingResults.length > 0 ? existingResults : [],
-  );
+  const [steps, setSteps] = useState<ScaffoldStep[]>(existingResults.length > 0 ? existingResults : []);
   const [running, setRunning] = useState(existingResults.length === 0);
   const [done, setDone] = useState(existingResults.length > 0);
   const [fatalError, setFatalError] = useState<string | null>(null);
@@ -54,9 +38,7 @@ export function useScaffoldExecution(
       let projectId: string;
       let projectName: string;
       try {
-        const projectService = await SDK.getService<IProjectPageService>(
-          CommonServiceIds.ProjectPageService,
-        );
+        const projectService = await SDK.getService<IProjectPageService>(CommonServiceIds.ProjectPageService);
         const project = await projectService.getProject();
         if (!project) {
           throw new Error("Could not determine current project.");
@@ -66,9 +48,7 @@ export function useScaffoldExecution(
       } catch (err) {
         setRunning(false);
         setDone(true);
-        setFatalError(
-          `Failed to determine current project: ${(err as Error).message}`,
-        );
+        setFatalError(`Failed to determine current project: ${(err as Error).message}`);
         return;
       }
 
@@ -113,15 +93,12 @@ export function useScaffoldExecution(
       // Update the audit record with the final outcome.
       if (auditRecordRef.current) {
         const finalSteps = stepsRef.current;
-        const failed =
-          runFailed || finalSteps.some((s) => s.status === "failed");
+        const failed = runFailed || finalSteps.some((s) => s.status === "failed");
         updateAuditRecord({
           ...auditRecordRef.current,
           status: failed ? "failed" : "success",
           steps: finalSteps,
-        }).catch((auditErr) =>
-          console.warn("Failed to update audit record:", auditErr),
-        );
+        }).catch((auditErr) => console.warn("Failed to update audit record:", auditErr));
       }
 
       onComplete(stepsRef.current);

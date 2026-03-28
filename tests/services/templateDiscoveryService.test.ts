@@ -75,8 +75,7 @@ function loadFreshModule(options: {
     mockFetch.mockResolvedValue({
       ok: status >= 200 && status < 300,
       status,
-      json: () =>
-        Promise.resolve(options.fetchResponse ?? { count: 0, results: [] }),
+      json: () => Promise.resolve(options.fetchResponse ?? { count: 0, results: [] }),
       text: () => Promise.resolve("error text"),
     });
   }
@@ -87,27 +86,22 @@ function loadFreshModule(options: {
     getHost: jest.fn().mockReturnValue({ name: "MyOrg" }),
   }));
 
-  const mockGetRestrictedProjects = jest
-    .fn()
-    .mockResolvedValue(options.restrictions ?? []);
+  const mockGetRestrictedProjects = jest.fn().mockResolvedValue(options.restrictions ?? []);
   jest.doMock("../../src/Hub/services/extensionSettingsService", () => ({
     getRestrictedProjects: mockGetRestrictedProjects,
   }));
 
   jest.doMock("../../src/Hub/services/locationService", () => ({
-    getSearchServiceUrl: jest
-      .fn()
-      .mockResolvedValue(options.collectionUrl ?? SEARCH_URL),
+    getSearchServiceUrl: jest.fn().mockResolvedValue(options.collectionUrl ?? SEARCH_URL),
   }));
 
   jest.doMock("../../src/Hub/services/templateReaderService", () => ({
     readTemplateFromRepo: mockReadTemplate,
   }));
 
-  const { discoverTemplates } =
-    require("../../src/Hub/services/templateDiscoveryService") as {
-      discoverTemplates: () => Promise<DiscoveredTemplate[]>;
-    };
+  const { discoverTemplates } = require("../../src/Hub/services/templateDiscoveryService") as {
+    discoverTemplates: () => Promise<DiscoveredTemplate[]>;
+  };
 
   return {
     discoverTemplates,
@@ -211,9 +205,7 @@ describe("discoverTemplates", () => {
   });
 
   it("skips a template when readTemplateFromRepo throws (logs a warning)", async () => {
-    const consoleWarn = jest
-      .spyOn(console, "warn")
-      .mockImplementation(() => {});
+    const consoleWarn = jest.spyOn(console, "warn").mockImplementation(() => {});
     const { discoverTemplates } = loadFreshModule({
       fetchResponse: buildSearchResponse([makeSearchHit()]),
       readTemplateResult: new Error("Invalid YAML"),
@@ -229,17 +221,13 @@ describe("discoverTemplates", () => {
   it("throws when the Code Search API returns 404", async () => {
     const { discoverTemplates } = loadFreshModule({ fetchStatus: 404 });
 
-    await expect(discoverTemplates()).rejects.toThrow(
-      "Code Search extension is not installed",
-    );
+    await expect(discoverTemplates()).rejects.toThrow("Code Search extension is not installed");
   });
 
   it("throws when the Code Search API returns a non-OK status", async () => {
     const { discoverTemplates } = loadFreshModule({ fetchStatus: 500 });
 
-    await expect(discoverTemplates()).rejects.toThrow(
-      "Code Search API error (500)",
-    );
+    await expect(discoverTemplates()).rejects.toThrow("Code Search API error (500)");
   });
 
   it("throws a descriptive error on a network failure", async () => {
@@ -247,9 +235,7 @@ describe("discoverTemplates", () => {
       fetchResponse: "network-error",
     });
 
-    await expect(discoverTemplates()).rejects.toThrow(
-      "Failed to reach the Code Search API",
-    );
+    await expect(discoverTemplates()).rejects.toThrow("Failed to reach the Code Search API");
   });
 
   it("caches the result so the API is only called once on repeated invocations", async () => {

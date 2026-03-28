@@ -86,3 +86,22 @@ pipelines:
     yamlPath: "pipelines/ci.yml"
     folder: "\\CI"
     when: "includeFrontend"
+
+
+# Expected folder structure of the repository containing this template:
+#   project-template.yml
+#   templates/
+#     ├─ backend/
+#     │  ├─ src/
+#     │  │  ├─ backend.csproj
+#     │  │  └─ ...
+#     │  ├─ Dockerfile          ← excluded when includeDocker is false
+#     │  └─ pipelines/
+#     │       └─ build.yml
+#     └─ frontend/
+#        ├─ src/
+#        │  ├─ index.html
+#        │  ├─ app.js
+#        │  └─ ...
+#        └─ pipelines/
+#             └─ build.yml

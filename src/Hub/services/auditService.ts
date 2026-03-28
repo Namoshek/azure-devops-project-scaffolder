@@ -1,9 +1,5 @@
 import * as SDK from "azure-devops-extension-sdk";
-import {
-  CommonServiceIds,
-  IExtensionDataManager,
-  IExtensionDataService,
-} from "azure-devops-extension-api";
+import { CommonServiceIds, IExtensionDataManager, IExtensionDataService } from "azure-devops-extension-api";
 import { TemplateDefinition } from "../types/templateTypes";
 import { AuditRecord } from "../types/auditTypes";
 
@@ -18,14 +14,9 @@ let managerPromise: Promise<IExtensionDataManager> | null = null;
 async function getManager(): Promise<IExtensionDataManager> {
   if (!managerPromise) {
     managerPromise = (async () => {
-      const dataService = await SDK.getService<IExtensionDataService>(
-        CommonServiceIds.ExtensionDataService,
-      );
+      const dataService = await SDK.getService<IExtensionDataService>(CommonServiceIds.ExtensionDataService);
       const accessToken = await SDK.getAccessToken();
-      return dataService.getExtensionDataManager(
-        SDK.getExtensionContext().id,
-        accessToken,
-      );
+      return dataService.getExtensionDataManager(SDK.getExtensionContext().id, accessToken);
     })().catch((err) => {
       managerPromise = null;
       throw err;
@@ -43,9 +34,7 @@ export function redactSecretParams(
   template: TemplateDefinition,
   parameterValues: Record<string, unknown>,
 ): Record<string, unknown> {
-  const secretIds = new Set(
-    template.parameters.filter((p) => p.secret === true).map((p) => p.id),
-  );
+  const secretIds = new Set(template.parameters.filter((p) => p.secret === true).map((p) => p.id));
   const result: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(parameterValues)) {
     result[key] = secretIds.has(key) ? "[redacted]" : value;
@@ -58,9 +47,7 @@ export function redactSecretParams(
  * record includes the server-generated `id` which is needed for subsequent
  * updateAuditRecord calls.
  */
-export async function createAuditRecord(
-  record: Omit<AuditRecord, "id">,
-): Promise<AuditRecord> {
+export async function createAuditRecord(record: Omit<AuditRecord, "id">): Promise<AuditRecord> {
   const manager = await getManager();
   const doc = await manager.createDocument(AUDIT_COLLECTION, record);
   return doc as AuditRecord;
@@ -81,9 +68,7 @@ export async function updateAuditRecord(record: AuditRecord): Promise<void> {
  * filters client-side by projectId. Returns an empty array on error so the
  * UI fails open.
  */
-export async function getAuditRecordsForProject(
-  projectId: string,
-): Promise<AuditRecord[]> {
+export async function getAuditRecordsForProject(projectId: string): Promise<AuditRecord[]> {
   try {
     const manager = await getManager();
     const docs = await manager.getDocuments(AUDIT_COLLECTION);
@@ -103,9 +88,7 @@ export async function getAllAuditRecords(): Promise<AuditRecord[]> {
   try {
     const manager = await getManager();
     const docs = await manager.getDocuments(AUDIT_COLLECTION);
-    return (docs as AuditRecord[]).sort((a, b) =>
-      b.timestamp.localeCompare(a.timestamp),
-    );
+    return (docs as AuditRecord[]).sort((a, b) => b.timestamp.localeCompare(a.timestamp));
   } catch {
     return [];
   }

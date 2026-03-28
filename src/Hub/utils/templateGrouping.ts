@@ -1,8 +1,4 @@
-import {
-  DiscoveredTemplate,
-  ALL_CATEGORY_NAME,
-  OTHERS_CATEGORY_NAME,
-} from "../types/templateTypes";
+import { DiscoveredTemplate, ALL_CATEGORY_NAME, OTHERS_CATEGORY_NAME } from "../types/templateTypes";
 
 export interface TemplateCategory {
   name: string;
@@ -10,10 +6,7 @@ export interface TemplateCategory {
   isEmpty: boolean;
 }
 
-export function groupTemplates(
-  templates: DiscoveredTemplate[],
-  configuredCategories: string[],
-): TemplateCategory[] {
+export function groupTemplates(templates: DiscoveredTemplate[], configuredCategories: string[]): TemplateCategory[] {
   // Prepend the virtual "All" category that shows every filtered template.
   const result: TemplateCategory[] = [
     {

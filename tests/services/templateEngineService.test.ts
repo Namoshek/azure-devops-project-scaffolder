@@ -1,15 +1,10 @@
-import {
-  renderTemplate,
-  evaluateWhenExpression,
-} from "../../src/Hub/services/templateEngineService";
+import { renderTemplate, evaluateWhenExpression } from "../../src/Hub/services/templateEngineService";
 
 // ─── renderTemplate ────────────────────────────────────────────────────────────
 
 describe("renderTemplate", () => {
   it("interpolates a simple variable", () => {
-    expect(renderTemplate("Hello, {{name}}!", { name: "World" })).toBe(
-      "Hello, World!",
-    );
+    expect(renderTemplate("Hello, {{name}}!", { name: "World" })).toBe("Hello, World!");
   });
 
   it("replaces a missing variable with an empty string", () => {
@@ -17,9 +12,7 @@ describe("renderTemplate", () => {
   });
 
   it("handles multiple variables", () => {
-    expect(renderTemplate("{{a}}-{{b}}", { a: "foo", b: "bar" })).toBe(
-      "foo-bar",
-    );
+    expect(renderTemplate("{{a}}-{{b}}", { a: "foo", b: "bar" })).toBe("foo-bar");
   });
 
   it("renders a path template with a variable segment", () => {
@@ -31,21 +24,15 @@ describe("renderTemplate", () => {
   });
 
   it("does not HTML-escape output (noEscape: true)", () => {
-    expect(renderTemplate("{{value}}", { value: "<b>bold</b>" })).toBe(
-      "<b>bold</b>",
-    );
+    expect(renderTemplate("{{value}}", { value: "<b>bold</b>" })).toBe("<b>bold</b>");
   });
 
   it("returns the template unchanged when there are no placeholders", () => {
-    expect(renderTemplate("no placeholders here", {})).toBe(
-      "no placeholders here",
-    );
+    expect(renderTemplate("no placeholders here", {})).toBe("no placeholders here");
   });
 
   it("renders a nested object value via dot notation", () => {
-    expect(renderTemplate("{{obj.key}}", { obj: { key: "nested" } })).toBe(
-      "nested",
-    );
+    expect(renderTemplate("{{obj.key}}", { obj: { key: "nested" } })).toBe("nested");
   });
 
   it("supports conditional blocks (#if)", () => {
@@ -98,15 +85,11 @@ describe("evaluateWhenExpression", () => {
   });
 
   it("evaluates == true against a boolean true value", () => {
-    expect(evaluateWhenExpression("enabled == true", { enabled: true })).toBe(
-      true,
-    );
+    expect(evaluateWhenExpression("enabled == true", { enabled: true })).toBe(true);
   });
 
   it("evaluates == true against a boolean false value", () => {
-    expect(evaluateWhenExpression("enabled == true", { enabled: false })).toBe(
-      false,
-    );
+    expect(evaluateWhenExpression("enabled == true", { enabled: false })).toBe(false);
   });
 
   it("evaluates == false correctly", () => {
@@ -121,9 +104,7 @@ describe("evaluateWhenExpression", () => {
   });
 
   it("evaluates != with a matching string literal", () => {
-    expect(evaluateWhenExpression('env != "prod"', { env: "prod" })).toBe(
-      false,
-    );
+    expect(evaluateWhenExpression('env != "prod"', { env: "prod" })).toBe(false);
   });
 
   it("evaluates != true correctly", () => {
@@ -143,17 +124,13 @@ describe("evaluateWhenExpression", () => {
   });
 
   it("evaluates && — both false", () => {
-    expect(evaluateWhenExpression("a && b", { a: false, b: false })).toBe(
-      false,
-    );
+    expect(evaluateWhenExpression("a && b", { a: false, b: false })).toBe(false);
   });
 
   // ─── OR (||) ──────────────────────────────────────────────────────────────
 
   it("evaluates || — both false", () => {
-    expect(evaluateWhenExpression("a || b", { a: false, b: false })).toBe(
-      false,
-    );
+    expect(evaluateWhenExpression("a || b", { a: false, b: false })).toBe(false);
   });
 
   it("evaluates || — one true", () => {
@@ -165,24 +142,16 @@ describe("evaluateWhenExpression", () => {
 
   it("applies || before &&: 'a || b && c' is parsed as 'a || (b && c)'", () => {
     // a=false, b=true, c=true → false || (true && true) = true
-    expect(
-      evaluateWhenExpression("a || b && c", { a: false, b: true, c: true }),
-    ).toBe(true);
+    expect(evaluateWhenExpression("a || b && c", { a: false, b: true, c: true })).toBe(true);
     // a=false, b=true, c=false → false || (true && false) = false
-    expect(
-      evaluateWhenExpression("a || b && c", { a: false, b: true, c: false }),
-    ).toBe(false);
+    expect(evaluateWhenExpression("a || b && c", { a: false, b: true, c: false })).toBe(false);
   });
 
   // ─── Parentheses ──────────────────────────────────────────────────────────
 
   it("evaluates parenthetical grouping", () => {
-    expect(
-      evaluateWhenExpression("(a || b) && c", { a: false, b: true, c: true }),
-    ).toBe(true);
-    expect(
-      evaluateWhenExpression("(a || b) && c", { a: false, b: true, c: false }),
-    ).toBe(false);
+    expect(evaluateWhenExpression("(a || b) && c", { a: false, b: true, c: true })).toBe(true);
+    expect(evaluateWhenExpression("(a || b) && c", { a: false, b: true, c: false })).toBe(false);
   });
 
   it("handles nested parentheses", () => {

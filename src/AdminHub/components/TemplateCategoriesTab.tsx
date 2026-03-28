@@ -12,7 +12,7 @@ const FormItem = FormItemBase as React.ComponentType<
   React.ComponentProps<typeof FormItemBase> & { children?: React.ReactNode }
 >;
 
-export function TemplateCategorySettings() {
+export function TemplateCategoriesTab() {
   const {
     loadingState,
     categories,
@@ -33,27 +33,18 @@ export function TemplateCategorySettings() {
   }
 
   return (
-    <Card
-      className="bolt-card-white"
-      titleProps={{ text: "Template Categories" }}
-    >
+    <Card className="bolt-card-white" titleProps={{ text: "Template Categories" }}>
       <div className="rhythm-vertical-16" style={{ padding: "8px 0" }}>
         <p className="body-m secondary-text" style={{ margin: 0 }}>
-          Define the categories shown in the template selection panel. Templates
-          can declare one or more categories via the{" "}
-          <code>templateCategories</code> field in their{" "}
-          <code>project-template.yml</code>. Templates that do not match any
-          configured category are listed under &ldquo;
+          Define the categories shown in the template selection panel. Templates can declare one or more categories via
+          the <code>templateCategories</code> field in their <code>project-template.yml</code>. Templates that do not
+          match any configured category are listed under &ldquo;
           {OTHERS_CATEGORY_NAME}&rdquo;.
         </p>
 
         <div className="rhythm-vertical-8">
           {categories.map((category, index) => (
-            <div
-              key={index}
-              className="flex-row flex-center rhythm-horizontal-8"
-              style={{ gap: 8 }}
-            >
+            <div key={index} className="flex-row flex-center rhythm-horizontal-8" style={{ gap: 8 }}>
               <div className="flex-column" style={{ gap: 0 }}>
                 <Button
                   iconProps={{ iconName: "ChevronUp" }}
@@ -84,10 +75,7 @@ export function TemplateCategorySettings() {
           ))}
 
           {/* Informational "Others" row — always last, non-removable */}
-          <div
-            className="flex-row flex-center"
-            style={{ gap: 8, opacity: 0.5 }}
-          >
+          <div className="flex-row flex-center" style={{ gap: 8, opacity: 0.5 }}>
             <span className="body-m" style={{ flex: 1 }}>
               {OTHERS_CATEGORY_NAME} <em>(default — always last)</em>
             </span>
@@ -104,21 +92,12 @@ export function TemplateCategorySettings() {
                 disabled={saving}
               />
             </div>
-            <Button
-              text="Add Category"
-              disabled={!canAdd || saving}
-              onClick={handleAddCategory}
-            />
+            <Button text="Add Category" disabled={!canAdd || saving} onClick={handleAddCategory} />
           </div>
         </FormItem>
 
         <div className="flex-row flex-center" style={{ gap: 8 }}>
-          <Button
-            text="Save"
-            primary
-            disabled={!hasChanges || saving}
-            onClick={() => void handleSave()}
-          />
+          <Button text="Save" primary disabled={!hasChanges || saving} onClick={() => void handleSave()} />
           {feedback && (
             <span
               className="body-m"

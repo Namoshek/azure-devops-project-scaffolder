@@ -1,8 +1,5 @@
 import * as SDK from "azure-devops-extension-sdk";
-import {
-  CommonServiceIds,
-  ILocationService,
-} from "azure-devops-extension-api/Common/CommonServices";
+import { CommonServiceIds, ILocationService } from "azure-devops-extension-api/Common/CommonServices";
 
 /**
  * Module-level cache for the collection URL promise. Populated on the first
@@ -43,9 +40,7 @@ export function getCollectionUrl(): Promise<string> {
 }
 
 async function resolveCollectionUrl(): Promise<string> {
-  const locationService = await SDK.getService<ILocationService>(
-    CommonServiceIds.LocationService,
-  );
+  const locationService = await SDK.getService<ILocationService>(CommonServiceIds.LocationService);
   const url = await locationService.getServiceLocation();
 
   // getServiceLocation() may return a trailing slash; strip it so callers
@@ -73,15 +68,11 @@ export function getSearchServiceUrl(): Promise<string> {
 }
 
 async function resolveSearchServiceUrl(): Promise<string> {
-  const locationService = await SDK.getService<ILocationService>(
-    CommonServiceIds.LocationService,
-  );
+  const locationService = await SDK.getService<ILocationService>(CommonServiceIds.LocationService);
 
   let url: string | undefined;
   try {
-    url = await locationService.getResourceAreaLocation(
-      CODE_SEARCH_RESOURCE_AREA_ID,
-    );
+    url = await locationService.getResourceAreaLocation(CODE_SEARCH_RESOURCE_AREA_ID);
   } catch {
     // On-prem Server may throw if the resource area is not registered.
   }

@@ -1,5 +1,5 @@
 import React from "react";
-import { TemplateDefinition } from "../types/templateTypes";
+import { TemplateDefinition } from "../../types/templateTypes";
 import { TextField } from "azure-devops-ui/Components/TextField/TextField";
 import { MessageCard } from "azure-devops-ui/Components/MessageCard/MessageCard";
 import { MessageCardSeverity } from "azure-devops-ui/Components/MessageCard/MessageCard.Props";
@@ -7,15 +7,12 @@ import { Spinner } from "azure-devops-ui/Components/Spinner/Spinner";
 import { SpinnerSize } from "azure-devops-ui/Components/Spinner/Spinner.Props";
 import { ZeroData } from "azure-devops-ui/Components/ZeroData/ZeroData";
 import { TemplateCard } from "./TemplateCard";
-import { HowItWorksDialog } from "./HowItWorksDialog";
-import { ScaffoldingHistoryDialog } from "./ScaffoldingHistoryDialog";
-import {
-  SingleLayerMasterPanel,
-  SingleLayerMasterPanelHeader,
-} from "azure-devops-ui/MasterDetails";
+import { HowItWorksDialog } from "../dialogs/HowItWorksDialog";
+import { ScaffoldingHistoryDialog } from "../dialogs/ScaffoldingHistoryDialog";
+import { SingleLayerMasterPanel, SingleLayerMasterPanelHeader } from "azure-devops-ui/MasterDetails";
 import { List, ListItem } from "azure-devops-ui/List";
-import { TemplateCategory } from "../utils/templateGrouping";
-import { useTemplateData } from "../hooks/useTemplateData";
+import { TemplateCategory } from "../../utils/templateGrouping";
+import { useTemplateData } from "../../hooks/useTemplateData";
 
 interface TemplateListProps {
   onTemplateSelected: (template: TemplateDefinition) => void;
@@ -54,8 +51,8 @@ export function TemplateList({ onTemplateSelected }: TemplateListProps) {
         primaryText="No templates found"
         secondaryText={
           <>
-            Create a repository in any project in this collection with a{" "}
-            <code>project-template.yml</code> file at the root to get started.
+            Create a repository in any project in this collection with a <code>project-template.yml</code> file at the
+            root to get started.
           </>
         }
         imageAltText="No templates found"
@@ -64,16 +61,11 @@ export function TemplateList({ onTemplateSelected }: TemplateListProps) {
     );
   }
 
-  const activeGroup =
-    groups.find((g) => g.name === selectedCategory) ??
-    groups[groups.length - 1];
+  const activeGroup = groups.find((g) => g.name === selectedCategory) ?? groups[groups.length - 1];
 
   return (
     <div>
-      <div
-        className="flex-row flex-wrap"
-        style={{ alignItems: "center", gap: 12, margin: "0 0 16px" }}
-      >
+      <div className="flex-row flex-wrap" style={{ alignItems: "center", gap: 12, margin: "0 0 16px" }}>
         <p className="body-l secondary-text" style={{ margin: 0, flex: 1 }}>
           Select a template to scaffold a new project.
         </p>
@@ -93,9 +85,7 @@ export function TemplateList({ onTemplateSelected }: TemplateListProps) {
       <div className="flex-row" style={{ alignItems: "flex-start" }}>
         <SingleLayerMasterPanel
           showOnSmallScreens
-          renderHeader={() => (
-            <SingleLayerMasterPanelHeader title="Categories" />
-          )}
+          renderHeader={() => <SingleLayerMasterPanelHeader title="Categories" />}
           renderContent={() => (
             <List<TemplateCategory>
               itemProvider={groupItemProvider}
@@ -109,10 +99,7 @@ export function TemplateList({ onTemplateSelected }: TemplateListProps) {
                     }}
                   >
                     <span className="body-m">{item.name}</span>
-                    <span
-                      className="secondary-text"
-                      style={{ marginLeft: 6, fontSize: "0.8em" }}
-                    >
+                    <span className="secondary-text" style={{ marginLeft: 6, fontSize: "0.8em" }}>
                       ({item.templates.length})
                     </span>
                   </div>
@@ -144,11 +131,7 @@ export function TemplateList({ onTemplateSelected }: TemplateListProps) {
               }}
             >
               {activeGroup.templates.map((t) => (
-                <TemplateCard
-                  key={t.definition.id}
-                  template={t}
-                  onSelect={() => onTemplateSelected(t.definition)}
-                />
+                <TemplateCard key={t.definition.id} template={t} onSelect={() => onTemplateSelected(t.definition)} />
               ))}
             </div>
           )}

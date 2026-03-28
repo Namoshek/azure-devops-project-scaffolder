@@ -7,7 +7,7 @@ import reactHooksPlugin from "eslint-plugin-react-hooks";
 export default tseslint.config(
   // Ignore build output and dependencies
   {
-    ignores: ["dist/**", "node_modules/**", "webpack.config.js"],
+    ignores: ["dist/**", "node_modules/**", "jest.config.js", "webpack.config.js"],
   },
 
   // Base JavaScript recommended rules
@@ -54,10 +54,7 @@ export default tseslint.config(
       // but warn in source to encourage proper typing
       "@typescript-eslint/no-explicit-any": "warn",
       // Unused variables should be caught, but prefix with _ to suppress
-      "@typescript-eslint/no-unused-vars": [
-        "warn",
-        { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
-      ],
+      "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }],
     },
   },
 

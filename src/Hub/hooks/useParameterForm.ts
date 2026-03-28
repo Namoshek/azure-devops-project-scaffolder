@@ -1,15 +1,8 @@
 import { useState, useMemo } from "react";
-import {
-  TemplateDefinition,
-  TemplateParameter,
-  TemplatePermissions,
-} from "../types/templateTypes";
+import { TemplateDefinition, TemplateParameter, TemplatePermissions } from "../types/templateTypes";
 import { evaluateWhenExpression } from "../services/templateEngineService";
 import { buildDefaults, validate } from "../utils/formUtils";
-import {
-  buildSummaryItems,
-  ParameterSummaryItem,
-} from "../utils/summaryBuilder";
+import { buildSummaryItems, ParameterSummaryItem } from "../utils/summaryBuilder";
 import { usePreflightChecks } from "./usePreflightChecks";
 
 export interface UseParameterFormResult {
@@ -30,17 +23,11 @@ export function useParameterForm(
   projectId: string,
   onSubmit: (values: Record<string, unknown>) => void,
 ): UseParameterFormResult {
-  const [values, setValues] = useState<Record<string, unknown>>(() =>
-    buildDefaults(template.parameters),
-  );
+  const [values, setValues] = useState<Record<string, unknown>>(() => buildDefaults(template.parameters));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
 
-  const { preflightChecks, preflightPending } = usePreflightChecks(
-    projectId,
-    template,
-    values,
-  );
+  const { preflightChecks, preflightPending } = usePreflightChecks(projectId, template, values);
 
   function handleChange(id: string, value: unknown) {
     setValues((prev) => ({ ...prev, [id]: value }));
@@ -58,22 +45,12 @@ export function useParameterForm(
   }
 
   const visibleParams = useMemo(
-    () =>
-      template.parameters.filter(
-        (p) => !p.when || evaluateWhenExpression(p.when, values),
-      ),
+    () => template.parameters.filter((p) => !p.when || evaluateWhenExpression(p.when, values)),
     [template.parameters, values],
   );
 
   const summaryItems = useMemo(
-    () =>
-      buildSummaryItems(
-        template,
-        values,
-        permissions,
-        preflightChecks,
-        preflightPending,
-      ),
+    () => buildSummaryItems(template, values, permissions, preflightChecks, preflightPending),
     [template, values, permissions, preflightChecks, preflightPending],
   );
 

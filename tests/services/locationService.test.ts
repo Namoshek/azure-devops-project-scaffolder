@@ -12,19 +12,12 @@ afterEach(() => {
   jest.clearAllMocks();
 });
 
-function loadFreshModule(
-  serviceLocationUrl: string,
-  resourceAreaUrl: string | "throw" = "",
-) {
-  const mockGetServiceLocation = jest
-    .fn()
-    .mockResolvedValue(serviceLocationUrl);
+function loadFreshModule(serviceLocationUrl: string, resourceAreaUrl: string | "throw" = "") {
+  const mockGetServiceLocation = jest.fn().mockResolvedValue(serviceLocationUrl);
   const mockGetResourceAreaLocation = jest.fn();
 
   if (resourceAreaUrl === "throw") {
-    mockGetResourceAreaLocation.mockRejectedValue(
-      new Error("Area not registered"),
-    );
+    mockGetResourceAreaLocation.mockRejectedValue(new Error("Area not registered"));
   } else {
     mockGetResourceAreaLocation.mockResolvedValue(resourceAreaUrl);
   }
@@ -36,11 +29,10 @@ function loadFreshModule(
     }),
   }));
 
-  const { getCollectionUrl, getSearchServiceUrl } =
-    require("../../src/Hub/services/locationService") as {
-      getCollectionUrl: () => Promise<string>;
-      getSearchServiceUrl: () => Promise<string>;
-    };
+  const { getCollectionUrl, getSearchServiceUrl } = require("../../src/Hub/services/locationService") as {
+    getCollectionUrl: () => Promise<string>;
+    getSearchServiceUrl: () => Promise<string>;
+  };
 
   return {
     getCollectionUrl,
@@ -58,16 +50,13 @@ describe("getCollectionUrl", () => {
   });
 
   it("strips trailing slashes from the returned URL", async () => {
-    const { getCollectionUrl } = loadFreshModule(
-      "https://dev.azure.com/MyOrg/",
-    );
+    const { getCollectionUrl } = loadFreshModule("https://dev.azure.com/MyOrg/");
     const url = await getCollectionUrl();
     expect(url).toBe("https://dev.azure.com/MyOrg");
   });
 
   it("caches the result across multiple calls", async () => {
-    const { getCollectionUrl, mockGetServiceLocation } =
-      loadFreshModule(COLLECTION_URL);
+    const { getCollectionUrl, mockGetServiceLocation } = loadFreshModule(COLLECTION_URL);
     await getCollectionUrl();
     await getCollectionUrl();
     expect(mockGetServiceLocation).toHaveBeenCalledTimes(1);
@@ -80,17 +69,13 @@ describe("getCollectionUrl", () => {
   });
 
   it("returns correct URL for on-prem without /tfs/ prefix", async () => {
-    const { getCollectionUrl } = loadFreshModule(
-      "https://myserver.contoso.com/DefaultCollection",
-    );
+    const { getCollectionUrl } = loadFreshModule("https://myserver.contoso.com/DefaultCollection");
     const url = await getCollectionUrl();
     expect(url).toBe("https://myserver.contoso.com/DefaultCollection");
   });
 
   it("returns correct URL for old TFS with /tfs/ prefix", async () => {
-    const { getCollectionUrl } = loadFreshModule(
-      "https://myserver.contoso.com/tfs/DefaultCollection",
-    );
+    const { getCollectionUrl } = loadFreshModule("https://myserver.contoso.com/tfs/DefaultCollection");
     const url = await getCollectionUrl();
     expect(url).toBe("https://myserver.contoso.com/tfs/DefaultCollection");
   });
@@ -104,10 +89,7 @@ describe("getSearchServiceUrl", () => {
   });
 
   it("strips trailing slashes from the resource area URL", async () => {
-    const { getSearchServiceUrl } = loadFreshModule(
-      COLLECTION_URL,
-      `${SEARCH_URL}/`,
-    );
+    const { getSearchServiceUrl } = loadFreshModule(COLLECTION_URL, `${SEARCH_URL}/`);
     const url = await getSearchServiceUrl();
     expect(url).toBe(SEARCH_URL);
   });
@@ -127,8 +109,7 @@ describe("getSearchServiceUrl", () => {
   });
 
   it("caches the result across multiple calls", async () => {
-    const { getSearchServiceUrl, mockGetResourceAreaLocation } =
-      loadFreshModule(COLLECTION_URL, SEARCH_URL);
+    const { getSearchServiceUrl, mockGetResourceAreaLocation } = loadFreshModule(COLLECTION_URL, SEARCH_URL);
     await getSearchServiceUrl();
     await getSearchServiceUrl();
     expect(mockGetResourceAreaLocation).toHaveBeenCalledTimes(1);

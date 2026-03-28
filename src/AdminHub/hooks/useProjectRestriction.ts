@@ -21,9 +21,7 @@ export interface UseProjectRestrictionResult {
 }
 
 export function useProjectRestriction(): UseProjectRestrictionResult {
-  const [loadingState, setLoadingState] = useState<
-    "loading" | "ready" | "error"
-  >("loading");
+  const [loadingState, setLoadingState] = useState<"loading" | "ready" | "error">("loading");
   const [allProjects, setAllProjects] = useState<TeamProjectReference[]>([]);
   const [savedIds, setSavedIds] = useState<ReadonlySet<string>>(new Set());
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
@@ -42,9 +40,7 @@ export function useProjectRestriction(): UseProjectRestrictionResult {
           getRestrictedProjects(),
         ]);
 
-        const sorted = [...projects].sort((a, b) =>
-          a.name.localeCompare(b.name),
-        );
+        const sorted = [...projects].sort((a, b) => a.name.localeCompare(b.name));
         setAllProjects(sorted);
 
         const ids = new Set(restrictions.map((r: RestrictedProject) => r.id));

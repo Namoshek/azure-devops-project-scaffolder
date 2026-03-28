@@ -34,11 +34,7 @@ function repoCacheKey(projectId: string, repoName: string): string {
   return `repo:${projectId}:${repoName.toLowerCase()}`;
 }
 
-function pipelineCacheKey(
-  projectId: string,
-  pipelineName: string,
-  folder: string,
-): string {
+function pipelineCacheKey(projectId: string, pipelineName: string, folder: string): string {
   return `pipeline:${projectId}:${folder.toLowerCase()}:${pipelineName.toLowerCase()}`;
 }
 
@@ -70,9 +66,7 @@ export async function checkRepoExists(
   try {
     const gitClient = getClient(GitRestClient);
     const repos = await gitClient.getRepositories(projectId);
-    const existing = repos.find(
-      (r) => r.name?.toLowerCase() === repoName.toLowerCase(),
-    );
+    const existing = repos.find((r) => r.name?.toLowerCase() === repoName.toLowerCase());
 
     if (!existing) {
       result = { exists: false, isNonEmpty: false };
@@ -174,11 +168,7 @@ export async function checkTemplateResourcesExistence(
 
   const [repoResults, pipelineResults] = await Promise.all([
     Promise.all(repoEntries.map((e) => checkRepoExists(projectId, e.rendered))),
-    Promise.all(
-      pipelineEntries.map((e) =>
-        checkPipelineExists(projectId, e.rendered, e.folder),
-      ),
-    ),
+    Promise.all(pipelineEntries.map((e) => checkPipelineExists(projectId, e.rendered, e.folder))),
   ]);
 
   const repos: Record<string, RepoExistenceResult> = {};

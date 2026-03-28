@@ -1,9 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { TemplateDefinition } from "../types/templateTypes";
-import {
-  checkTemplateResourcesExistence,
-  ResourceExistenceMap,
-} from "../services/preflightCheckService";
+import { checkTemplateResourcesExistence, ResourceExistenceMap } from "../services/preflightCheckService";
 
 export interface UsePreflightChecksResult {
   preflightChecks: ResourceExistenceMap | null;
@@ -15,8 +12,7 @@ export function usePreflightChecks(
   template: TemplateDefinition,
   values: Record<string, unknown>,
 ): UsePreflightChecksResult {
-  const [preflightChecks, setPreflightChecks] =
-    useState<ResourceExistenceMap | null>(null);
+  const [preflightChecks, setPreflightChecks] = useState<ResourceExistenceMap | null>(null);
   const [preflightPending, setPreflightPending] = useState(true);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 

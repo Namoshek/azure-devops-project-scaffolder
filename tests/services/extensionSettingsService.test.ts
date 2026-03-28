@@ -5,10 +5,7 @@ import type { RestrictedProject } from "../../src/Hub/services/extensionSettings
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function makeManager(overrides: {
-  getValue?: jest.Mock;
-  setValue?: jest.Mock;
-}) {
+function makeManager(overrides: { getValue?: jest.Mock; setValue?: jest.Mock }) {
   return {
     getValue: overrides.getValue ?? jest.fn().mockResolvedValue(null),
     setValue: overrides.setValue ?? jest.fn().mockResolvedValue(undefined),
@@ -30,9 +27,7 @@ function loadFreshModule(options: {
       getExtensionDataManager: mockGetExtensionDataManager,
     }),
     getAccessToken: jest.fn().mockResolvedValue("test-token"),
-    getExtensionContext: jest
-      .fn()
-      .mockReturnValue({ id: "publisher.extension" }),
+    getExtensionContext: jest.fn().mockReturnValue({ id: "publisher.extension" }),
   }));
 
   // CommonServiceIds is referenced as a const enum; supply the runtime string value directly.
@@ -42,13 +37,12 @@ function loadFreshModule(options: {
     },
   }));
 
-  const service =
-    require("../../src/Hub/services/extensionSettingsService") as {
-      getRestrictedProjects: () => Promise<RestrictedProject[]>;
-      setRestrictedProjects: (projects: RestrictedProject[]) => Promise<void>;
-      getTemplateCategories: () => Promise<string[]>;
-      setTemplateCategories: (categories: string[]) => Promise<void>;
-    };
+  const service = require("../../src/Hub/services/extensionSettingsService") as {
+    getRestrictedProjects: () => Promise<RestrictedProject[]>;
+    setRestrictedProjects: (projects: RestrictedProject[]) => Promise<void>;
+    getTemplateCategories: () => Promise<string[]>;
+    setTemplateCategories: (categories: string[]) => Promise<void>;
+  };
 
   return { service, mockManager, mockGetExtensionDataManager };
 }
@@ -149,9 +143,7 @@ describe("setRestrictedProjects", () => {
       },
     });
 
-    await expect(
-      service.setRestrictedProjects([{ id: "id", name: "name" }]),
-    ).rejects.toThrow("Permission denied");
+    await expect(service.setRestrictedProjects([{ id: "id", name: "name" }])).rejects.toThrow("Permission denied");
   });
 });
 
@@ -181,9 +173,7 @@ describe("manager caching", () => {
         getExtensionDataManager: mockGetExtensionDataManager,
       }),
       getAccessToken: jest.fn().mockResolvedValue("test-token"),
-      getExtensionContext: jest
-        .fn()
-        .mockReturnValue({ id: "publisher.extension" }),
+      getExtensionContext: jest.fn().mockReturnValue({ id: "publisher.extension" }),
     }));
 
     jest.doMock("azure-devops-extension-api", () => ({
@@ -192,10 +182,9 @@ describe("manager caching", () => {
       },
     }));
 
-    const service =
-      require("../../src/Hub/services/extensionSettingsService") as {
-        getRestrictedProjects: () => Promise<RestrictedProject[]>;
-      };
+    const service = require("../../src/Hub/services/extensionSettingsService") as {
+      getRestrictedProjects: () => Promise<RestrictedProject[]>;
+    };
 
     // First call: manager creation fails → getRestrictedProjects fails open → returns []
     const result1 = await service.getRestrictedProjects();
@@ -288,8 +277,6 @@ describe("setTemplateCategories", () => {
       },
     });
 
-    await expect(service.setTemplateCategories(["Backend"])).rejects.toThrow(
-      "Permission denied",
-    );
+    await expect(service.setTemplateCategories(["Backend"])).rejects.toThrow("Permission denied");
   });
 });

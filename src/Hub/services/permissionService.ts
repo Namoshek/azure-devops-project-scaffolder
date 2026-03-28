@@ -1,8 +1,5 @@
 ﻿import * as SDK from "azure-devops-extension-sdk";
-import {
-  TemplateDefinition,
-  TemplatePermissions,
-} from "../types/templateTypes";
+import { TemplateDefinition, TemplatePermissions } from "../types/templateTypes";
 import { getCollectionUrl } from "./locationService";
 
 // ─── Security namespace GUIDs (constant across all ADO instances) ─────────────
@@ -59,13 +56,8 @@ async function getSecurityBaseUrl(): Promise<string> {
  * Returns one boolean per input evaluation in the same order.
  * Throws on any HTTP error so callers can fail closed.
  */
-async function evaluatePermissionBatch(
-  evaluations: PermissionEvaluation[],
-): Promise<boolean[]> {
-  const [accessToken, baseUrl] = await Promise.all([
-    SDK.getAccessToken(),
-    getSecurityBaseUrl(),
-  ]);
+async function evaluatePermissionBatch(evaluations: PermissionEvaluation[]): Promise<boolean[]> {
+  const [accessToken, baseUrl] = await Promise.all([SDK.getAccessToken(), getSecurityBaseUrl()]);
 
   const url = `${baseUrl}/_apis/security/permissionevaluationbatch?api-version=7.0`;
 
@@ -108,9 +100,7 @@ export async function checkRepoPermission(projectId: string): Promise<boolean> {
     ]);
     return allowed;
   } catch (err) {
-    console.warn(
-      `Repo permission check failed: ${(err as Error).message}. Treating as denied.`,
-    );
+    console.warn(`Repo permission check failed: ${(err as Error).message}. Treating as denied.`);
     return false;
   }
 }
@@ -121,9 +111,7 @@ export async function checkRepoPermission(projectId: string): Promise<boolean> {
  *
  * Fails closed: returns false on any error.
  */
-export async function checkPipelinePermission(
-  projectId: string,
-): Promise<boolean> {
+export async function checkPipelinePermission(projectId: string): Promise<boolean> {
   try {
     const [allowed] = await evaluatePermissionBatch([
       {
@@ -134,9 +122,7 @@ export async function checkPipelinePermission(
     ]);
     return allowed;
   } catch (err) {
-    console.warn(
-      `Pipeline permission check failed: ${(err as Error).message}. Treating as denied.`,
-    );
+    console.warn(`Pipeline permission check failed: ${(err as Error).message}. Treating as denied.`);
     return false;
   }
 }
@@ -186,9 +172,7 @@ export async function checkTemplatePermissions(
     const canCreatePipelines = needsPipelines ? results[idx] : true;
     return { canCreateRepos, canCreatePipelines };
   } catch (err) {
-    console.warn(
-      `Template permission check failed: ${(err as Error).message}. Treating as denied.`,
-    );
+    console.warn(`Template permission check failed: ${(err as Error).message}. Treating as denied.`);
     return {
       canCreateRepos: needsRepos ? false : true,
       canCreatePipelines: needsPipelines ? false : true,
@@ -213,9 +197,7 @@ export async function checkCollectionAdminPermission(): Promise<boolean> {
     ]);
     return allowed;
   } catch (err) {
-    console.warn(
-      `Collection admin permission check failed: ${(err as Error).message}. Treating as non-admin.`,
-    );
+    console.warn(`Collection admin permission check failed: ${(err as Error).message}. Treating as non-admin.`);
     return false;
   }
 }

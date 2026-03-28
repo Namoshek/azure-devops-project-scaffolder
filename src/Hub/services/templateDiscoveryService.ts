@@ -64,10 +64,7 @@ async function fetchTemplates(): Promise<DiscoveredTemplate[]> {
     searchText: "file:project-template.yml",
     $skip: 0,
     $top: 200,
-    filters:
-      restrictions.length > 0
-        ? { Project: restrictions.map((r) => r.name) }
-        : {},
+    filters: restrictions.length > 0 ? { Project: restrictions.map((r) => r.name) } : {},
     $orderBy: null,
     includeFacets: false,
   };
@@ -119,11 +116,7 @@ async function fetchTemplates(): Promise<DiscoveredTemplate[]> {
 
   for (const hit of unique) {
     try {
-      const definition = await readTemplateFromRepo(
-        hit.project.id,
-        hit.repository.id,
-        hit.path,
-      );
+      const definition = await readTemplateFromRepo(hit.project.id, hit.repository.id, hit.path);
       definition._sourceProjectId = hit.project.id;
       definition._sourceProjectName = hit.project.name;
       definition._sourceRepoId = hit.repository.id;
@@ -136,9 +129,7 @@ async function fetchTemplates(): Promise<DiscoveredTemplate[]> {
       });
     } catch (err) {
       // Skip malformed templates; log to console so authors can diagnose
-      console.warn(
-        `Skipping template in ${hit.project.name}/${hit.repository.name}: ${(err as Error).message}`,
-      );
+      console.warn(`Skipping template in ${hit.project.name}/${hit.repository.name}: ${(err as Error).message}`);
     }
   }
 

@@ -1,11 +1,5 @@
-import {
-  TemplateDefinition,
-  TemplatePermissions,
-} from "../types/templateTypes";
-import {
-  evaluateWhenExpression,
-  renderTemplate,
-} from "../services/templateEngineService";
+import { TemplateDefinition, TemplatePermissions } from "../types/templateTypes";
+import { evaluateWhenExpression, renderTemplate } from "../services/templateEngineService";
 import { ResourceExistenceMap } from "../services/preflightCheckService";
 
 export interface ParameterSummarySubItem {
@@ -42,16 +36,9 @@ export function buildSummaryItems(
     ];
     const renderedName = renderTemplate(r.name, values);
     const repoCheck = preflightChecks?.repos[renderedName.toLowerCase()];
-    const permissionDenied =
-      permissions !== null && !permissions.canCreateRepos;
-    const existsWillSkip =
-      included &&
-      !permissionDenied &&
-      (repoCheck?.exists && repoCheck.isNonEmpty) === true;
-    const existsCheckPending =
-      included &&
-      !permissionDenied &&
-      (preflightPending || repoCheck === undefined);
+    const permissionDenied = permissions !== null && !permissions.canCreateRepos;
+    const existsWillSkip = included && !permissionDenied && (repoCheck?.exists && repoCheck.isNonEmpty) === true;
+    const existsCheckPending = included && !permissionDenied && (preflightPending || repoCheck === undefined);
 
     return {
       type: "repository" as const,
@@ -70,14 +57,9 @@ export function buildSummaryItems(
     const folder = p.folder ?? "\\";
     const pipelineKey = `${folder.toLowerCase()}::${renderedName.toLowerCase()}`;
     const pipelineCheck = preflightChecks?.pipelines[pipelineKey];
-    const permissionDenied =
-      permissions !== null && !permissions.canCreatePipelines;
-    const existsWillSkip =
-      included && !permissionDenied && pipelineCheck?.exists === true;
-    const existsCheckPending =
-      included &&
-      !permissionDenied &&
-      (preflightPending || pipelineCheck === undefined);
+    const permissionDenied = permissions !== null && !permissions.canCreatePipelines;
+    const existsWillSkip = included && !permissionDenied && pipelineCheck?.exists === true;
+    const existsCheckPending = included && !permissionDenied && (preflightPending || pipelineCheck === undefined);
 
     return {
       type: "pipeline" as const,

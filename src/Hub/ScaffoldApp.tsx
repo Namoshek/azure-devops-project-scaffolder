@@ -1,16 +1,15 @@
 import React from "react";
 import { Page as PageBase } from "azure-devops-ui/Components/Page/Page";
-const Page = PageBase as React.ComponentType<
-  React.ComponentProps<typeof PageBase> & { children?: React.ReactNode }
->;
 import { Header } from "azure-devops-ui/Components/Header/Header";
 import { TitleSize } from "azure-devops-ui/Components/Header/Header.Props";
 import { Spinner } from "azure-devops-ui/Components/Spinner/Spinner";
 import { SpinnerSize } from "azure-devops-ui/Components/Spinner/Spinner.Props";
-import { TemplateList } from "./components/TemplateList";
-import { ParameterForm } from "./components/ParameterForm";
-import { ScaffoldProgress } from "./components/ScaffoldProgress";
+import { TemplateList } from "./components/overview/TemplateList";
+import { ParameterForm } from "./components/scaffolding/ParameterForm";
+import { ScaffoldProgress } from "./components/scaffolding/ScaffoldProgress";
 import { useScaffoldNavigation } from "./hooks/useScaffoldNavigation";
+
+const Page = PageBase as React.ComponentType<React.ComponentProps<typeof PageBase> & { children?: React.ReactNode }>;
 
 export function ScaffoldApp() {
   const {
@@ -41,9 +40,7 @@ export function ScaffoldApp() {
     <Page>
       <Header title="Project Scaffolding" titleSize={TitleSize.Large} />
       <div className="page-content page-content-top rhythm-vertical-24">
-        {screen === "list" && (
-          <TemplateList onTemplateSelected={handleTemplateSelected} />
-        )}
+        {screen === "list" && <TemplateList onTemplateSelected={handleTemplateSelected} />}
 
         {screen === "form" && selectedTemplate && (
           <ParameterForm

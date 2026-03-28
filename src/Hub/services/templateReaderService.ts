@@ -1,8 +1,5 @@
 import { getClient } from "azure-devops-extension-api";
-import {
-  GitRestClient,
-  VersionControlRecursionType,
-} from "azure-devops-extension-api/Git";
+import { GitRestClient, VersionControlRecursionType } from "azure-devops-extension-api/Git";
 import * as yaml from "js-yaml";
 import {
   TemplateDefinition,
@@ -26,11 +23,7 @@ export async function readTemplateFromRepo(
   // Normalize path — Code Search returns paths like /project-template.yml
   const normalizedPath = filePath.startsWith("/") ? filePath : `/${filePath}`;
 
-  const content = await gitClient.getItemText(
-    repoId,
-    normalizedPath,
-    projectId,
-  );
+  const content = await gitClient.getItemText(repoId, normalizedPath, projectId);
   return parseTemplateYaml(content);
 }
 
@@ -47,16 +40,10 @@ export async function fetchTemplateFiles(
   const gitClient = getClient(GitRestClient);
 
   // List all items recursively under the sourcePath.
-  const items = await gitClient.getItems(
-    repoId,
-    projectId,
-    sourcePath,
-    VersionControlRecursionType.Full,
-  );
+  const items = await gitClient.getItems(repoId, projectId, sourcePath, VersionControlRecursionType.Full);
 
   const files = items.filter((item) => !item.isFolder);
-  const results: Array<{ path: string; content: string; isBase64: boolean }> =
-    [];
+  const results: Array<{ path: string; content: string; isBase64: boolean }> = [];
 
   for (const file of files) {
     const filePath = file.path!;
@@ -64,18 +51,10 @@ export async function fetchTemplateFiles(
 
     try {
       if (isText) {
-        const content = await gitClient.getItemText(
-          repoId,
-          filePath,
-          projectId,
-        );
+        const content = await gitClient.getItemText(repoId, filePath, projectId);
         results.push({ path: filePath, content, isBase64: false });
       } else {
-        const buffer = await gitClient.getItemContent(
-          repoId,
-          filePath,
-          projectId,
-        );
+        const buffer = await gitClient.getItemContent(repoId, filePath, projectId);
         results.push({
           path: filePath,
           content: arrayBufferToBase64(buffer),
@@ -176,20 +155,11 @@ function parseTemplateYaml(raw: string): TemplateDefinition {
     id: obj.id as string,
     name: obj.name as string,
     version: obj.version as string,
-    description:
-      typeof obj.description === "string" ? obj.description : undefined,
-    maintainers: Array.isArray(obj.maintainers)
-      ? (obj.maintainers as string[])
-      : undefined,
-    preScaffoldNotes: Array.isArray(obj.preScaffoldNotes)
-      ? (obj.preScaffoldNotes as string[])
-      : undefined,
-    postScaffoldNotes: Array.isArray(obj.postScaffoldNotes)
-      ? (obj.postScaffoldNotes as string[])
-      : undefined,
-    templateCategories: Array.isArray(obj.templateCategories)
-      ? (obj.templateCategories as string[])
-      : undefined,
+    description: typeof obj.description === "string" ? obj.description : undefined,
+    maintainers: Array.isArray(obj.maintainers) ? (obj.maintainers as string[]) : undefined,
+    preScaffoldNotes: Array.isArray(obj.preScaffoldNotes) ? (obj.preScaffoldNotes as string[]) : undefined,
+    postScaffoldNotes: Array.isArray(obj.postScaffoldNotes) ? (obj.postScaffoldNotes as string[]) : undefined,
+    templateCategories: Array.isArray(obj.templateCategories) ? (obj.templateCategories as string[]) : undefined,
     parameters,
     repositories: parseRepositories(obj.repositories),
     pipelines: parsePipelines(obj.pipelines),
@@ -200,9 +170,7 @@ function parseTemplateYaml(raw: string): TemplateDefinition {
 
 function assertString(obj: Record<string, unknown>, key: string): void {
   if (typeof obj[key] !== "string" || !(obj[key] as string).trim()) {
-    throw new Error(
-      `project-template.yml must have a non-empty string field: '${key}'`,
-    );
+    throw new Error(`project-template.yml must have a non-empty string field: '${key}'`);
   }
 }
 
@@ -214,25 +182,20 @@ function parseRepositories(raw: unknown): TemplateRepository[] {
       throw new Error(`repositories[${index}] must be an object`);
     }
     const r = item as Record<string, unknown>;
-    if (typeof r.name !== "string")
-      throw new Error(`repositories[${index}].name must be a string`);
-    if (typeof r.sourcePath !== "string")
-      throw new Error(`repositories[${index}].sourcePath must be a string`);
+    if (typeof r.name !== "string") throw new Error(`repositories[${index}].name must be a string`);
+    if (typeof r.sourcePath !== "string") throw new Error(`repositories[${index}].sourcePath must be a string`);
 
     const repo: TemplateRepository = {
       name: r.name,
       sourcePath: r.sourcePath,
-      defaultBranch:
-        typeof r.defaultBranch === "string" ? r.defaultBranch : "main",
+      defaultBranch: typeof r.defaultBranch === "string" ? r.defaultBranch : "main",
     };
 
     if (typeof r.when === "string") repo.when = r.when;
 
     if (Array.isArray(r.exclude)) {
       repo.exclude = r.exclude
-        .filter(
-          (e): e is Record<string, unknown> => !!e && typeof e === "object",
-        )
+        .filter((e): e is Record<string, unknown> => !!e && typeof e === "object")
         .map(
           (e): TemplateFileExclude => ({
             path: typeof e.path === "string" ? e.path : String(e.path),
@@ -253,12 +216,9 @@ function parsePipelines(raw: unknown): TemplatePipeline[] {
       throw new Error(`pipelines[${index}] must be an object`);
     }
     const p = item as Record<string, unknown>;
-    if (typeof p.name !== "string")
-      throw new Error(`pipelines[${index}].name must be a string`);
-    if (typeof p.repository !== "string")
-      throw new Error(`pipelines[${index}].repository must be a string`);
-    if (typeof p.yamlPath !== "string")
-      throw new Error(`pipelines[${index}].yamlPath must be a string`);
+    if (typeof p.name !== "string") throw new Error(`pipelines[${index}].name must be a string`);
+    if (typeof p.repository !== "string") throw new Error(`pipelines[${index}].repository must be a string`);
+    if (typeof p.yamlPath !== "string") throw new Error(`pipelines[${index}].yamlPath must be a string`);
 
     const pipeline: TemplatePipeline = {
       name: p.name,
@@ -281,16 +241,12 @@ function parseParameters(raw: unknown): TemplateParameter[] {
       throw new Error(`parameters[${index}] must be an object`);
     }
     const p = item as Record<string, unknown>;
-    if (typeof p.id !== "string")
-      throw new Error(`parameters[${index}].id must be a string`);
-    if (typeof p.label !== "string")
-      throw new Error(`parameters[${index}].label must be a string`);
+    if (typeof p.id !== "string") throw new Error(`parameters[${index}].id must be a string`);
+    if (typeof p.label !== "string") throw new Error(`parameters[${index}].label must be a string`);
 
     const type = p.type as string;
     if (!["string", "boolean", "choice"].includes(type)) {
-      throw new Error(
-        `parameters[${index}].type must be 'string', 'boolean', or 'choice'`,
-      );
+      throw new Error(`parameters[${index}].type must be 'string', 'boolean', or 'choice'`);
     }
 
     const param: TemplateParameter = {
@@ -301,8 +257,7 @@ function parseParameters(raw: unknown): TemplateParameter[] {
 
     if (typeof p.hint === "string") param.hint = p.hint;
     if (typeof p.required === "boolean") param.required = p.required;
-    if (p.defaultValue !== undefined)
-      param.defaultValue = p.defaultValue as string | boolean;
+    if (p.defaultValue !== undefined) param.defaultValue = p.defaultValue as string | boolean;
     if (Array.isArray(p.options)) param.options = p.options as string[];
     if (typeof p.secret === "boolean") param.secret = p.secret;
     if (typeof p.when === "string") param.when = p.when;

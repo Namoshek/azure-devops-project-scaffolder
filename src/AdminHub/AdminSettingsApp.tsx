@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from "react";
 import * as SDK from "azure-devops-extension-sdk";
 import { Page as PageBase } from "azure-devops-ui/Components/Page/Page";
-const Page = PageBase as React.ComponentType<
-  React.ComponentProps<typeof PageBase> & { children?: React.ReactNode }
->;
+const Page = PageBase as React.ComponentType<React.ComponentProps<typeof PageBase> & { children?: React.ReactNode }>;
 import { Header } from "azure-devops-ui/Components/Header/Header";
 import { TitleSize } from "azure-devops-ui/Components/Header/Header.Props";
 import { Spinner } from "azure-devops-ui/Components/Spinner/Spinner";
@@ -13,13 +11,11 @@ import { MessageCardSeverity } from "azure-devops-ui/Components/MessageCard/Mess
 import { Tab as TabBase } from "azure-devops-ui/Components/Tabs/Tab";
 import { TabBar as TabBarBase } from "azure-devops-ui/Components/Tabs/TabBar";
 import { checkCollectionAdminPermission } from "../Hub/services/permissionService";
-import { ProjectRestrictionSettings } from "./components/ProjectRestrictionSettings";
-import { TemplateCategorySettings } from "./components/TemplateCategorySettings";
-import { AuditSettings } from "./components/AuditSettings";
+import { ProjectRestrictionTab } from "./components/ProjectRestrictionTab";
+import { TemplateCategoriesTab } from "./components/TemplateCategoriesTab";
+import { AuditTab } from "./components/AuditTab";
 
-const Tab = TabBase as React.ComponentType<
-  React.ComponentProps<typeof TabBase> & { children?: React.ReactNode }
->;
+const Tab = TabBase as React.ComponentType<React.ComponentProps<typeof TabBase> & { children?: React.ReactNode }>;
 const TabBar = TabBarBase as React.ComponentType<
   React.ComponentProps<typeof TabBarBase> & { children?: React.ReactNode }
 >;
@@ -51,31 +47,24 @@ export function AdminSettingsApp() {
 
   return (
     <Page>
-      <Header
-        title="Project Scaffolding"
-        titleSize={TitleSize.Large}
-      />
+      <Header title="Project Scaffolding" titleSize={TitleSize.Large} />
       <div className="page-content page-content-top rhythm-vertical-16">
         {!isAdmin && (
           <MessageCard severity={MessageCardSeverity.Warning}>
-            You must be a collection administrator to manage Project Scaffolding
-            settings.
+            You must be a collection administrator to manage Project Scaffolding settings.
           </MessageCard>
         )}
 
         {isAdmin && (
           <>
-            <TabBar
-              onSelectedTabChanged={setSelectedTabId}
-              selectedTabId={selectedTabId}
-            >
+            <TabBar onSelectedTabChanged={setSelectedTabId} selectedTabId={selectedTabId}>
               <Tab id="restriction" name="Template Source" />
               <Tab id="categories" name="Categories" />
               <Tab id="audit" name="Audit" />
             </TabBar>
-            {selectedTabId === "restriction" && <ProjectRestrictionSettings />}
-            {selectedTabId === "categories" && <TemplateCategorySettings />}
-            {selectedTabId === "audit" && <AuditSettings />}
+            {selectedTabId === "restriction" && <ProjectRestrictionTab />}
+            {selectedTabId === "categories" && <TemplateCategoriesTab />}
+            {selectedTabId === "audit" && <AuditTab />}
           </>
         )}
       </div>

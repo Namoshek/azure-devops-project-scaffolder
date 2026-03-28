@@ -57,18 +57,12 @@ export async function scaffoldPipeline(
     return {
       pipelineName,
       status: "failed",
-      reason:
-        "No agent queues found. At least one agent queue (e.g. 'Default') must exist.",
+      reason: "No agent queues found. At least one agent queue (e.g. 'Default') must exist.",
     };
   }
 
   // 3. Check if pipeline already exists (fresh=true bypasses preview cache)
-  const { exists: pipelineExists } = await checkPipelineExists(
-    projectId,
-    pipelineName,
-    folder,
-    { fresh: true },
-  );
+  const { exists: pipelineExists } = await checkPipelineExists(projectId, pipelineName, folder, { fresh: true });
   if (pipelineExists) {
     return {
       pipelineName,
@@ -113,33 +107,22 @@ export async function scaffoldPipeline(
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
-async function resolveRepoId(
-  gitClient: GitRestClient,
-  projectId: string,
-  repoName: string,
-): Promise<string | null> {
+async function resolveRepoId(gitClient: GitRestClient, projectId: string, repoName: string): Promise<string | null> {
   try {
     const repos = await gitClient.getRepositories(projectId);
-    const repo = repos.find(
-      (r) => r.name?.toLowerCase() === repoName.toLowerCase(),
-    );
+    const repo = repos.find((r) => r.name?.toLowerCase() === repoName.toLowerCase());
     return repo?.id ?? null;
   } catch {
     return null;
   }
 }
 
-async function getDefaultQueueId(
-  taskAgentClient: TaskAgentRestClient,
-  projectId: string,
-): Promise<number | null> {
+async function getDefaultQueueId(taskAgentClient: TaskAgentRestClient, projectId: string): Promise<number | null> {
   try {
     const queues = await taskAgentClient.getAgentQueues(projectId);
     if (!queues || queues.length === 0) return null;
     // Prefer a queue named "Default"; otherwise take the first available
-    const defaultQueue = queues.find(
-      (q) => q.name?.toLowerCase() === "default",
-    );
+    const defaultQueue = queues.find((q) => q.name?.toLowerCase() === "default");
     return (defaultQueue ?? queues[0]).id;
   } catch {
     return null;

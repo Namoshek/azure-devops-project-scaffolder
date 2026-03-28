@@ -1,5 +1,5 @@
 import React, { useMemo, useEffect } from "react";
-import { TemplateParameter } from "../types/templateTypes";
+import { TemplateParameter } from "../../types/templateTypes";
 import { Checkbox } from "azure-devops-ui/Components/Checkbox/Checkbox";
 import { Dropdown } from "azure-devops-ui/Components/Dropdown/Dropdown";
 import { FormItem as FormItemBase } from "azure-devops-ui/Components/FormItem/FormItem";
@@ -18,12 +18,7 @@ export interface ParameterFieldProps {
   onChange: (id: string, value: unknown) => void;
 }
 
-export function ParameterField({
-  param,
-  value,
-  error,
-  onChange,
-}: ParameterFieldProps) {
+export function ParameterField({ param, value, error, onChange }: ParameterFieldProps) {
   const dropdownSelection = useMemo(() => new DropdownSelection(), []);
   const dropdownItems = useMemo<IListBoxItem[]>(
     () => (param.options || []).map((opt) => ({ id: opt, text: opt })),
@@ -55,12 +50,7 @@ export function ParameterField({
 
   if (param.type === "choice" && param.options) {
     return (
-      <FormItem
-        label={param.label}
-        required={param.required}
-        message={hasError ? error : param.hint}
-        error={hasError}
-      >
+      <FormItem label={param.label} required={param.required} message={hasError ? error : param.hint} error={hasError}>
         <Dropdown
           items={dropdownItems}
           selection={dropdownSelection}
@@ -72,12 +62,7 @@ export function ParameterField({
 
   // string / secret
   return (
-    <FormItem
-      label={param.label}
-      required={param.required}
-      message={hasError ? error : param.hint}
-      error={hasError}
-    >
+    <FormItem label={param.label} required={param.required} message={hasError ? error : param.hint} error={hasError}>
       <TextField
         value={typeof value === "string" ? value : ""}
         inputType={param.secret ? "password" : "text"}

@@ -1,9 +1,5 @@
 import * as SDK from "azure-devops-extension-sdk";
-import {
-  CommonServiceIds,
-  IExtensionDataManager,
-  IExtensionDataService,
-} from "azure-devops-extension-api";
+import { CommonServiceIds, IExtensionDataManager, IExtensionDataService } from "azure-devops-extension-api";
 
 /**
  * A project to which template discovery may be restricted, stored as
@@ -37,16 +33,11 @@ let managerPromise: Promise<IExtensionDataManager> | null = null;
 async function getManager(): Promise<IExtensionDataManager> {
   if (!managerPromise) {
     managerPromise = (async () => {
-      const dataService = await SDK.getService<IExtensionDataService>(
-        CommonServiceIds.ExtensionDataService,
-      );
+      const dataService = await SDK.getService<IExtensionDataService>(CommonServiceIds.ExtensionDataService);
       const accessToken = await SDK.getAccessToken();
       // getExtensionContext().id is the full "publisher.extensionId" string
       // required by getExtensionDataManager.
-      return dataService.getExtensionDataManager(
-        SDK.getExtensionContext().id,
-        accessToken,
-      );
+      return dataService.getExtensionDataManager(SDK.getExtensionContext().id, accessToken);
     })().catch((err) => {
       // Clear the cache so a retry is possible on the next call.
       managerPromise = null;
@@ -65,10 +56,9 @@ async function getManager(): Promise<IExtensionDataManager> {
 export async function getRestrictedProjects(): Promise<RestrictedProject[]> {
   try {
     const manager = await getManager();
-    const wrapper = await manager.getValue<RestrictedProjectsWrapper | null>(
-      RESTRICTED_PROJECTS_KEY,
-      { defaultValue: null },
-    );
+    const wrapper = await manager.getValue<RestrictedProjectsWrapper | null>(RESTRICTED_PROJECTS_KEY, {
+      defaultValue: null,
+    });
     return wrapper?.projects ?? [];
   } catch {
     return [];
@@ -80,9 +70,7 @@ export async function getRestrictedProjects(): Promise<RestrictedProject[]> {
  * array to clear the restriction (enable full-collection discovery). Throws on
  * failure so the settings UI can surface an appropriate error message.
  */
-export async function setRestrictedProjects(
-  projects: RestrictedProject[],
-): Promise<void> {
+export async function setRestrictedProjects(projects: RestrictedProject[]): Promise<void> {
   const manager = await getManager();
   await manager.setValue<RestrictedProjectsWrapper>(RESTRICTED_PROJECTS_KEY, {
     projects,
@@ -97,10 +85,9 @@ export async function setRestrictedProjects(
 export async function getTemplateCategories(): Promise<string[]> {
   try {
     const manager = await getManager();
-    const wrapper = await manager.getValue<TemplateCategoriesWrapper | null>(
-      TEMPLATE_CATEGORIES_KEY,
-      { defaultValue: null },
-    );
+    const wrapper = await manager.getValue<TemplateCategoriesWrapper | null>(TEMPLATE_CATEGORIES_KEY, {
+      defaultValue: null,
+    });
     return wrapper?.categories ?? [];
   } catch {
     return [];
@@ -112,9 +99,7 @@ export async function getTemplateCategories(): Promise<string[]> {
  * Pass an empty array to clear all configured categories.
  * Throws on failure so the settings UI can surface an appropriate error.
  */
-export async function setTemplateCategories(
-  categories: string[],
-): Promise<void> {
+export async function setTemplateCategories(categories: string[]): Promise<void> {
   const manager = await getManager();
   await manager.setValue<TemplateCategoriesWrapper>(TEMPLATE_CATEGORIES_KEY, {
     categories,

@@ -36,8 +36,7 @@ const PROJECT_ID = "proj-id-123";
 function makeBatchResponse(values: boolean[]) {
   return {
     ok: true,
-    json: () =>
-      Promise.resolve({ evaluations: values.map((value) => ({ value })) }),
+    json: () => Promise.resolve({ evaluations: values.map((value) => ({ value })) }),
   };
 }
 
@@ -71,17 +70,13 @@ function setupCloud() {
   mockGetCollectionUrl.mockResolvedValue(CLOUD_COLLECTION_URL);
 }
 
-function makeTemplate(
-  overrides: Partial<TemplateDefinition> = {},
-): TemplateDefinition {
+function makeTemplate(overrides: Partial<TemplateDefinition> = {}): TemplateDefinition {
   return {
     id: "tpl-1",
     name: "Test Template",
     version: "1.0.0",
     parameters: [],
-    repositories: [
-      { name: "my-repo", sourcePath: "src", defaultBranch: "main" },
-    ],
+    repositories: [{ name: "my-repo", sourcePath: "src", defaultBranch: "main" }],
     pipelines: [
       {
         name: "my-pipeline",
@@ -128,9 +123,7 @@ describe("On-premises", () => {
     });
 
     it("returns false on network error (fail-closed)", async () => {
-      (global as any).fetch = jest
-        .fn()
-        .mockRejectedValue(new Error("Network down"));
+      (global as any).fetch = jest.fn().mockRejectedValue(new Error("Network down"));
       expect(await checkRepoPermission(PROJECT_ID)).toBe(false);
     });
 
@@ -141,9 +134,7 @@ describe("On-premises", () => {
 
       expect(mockFetch).toHaveBeenCalledTimes(1);
       const [url, options] = mockFetch.mock.calls[0];
-      expect(url).toBe(
-        `${COLLECTION_URL}/_apis/security/permissionevaluationbatch?api-version=7.0`,
-      );
+      expect(url).toBe(`${COLLECTION_URL}/_apis/security/permissionevaluationbatch?api-version=7.0`);
       expect(options.method).toBe("POST");
       expect(options.headers.Authorization).toBe("Bearer mock-token");
       expect(JSON.parse(options.body).evaluations).toEqual([
@@ -184,9 +175,7 @@ describe("On-premises", () => {
     });
 
     it("returns false on network error (fail-closed)", async () => {
-      (global as any).fetch = jest
-        .fn()
-        .mockRejectedValue(new Error("Network down"));
+      (global as any).fetch = jest.fn().mockRejectedValue(new Error("Network down"));
       expect(await checkPipelinePermission(PROJECT_ID)).toBe(false);
     });
 
@@ -196,9 +185,7 @@ describe("On-premises", () => {
       await checkPipelinePermission(PROJECT_ID);
 
       const [url, options] = mockFetch.mock.calls[0];
-      expect(url).toBe(
-        `${COLLECTION_URL}/_apis/security/permissionevaluationbatch?api-version=7.0`,
-      );
+      expect(url).toBe(`${COLLECTION_URL}/_apis/security/permissionevaluationbatch?api-version=7.0`);
       expect(JSON.parse(options.body).evaluations).toEqual([
         expect.objectContaining({
           securityNamespaceId: "33344d9c-fc72-4d6f-aba5-fa317101a7e9",
@@ -213,9 +200,7 @@ describe("On-premises", () => {
 
   describe("checkTemplatePermissions", () => {
     it("returns both true when batch grants both permissions", async () => {
-      (global as any).fetch = mockFetchSequence(
-        makeBatchResponse([true, true]),
-      );
+      (global as any).fetch = mockFetchSequence(makeBatchResponse([true, true]));
       const result = await checkTemplatePermissions(PROJECT_ID, makeTemplate());
       expect(result).toEqual({
         canCreateRepos: true,
@@ -224,18 +209,14 @@ describe("On-premises", () => {
     });
 
     it("returns canCreateRepos:false when repo result is false", async () => {
-      (global as any).fetch = mockFetchSequence(
-        makeBatchResponse([false, true]),
-      );
+      (global as any).fetch = mockFetchSequence(makeBatchResponse([false, true]));
       const result = await checkTemplatePermissions(PROJECT_ID, makeTemplate());
       expect(result.canCreateRepos).toBe(false);
       expect(result.canCreatePipelines).toBe(true);
     });
 
     it("returns canCreatePipelines:false when pipeline result is false", async () => {
-      (global as any).fetch = mockFetchSequence(
-        makeBatchResponse([true, false]),
-      );
+      (global as any).fetch = mockFetchSequence(makeBatchResponse([true, false]));
       const result = await checkTemplatePermissions(PROJECT_ID, makeTemplate());
       expect(result.canCreateRepos).toBe(true);
       expect(result.canCreatePipelines).toBe(false);
@@ -247,48 +228,33 @@ describe("On-premises", () => {
       await checkTemplatePermissions(PROJECT_ID, makeTemplate());
 
       expect(mockFetch).toHaveBeenCalledTimes(1);
-      expect(
-        JSON.parse(mockFetch.mock.calls[0][1].body).evaluations,
-      ).toHaveLength(2);
+      expect(JSON.parse(mockFetch.mock.calls[0][1].body).evaluations).toHaveLength(2);
     });
 
     it("omits the repo evaluation when template has no repositories", async () => {
       const mockFetch = mockFetchSequence(makeBatchResponse([true]));
       (global as any).fetch = mockFetch;
-      const result = await checkTemplatePermissions(
-        PROJECT_ID,
-        makeTemplate({ repositories: [] }),
-      );
+      const result = await checkTemplatePermissions(PROJECT_ID, makeTemplate({ repositories: [] }));
       expect(result.canCreateRepos).toBe(true);
       const body = JSON.parse(mockFetch.mock.calls[0][1].body).evaluations;
       expect(body).toHaveLength(1);
-      expect(body[0].securityNamespaceId).toBe(
-        "33344d9c-fc72-4d6f-aba5-fa317101a7e9",
-      );
+      expect(body[0].securityNamespaceId).toBe("33344d9c-fc72-4d6f-aba5-fa317101a7e9");
     });
 
     it("omits the pipeline evaluation when template has no pipelines", async () => {
       const mockFetch = mockFetchSequence(makeBatchResponse([true]));
       (global as any).fetch = mockFetch;
-      const result = await checkTemplatePermissions(
-        PROJECT_ID,
-        makeTemplate({ pipelines: [] }),
-      );
+      const result = await checkTemplatePermissions(PROJECT_ID, makeTemplate({ pipelines: [] }));
       expect(result.canCreatePipelines).toBe(true);
       const body = JSON.parse(mockFetch.mock.calls[0][1].body).evaluations;
       expect(body).toHaveLength(1);
-      expect(body[0].securityNamespaceId).toBe(
-        "2e9eb7ed-3c0a-47d4-87c1-0ffdd275fd87",
-      );
+      expect(body[0].securityNamespaceId).toBe("2e9eb7ed-3c0a-47d4-87c1-0ffdd275fd87");
     });
 
     it("returns all true without any API calls when template needs nothing", async () => {
       const mockFetch = jest.fn();
       (global as any).fetch = mockFetch;
-      const result = await checkTemplatePermissions(
-        PROJECT_ID,
-        makeTemplate({ repositories: [], pipelines: [] }),
-      );
+      const result = await checkTemplatePermissions(PROJECT_ID, makeTemplate({ repositories: [], pipelines: [] }));
       expect(result).toEqual({
         canCreateRepos: true,
         canCreatePipelines: true,
@@ -297,9 +263,7 @@ describe("On-premises", () => {
     });
 
     it("fails closed (both false) on batch API error", async () => {
-      (global as any).fetch = jest
-        .fn()
-        .mockResolvedValue({ ok: false, status: 500 });
+      (global as any).fetch = jest.fn().mockResolvedValue({ ok: false, status: 500 });
       const result = await checkTemplatePermissions(PROJECT_ID, makeTemplate());
       expect(result).toEqual({
         canCreateRepos: false,
@@ -327,9 +291,7 @@ describe("On-premises", () => {
     });
 
     it("returns false on network error (fail-closed)", async () => {
-      (global as any).fetch = jest
-        .fn()
-        .mockRejectedValue(new Error("Network down"));
+      (global as any).fetch = jest.fn().mockRejectedValue(new Error("Network down"));
       expect(await checkCollectionAdminPermission()).toBe(false);
     });
 
@@ -339,9 +301,7 @@ describe("On-premises", () => {
       await checkCollectionAdminPermission();
 
       const [url, options] = mockFetch.mock.calls[0];
-      expect(url).toBe(
-        `${COLLECTION_URL}/_apis/security/permissionevaluationbatch?api-version=7.0`,
-      );
+      expect(url).toBe(`${COLLECTION_URL}/_apis/security/permissionevaluationbatch?api-version=7.0`);
       expect(options.headers.Authorization).toBe("Bearer mock-token");
       expect(JSON.parse(options.body).evaluations).toEqual([
         expect.objectContaining({
@@ -410,9 +370,7 @@ describe("Cloud", () => {
     });
 
     it("returns false on network error (fail-closed)", async () => {
-      (global as any).fetch = jest
-        .fn()
-        .mockRejectedValue(new Error("Network down"));
+      (global as any).fetch = jest.fn().mockRejectedValue(new Error("Network down"));
       expect(await checkRepoPermission(PROJECT_ID)).toBe(false);
     });
 
@@ -424,12 +382,8 @@ describe("Cloud", () => {
       expect(mockFetch).toHaveBeenCalledTimes(1);
       const urls: string[] = mockFetch.mock.calls.map((c: any[]) => c[0]);
       expect(urls[0]).toContain("permissionevaluationbatch");
-      expect(urls).not.toEqual(
-        expect.arrayContaining([expect.stringContaining("identities")]),
-      );
-      expect(urls).not.toEqual(
-        expect.arrayContaining([expect.stringContaining("graph")]),
-      );
+      expect(urls).not.toEqual(expect.arrayContaining([expect.stringContaining("identities")]));
+      expect(urls).not.toEqual(expect.arrayContaining([expect.stringContaining("graph")]));
     });
   });
 
@@ -451,9 +405,7 @@ describe("Cloud", () => {
 
   describe("checkTemplatePermissions", () => {
     it("returns both true when batch grants both permissions", async () => {
-      (global as any).fetch = mockFetchSequence(
-        makeBatchResponse([true, true]),
-      );
+      (global as any).fetch = mockFetchSequence(makeBatchResponse([true, true]));
       const result = await checkTemplatePermissions(PROJECT_ID, makeTemplate());
       expect(result).toEqual({
         canCreateRepos: true,
@@ -471,10 +423,7 @@ describe("Cloud", () => {
     it("returns all true without any API calls when template needs nothing", async () => {
       const mockFetch = jest.fn();
       (global as any).fetch = mockFetch;
-      const result = await checkTemplatePermissions(
-        PROJECT_ID,
-        makeTemplate({ repositories: [], pipelines: [] }),
-      );
+      const result = await checkTemplatePermissions(PROJECT_ID, makeTemplate({ repositories: [], pipelines: [] }));
       expect(result).toEqual({
         canCreateRepos: true,
         canCreatePipelines: true,
@@ -511,9 +460,7 @@ describe("Cloud", () => {
       await checkCollectionAdminPermission();
 
       const [batchUrl] = mockFetch.mock.calls[0];
-      expect(batchUrl).toMatch(
-        /^https:\/\/dev\.azure\.com\/MyOrg\/_apis\/security\/permissionevaluationbatch/,
-      );
+      expect(batchUrl).toMatch(/^https:\/\/dev\.azure\.com\/MyOrg\/_apis\/security\/permissionevaluationbatch/);
     });
 
     it("returns false on non-ok response (fail-closed)", async () => {

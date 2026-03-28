@@ -87,11 +87,7 @@ describe("readTemplateFromRepo", () => {
     const mockClient = makeMockGitClient(MINIMAL_YAML);
     (getClient as jest.Mock).mockReturnValue(mockClient);
 
-    const result = await readTemplateFromRepo(
-      "proj1",
-      "repo1",
-      "/project-template.yml",
-    );
+    const result = await readTemplateFromRepo("proj1", "repo1", "/project-template.yml");
 
     expect(result.id).toBe("abc123");
     expect(result.name).toBe("My Template");
@@ -105,22 +101,14 @@ describe("readTemplateFromRepo", () => {
 
     await readTemplateFromRepo("proj1", "repo1", "project-template.yml");
 
-    expect(mockClient.getItemText).toHaveBeenCalledWith(
-      "repo1",
-      "/project-template.yml",
-      "proj1",
-    );
+    expect(mockClient.getItemText).toHaveBeenCalledWith("repo1", "/project-template.yml", "proj1");
   });
 
   it("parses optional fields (description, maintainers, notes)", async () => {
     const mockClient = makeMockGitClient(FULL_YAML);
     (getClient as jest.Mock).mockReturnValue(mockClient);
 
-    const result = await readTemplateFromRepo(
-      "p",
-      "r",
-      "/project-template.yml",
-    );
+    const result = await readTemplateFromRepo("p", "r", "/project-template.yml");
 
     expect(result.description).toBe("A full template");
     expect(result.maintainers).toEqual(["alice@example.com"]);
@@ -132,11 +120,7 @@ describe("readTemplateFromRepo", () => {
     const mockClient = makeMockGitClient(FULL_YAML);
     (getClient as jest.Mock).mockReturnValue(mockClient);
 
-    const result = await readTemplateFromRepo(
-      "p",
-      "r",
-      "/project-template.yml",
-    );
+    const result = await readTemplateFromRepo("p", "r", "/project-template.yml");
 
     const param = result.parameters[0];
     expect(param.id).toBe("projectName");
@@ -154,11 +138,7 @@ describe("readTemplateFromRepo", () => {
     const mockClient = makeMockGitClient(FULL_YAML);
     (getClient as jest.Mock).mockReturnValue(mockClient);
 
-    const result = await readTemplateFromRepo(
-      "p",
-      "r",
-      "/project-template.yml",
-    );
+    const result = await readTemplateFromRepo("p", "r", "/project-template.yml");
 
     const boolParam = result.parameters[1];
     expect(boolParam.type).toBe("boolean");
@@ -170,11 +150,7 @@ describe("readTemplateFromRepo", () => {
     const mockClient = makeMockGitClient(FULL_YAML);
     (getClient as jest.Mock).mockReturnValue(mockClient);
 
-    const result = await readTemplateFromRepo(
-      "p",
-      "r",
-      "/project-template.yml",
-    );
+    const result = await readTemplateFromRepo("p", "r", "/project-template.yml");
 
     const choiceParam = result.parameters[2];
     expect(choiceParam.type).toBe("choice");
@@ -185,31 +161,21 @@ describe("readTemplateFromRepo", () => {
     const mockClient = makeMockGitClient(FULL_YAML);
     (getClient as jest.Mock).mockReturnValue(mockClient);
 
-    const result = await readTemplateFromRepo(
-      "p",
-      "r",
-      "/project-template.yml",
-    );
+    const result = await readTemplateFromRepo("p", "r", "/project-template.yml");
 
     const repo = result.repositories![0];
     expect(repo.name).toBe("{{projectName}}-api");
     expect(repo.sourcePath).toBe("/templates/api");
     expect(repo.defaultBranch).toBe("main");
     expect(repo.when).toBe("includeDocker");
-    expect(repo.exclude).toEqual([
-      { path: "docker-compose.yml", when: "includeDocker == false" },
-    ]);
+    expect(repo.exclude).toEqual([{ path: "docker-compose.yml", when: "includeDocker == false" }]);
   });
 
   it("parses pipelines with all fields", async () => {
     const mockClient = makeMockGitClient(FULL_YAML);
     (getClient as jest.Mock).mockReturnValue(mockClient);
 
-    const result = await readTemplateFromRepo(
-      "p",
-      "r",
-      "/project-template.yml",
-    );
+    const result = await readTemplateFromRepo("p", "r", "/project-template.yml");
 
     const pipeline = result.pipelines![0];
     expect(pipeline.name).toBe("{{projectName}}-ci");
@@ -224,40 +190,30 @@ describe("readTemplateFromRepo", () => {
     const mockClient = makeMockGitClient("42");
     (getClient as jest.Mock).mockReturnValue(mockClient);
 
-    await expect(
-      readTemplateFromRepo("p", "r", "/project-template.yml"),
-    ).rejects.toThrow("project-template.yml must be a YAML object");
+    await expect(readTemplateFromRepo("p", "r", "/project-template.yml")).rejects.toThrow(
+      "project-template.yml must be a YAML object",
+    );
   });
 
   it("throws when required field 'id' is missing", async () => {
-    const mockClient = makeMockGitClient(
-      `name: "Test"\nversion: "1.0"\nparameters: []`,
-    );
+    const mockClient = makeMockGitClient(`name: "Test"\nversion: "1.0"\nparameters: []`);
     (getClient as jest.Mock).mockReturnValue(mockClient);
 
-    await expect(
-      readTemplateFromRepo("p", "r", "/project-template.yml"),
-    ).rejects.toThrow("id");
+    await expect(readTemplateFromRepo("p", "r", "/project-template.yml")).rejects.toThrow("id");
   });
 
   it("throws when required field 'name' is missing", async () => {
-    const mockClient = makeMockGitClient(
-      `id: "abc"\nversion: "1.0"\nparameters: []`,
-    );
+    const mockClient = makeMockGitClient(`id: "abc"\nversion: "1.0"\nparameters: []`);
     (getClient as jest.Mock).mockReturnValue(mockClient);
 
-    await expect(
-      readTemplateFromRepo("p", "r", "/project-template.yml"),
-    ).rejects.toThrow("name");
+    await expect(readTemplateFromRepo("p", "r", "/project-template.yml")).rejects.toThrow("name");
   });
 
   it("throws when YAML is unparseable", async () => {
     const mockClient = makeMockGitClient("{ unclosed: [");
     (getClient as jest.Mock).mockReturnValue(mockClient);
 
-    await expect(
-      readTemplateFromRepo("p", "r", "/project-template.yml"),
-    ).rejects.toThrow("YAML parse error");
+    await expect(readTemplateFromRepo("p", "r", "/project-template.yml")).rejects.toThrow("YAML parse error");
   });
 
   it("throws when a parameter type is invalid", async () => {
@@ -273,9 +229,7 @@ parameters:
     const mockClient = makeMockGitClient(yaml);
     (getClient as jest.Mock).mockReturnValue(mockClient);
 
-    await expect(
-      readTemplateFromRepo("p", "r", "/project-template.yml"),
-    ).rejects.toThrow("type");
+    await expect(readTemplateFromRepo("p", "r", "/project-template.yml")).rejects.toThrow("type");
   });
 
   it("defaults to 'main' when defaultBranch is not specified", async () => {
@@ -291,11 +245,7 @@ repositories:
     const mockClient = makeMockGitClient(yaml);
     (getClient as jest.Mock).mockReturnValue(mockClient);
 
-    const result = await readTemplateFromRepo(
-      "p",
-      "r",
-      "/project-template.yml",
-    );
+    const result = await readTemplateFromRepo("p", "r", "/project-template.yml");
     expect(result.repositories![0].defaultBranch).toBe("main");
   });
 
@@ -311,11 +261,7 @@ parameters: []
     const mockClient = makeMockGitClient(yaml);
     (getClient as jest.Mock).mockReturnValue(mockClient);
 
-    const result = await readTemplateFromRepo(
-      "p",
-      "r",
-      "/project-template.yml",
-    );
+    const result = await readTemplateFromRepo("p", "r", "/project-template.yml");
     expect(result.templateCategories).toEqual(["Backend"]);
   });
 
@@ -323,11 +269,7 @@ parameters: []
     const mockClient = makeMockGitClient(MINIMAL_YAML);
     (getClient as jest.Mock).mockReturnValue(mockClient);
 
-    const result = await readTemplateFromRepo(
-      "p",
-      "r",
-      "/project-template.yml",
-    );
+    const result = await readTemplateFromRepo("p", "r", "/project-template.yml");
     expect(result.templateCategories).toBeUndefined();
   });
 });

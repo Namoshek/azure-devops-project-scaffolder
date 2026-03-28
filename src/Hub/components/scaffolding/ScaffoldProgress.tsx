@@ -1,14 +1,11 @@
 import React from "react";
-import {
-  TemplateDefinition,
-  TemplatePermissions,
-} from "../types/templateTypes";
-import { ScaffoldResult } from "../services/scaffoldingOrchestrator";
+import { TemplateDefinition, TemplatePermissions } from "../../types/templateTypes";
+import { ScaffoldResult } from "../../services/scaffoldingOrchestrator";
 import { Button } from "azure-devops-ui/Components/Button/Button";
 import { MessageCard } from "azure-devops-ui/Components/MessageCard/MessageCard";
 import { MessageCardSeverity } from "azure-devops-ui/Components/MessageCard/MessageCard.Props";
 import { StepRow } from "./StepRow";
-import { useScaffoldExecution } from "../hooks/useScaffoldExecution";
+import { useScaffoldExecution } from "../../hooks/useScaffoldExecution";
 
 interface ScaffoldProgressProps {
   template: TemplateDefinition;
@@ -27,14 +24,13 @@ export function ScaffoldProgress({
   onComplete,
   onScaffoldAgain,
 }: ScaffoldProgressProps) {
-  const { steps, done, fatalError, hasFailures, titleText } =
-    useScaffoldExecution(
-      template,
-      parameterValues,
-      permissions,
-      results,
-      onComplete,
-    );
+  const { steps, done, fatalError, hasFailures, titleText } = useScaffoldExecution(
+    template,
+    parameterValues,
+    permissions,
+    results,
+    onComplete,
+  );
 
   return (
     <div className="flex-column rhythm-vertical-16" style={{ maxWidth: 720 }}>
@@ -58,18 +54,15 @@ export function ScaffoldProgress({
         ))}
       </div>
 
-      {done &&
-        !hasFailures &&
-        template.postScaffoldNotes &&
-        template.postScaffoldNotes.length > 0 && (
-          <div className="flex-column rhythm-vertical-8">
-            {template.postScaffoldNotes.map((note, i) => (
-              <MessageCard key={i} severity={MessageCardSeverity.Info}>
-                {note}
-              </MessageCard>
-            ))}
-          </div>
-        )}
+      {done && !hasFailures && template.postScaffoldNotes && template.postScaffoldNotes.length > 0 && (
+        <div className="flex-column rhythm-vertical-8">
+          {template.postScaffoldNotes.map((note, i) => (
+            <MessageCard key={i} severity={MessageCardSeverity.Info}>
+              {note}
+            </MessageCard>
+          ))}
+        </div>
+      )}
 
       {done && (
         <div>

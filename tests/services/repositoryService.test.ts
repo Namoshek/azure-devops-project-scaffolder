@@ -30,9 +30,7 @@ const mockCheckRepoExists = checkRepoExists as jest.Mock;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function makeRepoTemplate(
-  overrides: Partial<TemplateRepository> = {},
-): TemplateRepository {
+function makeRepoTemplate(overrides: Partial<TemplateRepository> = {}): TemplateRepository {
   return {
     name: "{{projectName}}-api",
     sourcePath: "/templates/api",
@@ -49,11 +47,8 @@ function makeGitClient(
   }> = {},
 ) {
   return {
-    getRepositories:
-      overrides.getRepositories ?? jest.fn().mockResolvedValue([]),
-    createRepository:
-      overrides.createRepository ??
-      jest.fn().mockResolvedValue({ id: "new-repo-id" }),
+    getRepositories: overrides.getRepositories ?? jest.fn().mockResolvedValue([]),
+    createRepository: overrides.createRepository ?? jest.fn().mockResolvedValue({ id: "new-repo-id" }),
     createPush: overrides.createPush ?? jest.fn().mockResolvedValue({}),
   };
 }
@@ -82,20 +77,11 @@ describe("scaffoldRepository", () => {
       },
     ]);
 
-    const result = await scaffoldRepository(
-      "proj1",
-      makeRepoTemplate(),
-      "src-proj",
-      "src-repo",
-      PARAMS,
-    );
+    const result = await scaffoldRepository("proj1", makeRepoTemplate(), "src-proj", "src-repo", PARAMS);
 
     expect(result.status).toBe("created");
     expect(result.repoName).toBe("my-app-api");
-    expect(gitClient.createRepository).toHaveBeenCalledWith(
-      expect.objectContaining({ name: "my-app-api" }),
-      "proj1",
-    );
+    expect(gitClient.createRepository).toHaveBeenCalledWith(expect.objectContaining({ name: "my-app-api" }), "proj1");
     expect(gitClient.createPush).toHaveBeenCalledTimes(1);
   });
 
@@ -239,13 +225,7 @@ describe("scaffoldRepository", () => {
     const gitClient = makeGitClient();
     mockGetClient.mockReturnValue(gitClient);
 
-    const result = await scaffoldRepository(
-      "proj1",
-      makeRepoTemplate(),
-      "sp",
-      "sr",
-      PARAMS,
-    );
+    const result = await scaffoldRepository("proj1", makeRepoTemplate(), "sp", "sr", PARAMS);
 
     expect(result.status).toBe("skipped");
     expect(gitClient.createRepository).not.toHaveBeenCalled();
@@ -259,13 +239,7 @@ describe("scaffoldRepository", () => {
     mockGetClient.mockReturnValue(gitClient);
     mockFetchTemplateFiles.mockResolvedValue([]);
 
-    const result = await scaffoldRepository(
-      "proj1",
-      makeRepoTemplate(),
-      "sp",
-      "sr",
-      PARAMS,
-    );
+    const result = await scaffoldRepository("proj1", makeRepoTemplate(), "sp", "sr", PARAMS);
 
     expect(result.status).toBe("skipped");
     expect(result.reason).toMatch(/no files/i);
@@ -278,13 +252,7 @@ describe("scaffoldRepository", () => {
     const gitClient = makeGitClient();
     mockGetClient.mockReturnValue(gitClient);
 
-    const result = await scaffoldRepository(
-      "proj1",
-      makeRepoTemplate(),
-      "sp",
-      "sr",
-      PARAMS,
-    );
+    const result = await scaffoldRepository("proj1", makeRepoTemplate(), "sp", "sr", PARAMS);
 
     expect(result.status).toBe("failed");
     expect(result.reason).toMatch(/Failed to check repository existence/);
@@ -297,13 +265,7 @@ describe("scaffoldRepository", () => {
     mockGetClient.mockReturnValue(gitClient);
     mockFetchTemplateFiles.mockResolvedValue([]);
 
-    const result = await scaffoldRepository(
-      "proj1",
-      makeRepoTemplate(),
-      "sp",
-      "sr",
-      PARAMS,
-    );
+    const result = await scaffoldRepository("proj1", makeRepoTemplate(), "sp", "sr", PARAMS);
 
     expect(result.status).toBe("failed");
     expect(result.reason).toMatch(/Failed to create repository/);
@@ -314,13 +276,7 @@ describe("scaffoldRepository", () => {
     mockGetClient.mockReturnValue(gitClient);
     mockFetchTemplateFiles.mockRejectedValue(new Error("Git error"));
 
-    const result = await scaffoldRepository(
-      "proj1",
-      makeRepoTemplate(),
-      "sp",
-      "sr",
-      PARAMS,
-    );
+    const result = await scaffoldRepository("proj1", makeRepoTemplate(), "sp", "sr", PARAMS);
 
     expect(result.status).toBe("failed");
     expect(result.reason).toMatch(/Failed to read template files/);
@@ -339,13 +295,7 @@ describe("scaffoldRepository", () => {
       },
     ]);
 
-    const result = await scaffoldRepository(
-      "proj1",
-      makeRepoTemplate(),
-      "sp",
-      "sr",
-      PARAMS,
-    );
+    const result = await scaffoldRepository("proj1", makeRepoTemplate(), "sp", "sr", PARAMS);
 
     expect(result.status).toBe("failed");
     expect(result.reason).toMatch(/Failed to push files/);

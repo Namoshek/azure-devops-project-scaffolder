@@ -19,10 +19,7 @@ module.exports = {
       // Pin to a single entry point so the ESM import path and the AMD require
       // path used by azure-devops-extension-api both resolve to the same module
       // instance, preventing the "SDK is already loaded" duplicate-detection error.
-      "azure-devops-extension-sdk": path.resolve(
-        __dirname,
-        "node_modules/azure-devops-extension-sdk/SDK.js",
-      ),
+      "azure-devops-extension-sdk": path.resolve(__dirname, "node_modules/azure-devops-extension-sdk/SDK.js"),
     },
   },
   module: {

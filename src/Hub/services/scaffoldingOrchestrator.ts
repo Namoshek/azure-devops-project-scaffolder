@@ -1,20 +1,9 @@
-import {
-  TemplateDefinition,
-  TemplatePermissions,
-} from "../types/templateTypes";
+import { TemplateDefinition, TemplatePermissions } from "../types/templateTypes";
 import { scaffoldRepository, RepoScaffoldResult } from "./repositoryService";
 import { scaffoldPipeline, PipelineScaffoldResult } from "./pipelineService";
-import {
-  evaluateWhenExpression,
-  renderTemplate,
-} from "./templateEngineService";
+import { evaluateWhenExpression, renderTemplate } from "./templateEngineService";
 
-export type StepStatus =
-  | "pending"
-  | "running"
-  | "success"
-  | "skipped"
-  | "failed";
+export type StepStatus = "pending" | "running" | "success" | "skipped" | "failed";
 
 export interface ScaffoldStep {
   id: string;
@@ -76,10 +65,7 @@ export async function runScaffold(
     const repoTemplate = template.repositories![i];
 
     // Skip this repository if its when condition is not satisfied
-    if (
-      repoTemplate.when &&
-      !evaluateWhenExpression(repoTemplate.when, parameterValues)
-    ) {
+    if (repoTemplate.when && !evaluateWhenExpression(repoTemplate.when, parameterValues)) {
       repoSteps[i].status = "skipped";
       repoSteps[i].detail = `Condition '${repoTemplate.when}' was not met.`;
       onProgress([...allSteps]);
@@ -91,13 +77,7 @@ export async function runScaffold(
 
     let result: RepoScaffoldResult;
     try {
-      result = await scaffoldRepository(
-        projectId,
-        repoTemplate,
-        sourceProjectId,
-        sourceRepoId,
-        parameterValues,
-      );
+      result = await scaffoldRepository(projectId, repoTemplate, sourceProjectId, sourceRepoId, parameterValues);
     } catch (err) {
       result = {
         repoName: repoTemplate.name,
@@ -112,15 +92,10 @@ export async function runScaffold(
   }
 
   // ── Phase 2: Pipelines ───────────────────────────────────────────────────────
-  if (
-    permissions &&
-    !permissions.canCreatePipelines &&
-    pipelineSteps.length > 0
-  ) {
+  if (permissions && !permissions.canCreatePipelines && pipelineSteps.length > 0) {
     for (const step of pipelineSteps) {
       step.status = "skipped";
-      step.detail =
-        "Skipped: insufficient permissions to create pipeline definitions.";
+      step.detail = "Skipped: insufficient permissions to create pipeline definitions.";
     }
     onProgress([...allSteps]);
   }
@@ -130,13 +105,9 @@ export async function runScaffold(
     const pipelineTemplate = template.pipelines![i];
 
     // Skip this pipeline if its when condition is not satisfied
-    if (
-      pipelineTemplate.when &&
-      !evaluateWhenExpression(pipelineTemplate.when, parameterValues)
-    ) {
+    if (pipelineTemplate.when && !evaluateWhenExpression(pipelineTemplate.when, parameterValues)) {
       pipelineSteps[i].status = "skipped";
-      pipelineSteps[i].detail =
-        `Condition '${pipelineTemplate.when}' was not met.`;
+      pipelineSteps[i].detail = `Condition '${pipelineTemplate.when}' was not met.`;
       onProgress([...allSteps]);
       continue;
     }
@@ -146,11 +117,7 @@ export async function runScaffold(
 
     let result: PipelineScaffoldResult;
     try {
-      result = await scaffoldPipeline(
-        projectId,
-        pipelineTemplate,
-        parameterValues,
-      );
+      result = await scaffoldPipeline(projectId, pipelineTemplate, parameterValues);
     } catch (err) {
       result = {
         pipelineName: pipelineTemplate.name,

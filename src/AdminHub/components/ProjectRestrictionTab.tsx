@@ -19,27 +19,16 @@ const FormItem = FormItemBase as React.ComponentType<
 
 const MAX_SHOWN_NAMES = 2;
 
-export function ProjectRestrictionSettings() {
-  const {
-    loadingState,
-    saving,
-    feedback,
-    allProjects,
-    checkedIds,
-    hasChanges,
-    setAllChecked,
-    handleSave,
-  } = useProjectRestriction();
+export function ProjectRestrictionTab() {
+  const { loadingState, saving, feedback, allProjects, checkedIds, hasChanges, setAllChecked, handleSave } =
+    useProjectRestriction();
 
   const dropdownSelection = useMemo(() => new DropdownMultiSelection(), []);
   const isInitialized = useRef(false);
   const setAllCheckedRef = useRef(setAllChecked);
   setAllCheckedRef.current = setAllChecked;
 
-  const allItems = useMemo<IListBoxItem[]>(
-    () => allProjects.map((p) => ({ id: p.id!, text: p.name })),
-    [allProjects],
-  );
+  const allItems = useMemo<IListBoxItem[]>(() => allProjects.map((p) => ({ id: p.id!, text: p.name })), [allProjects]);
 
   // Set initial selection once after data loads.
   // This runs before the subscription effect, so setting dropdownSelection.value
@@ -79,10 +68,7 @@ export function ProjectRestrictionSettings() {
     };
   }, [dropdownSelection, allItems]);
 
-  function renderSelectedItems(
-    sel: IListSelection,
-    items: IListBoxItem[],
-  ): string {
+  function renderSelectedItems(sel: IListSelection, items: IListBoxItem[]): string {
     const names: string[] = [];
     items.forEach((item, i) => {
       if (sel.selected(i)) names.push(item.text ?? (item.id as string));
@@ -98,22 +84,16 @@ export function ProjectRestrictionSettings() {
   }
 
   return (
-    <Card
-      className="bolt-card-white"
-      titleProps={{ text: "Template Source Restriction" }}
-    >
+    <Card className="bolt-card-white" titleProps={{ text: "Template Source Restriction" }}>
       <div className="rhythm-vertical-16" style={{ padding: "8px 0" }}>
         <p className="body-m secondary-text" style={{ margin: 0 }}>
-          By default, the Project Scaffolding hub discovers templates from all
-          projects in this collection. You can restrict discovery to specific
-          projects so that only templates from those projects are shown to
-          users.
+          By default, the Project Scaffolding hub discovers templates from all projects in this collection. You can
+          restrict discovery to specific projects so that only templates from those projects are shown to users.
         </p>
 
         {checkedIds.size === 0 && (
           <MessageCard severity={MessageCardSeverity.Info}>
-            No restriction configured — templates will be discovered across the
-            entire collection.
+            No restriction configured — templates will be discovered across the entire collection.
           </MessageCard>
         )}
 
@@ -131,12 +111,7 @@ export function ProjectRestrictionSettings() {
         </FormItem>
 
         <div className="flex-row flex-center" style={{ gap: 8 }}>
-          <Button
-            text="Save"
-            primary
-            disabled={!hasChanges || saving}
-            onClick={() => void handleSave()}
-          />
+          <Button text="Save" primary disabled={!hasChanges || saving} onClick={() => void handleSave()} />
           {feedback && (
             <span
               className="body-m"

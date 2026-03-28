@@ -4,12 +4,7 @@ import { Spinner } from "azure-devops-ui/Components/Spinner/Spinner";
 import { SpinnerSize } from "azure-devops-ui/Components/Spinner/Spinner.Props";
 import { MessageCard } from "azure-devops-ui/Components/MessageCard/MessageCard";
 import { MessageCardSeverity } from "azure-devops-ui/Components/MessageCard/MessageCard.Props";
-import {
-  Table,
-  ITableColumn,
-  SimpleTableCell,
-  TwoLineTableCell,
-} from "azure-devops-ui/Table";
+import { Table, ITableColumn, SimpleTableCell, TwoLineTableCell } from "azure-devops-ui/Table";
 import { ArrayItemProvider } from "azure-devops-ui/Utilities/Provider";
 import { Tooltip as TooltipBase } from "azure-devops-ui/TooltipEx";
 import { AuditRecord } from "../../Hub/types/auditTypes";
@@ -83,11 +78,7 @@ const columns: ITableColumn<AuditRecord>[] = [
     name: "Project",
     width: -20,
     renderCell: (_rowIndex, columnIndex, tableColumn, item) => (
-      <SimpleTableCell
-        key={`proj-${columnIndex}`}
-        columnIndex={columnIndex}
-        tableColumn={tableColumn}
-      >
+      <SimpleTableCell key={`proj-${columnIndex}`} columnIndex={columnIndex} tableColumn={tableColumn}>
         <span className="text-ellipsis">{item.projectName}</span>
       </SimpleTableCell>
     ),
@@ -97,11 +88,7 @@ const columns: ITableColumn<AuditRecord>[] = [
     name: "Date/Time",
     width: -12,
     renderCell: (_rowIndex, columnIndex, tableColumn, item) => (
-      <SimpleTableCell
-        key={`ts-${columnIndex}`}
-        columnIndex={columnIndex}
-        tableColumn={tableColumn}
-      >
+      <SimpleTableCell key={`ts-${columnIndex}`} columnIndex={columnIndex} tableColumn={tableColumn}>
         <span className="text-ellipsis">{formatTimestamp(item.timestamp)}</span>
       </SimpleTableCell>
     ),
@@ -115,16 +102,8 @@ const columns: ITableColumn<AuditRecord>[] = [
         key={`tpl-${columnIndex}`}
         columnIndex={columnIndex}
         tableColumn={tableColumn}
-        line1={
-          <span className="primary-text text-ellipsis">
-            {item.templateName}
-          </span>
-        }
-        line2={
-          <span className="secondary-text text-ellipsis">
-            {item.templateSourceProject}
-          </span>
-        }
+        line1={<span className="primary-text text-ellipsis">{item.templateName}</span>}
+        line2={<span className="secondary-text text-ellipsis">{item.templateSourceProject}</span>}
       />
     ),
   },
@@ -133,11 +112,7 @@ const columns: ITableColumn<AuditRecord>[] = [
     name: "User",
     width: -15,
     renderCell: (_rowIndex, columnIndex, tableColumn, item) => (
-      <SimpleTableCell
-        key={`usr-${columnIndex}`}
-        columnIndex={columnIndex}
-        tableColumn={tableColumn}
-      >
+      <SimpleTableCell key={`usr-${columnIndex}`} columnIndex={columnIndex} tableColumn={tableColumn}>
         <span className="text-ellipsis">{item.userDisplayName}</span>
       </SimpleTableCell>
     ),
@@ -147,11 +122,7 @@ const columns: ITableColumn<AuditRecord>[] = [
     name: "Status",
     width: -8,
     renderCell: (_rowIndex, columnIndex, tableColumn, item) => (
-      <SimpleTableCell
-        key={`st-${columnIndex}`}
-        columnIndex={columnIndex}
-        tableColumn={tableColumn}
-      >
+      <SimpleTableCell key={`st-${columnIndex}`} columnIndex={columnIndex} tableColumn={tableColumn}>
         <span style={statusStyle(item.status)}>{statusText(item.status)}</span>
       </SimpleTableCell>
     ),
@@ -164,11 +135,7 @@ const columns: ITableColumn<AuditRecord>[] = [
       const tooltipContent = renderParamsTooltip(item.parameterValues);
       const tooltipLabel = paramsLabel(item.parameterValues);
       return (
-        <SimpleTableCell
-          key={`prm-${columnIndex}`}
-          columnIndex={columnIndex}
-          tableColumn={tableColumn}
-        >
+        <SimpleTableCell key={`prm-${columnIndex}`} columnIndex={columnIndex} tableColumn={tableColumn}>
           {tooltipContent ? (
             <Tooltip renderContent={() => tooltipContent}>
               <span
@@ -192,7 +159,7 @@ const columns: ITableColumn<AuditRecord>[] = [
   },
 ];
 
-export function AuditSettings() {
+export function AuditTab() {
   const [loading, setLoading] = useState(true);
   const [records, setRecords] = useState<AuditRecord[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -200,38 +167,27 @@ export function AuditSettings() {
   useEffect(() => {
     getAllAuditRecords()
       .then(setRecords)
-      .catch((err: Error) =>
-        setError(`Failed to load audit records: ${err.message}`),
-      )
+      .catch((err: Error) => setError(`Failed to load audit records: ${err.message}`))
       .finally(() => setLoading(false));
   }, []);
 
   const itemProvider = useMemo(() => new ArrayItemProvider(records), [records]);
 
   return (
-    <Card
-      className="bolt-card-white"
-      titleProps={{ text: "Scaffolding Audit" }}
-    >
+    <Card className="bolt-card-white" titleProps={{ text: "Scaffolding Audit" }}>
       {loading && (
         <div className="flex-row justify-center" style={{ padding: "32px 0" }}>
           <Spinner size={SpinnerSize.large} label="Loading audit records…" />
         </div>
       )}
-      {!loading && error && (
-        <MessageCard severity={MessageCardSeverity.Error}>{error}</MessageCard>
-      )}
+      {!loading && error && <MessageCard severity={MessageCardSeverity.Error}>{error}</MessageCard>}
       {!loading && !error && records.length === 0 && (
         <p className="secondary-text" style={{ margin: "8px 0" }}>
           No scaffolding operations have been recorded yet.
         </p>
       )}
       {!loading && !error && records.length > 0 && (
-        <Table<AuditRecord>
-          ariaLabel="Scaffolding audit"
-          columns={columns}
-          itemProvider={itemProvider}
-        />
+        <Table<AuditRecord> ariaLabel="Scaffolding audit" columns={columns} itemProvider={itemProvider} />
       )}
     </Card>
   );

@@ -31,12 +31,19 @@ export interface TemplateRepository {
   exclude?: TemplateFileExclude[]; // individual files to exclude based on conditions
 }
 
+export interface TemplatePipelineVariable {
+  name: string; // may contain Mustache expressions
+  value: string; // may contain Mustache expressions
+  secret?: boolean; // if true, stored as a secret variable in ADO
+}
+
 export interface TemplatePipeline {
   name: string; // may contain Mustache expressions
   repository: string; // must match a TemplateRepository name (after rendering)
   yamlPath: string;
   folder?: string; // pipeline folder grouping in ADO
   when?: string; // skip this entire pipeline when expression is false
+  variables?: TemplatePipelineVariable[]; // pipeline-level variables to set on the definition
 }
 
 /**

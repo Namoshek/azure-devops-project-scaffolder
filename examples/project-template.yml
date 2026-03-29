@@ -60,6 +60,13 @@ parameters:
     type: boolean
     defaultValue: false
 
+  - id: dbConnectionString
+    label: "Database Connection String"
+    hint: "Passed to the backend pipeline as a secret variable"
+    type: string
+    secret: true
+    when: "includeBackend"
+
 repositories:
   - name: "{{projectName}}.backend"
     sourcePath: "templates/backend"
@@ -80,13 +87,18 @@ pipelines:
     yamlPath: "pipelines/ci.yml"
     folder: "\\CI"
     when: "includeBackend"
+    variables:
+      - name: "PROJECT_NAME"
+        value: "{{projectName}}"
+      - name: "DB_CONNECTION_STRING"
+        value: "{{dbConnectionString}}"
+        secret: true
 
   - name: "{{projectName}}-frontend-ci"
     repository: "{{projectName}}.frontend"
     yamlPath: "pipelines/ci.yml"
     folder: "\\CI"
     when: "includeFrontend"
-
 
 # Expected folder structure of the repository containing this template:
 #   project-template.yml

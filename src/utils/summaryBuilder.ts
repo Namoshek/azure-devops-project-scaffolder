@@ -61,6 +61,12 @@ export function buildSummaryItems(
     const existsWillSkip = included && !permissionDenied && pipelineCheck?.exists === true;
     const existsCheckPending = included && !permissionDenied && (preflightPending || pipelineCheck === undefined);
 
+    const subItems: ParameterSummarySubItem[] = (p.variables ?? []).map((v) => {
+      const varName = renderTemplate(v.name, values);
+      const varValue = v.secret ? "******" : renderTemplate(v.value, values);
+      return { name: `${varName} = ${varValue}`, included: true };
+    });
+
     return {
       type: "pipeline" as const,
       name: renderedName,
@@ -68,6 +74,7 @@ export function buildSummaryItems(
       permissionDenied,
       existsWillSkip,
       existsCheckPending,
+      subItems,
     };
   });
 

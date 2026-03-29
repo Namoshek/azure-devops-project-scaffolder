@@ -228,3 +228,53 @@ repositories:
 - Omitting `when` always excludes the file.
 
 > **Tip:** Use `{{#if}}` blocks inside files for inline optional content, and `exclude` for entirely optional files.
+
+---
+
+## Pipeline Variables
+
+Use the `variables` field on a pipeline entry to define pipeline-level variables that are set directly on the ADO build definition when the pipeline is created. Both the variable name and value are Mustache-rendered, so they can include any parameter.
+
+```yaml
+pipelines:
+  - name: "{{projectName}}-ci"
+    repository: "{{projectName}}.backend"
+    yamlPath: "pipelines/ci.yml"
+    folder: "\\CI"
+    variables:
+      - name: "PROJECT_NAME" # plain variable
+        value: "{{projectName}}"
+      - name: "DB_CONNECTION_STRING" # secret variable stored encrypted
+        value: "{{dbConnectionString}}"
+        secret: true
+```
+
+### Fields
+
+| Field    | Required | Description                                                                                                                        |
+| -------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `name`   | yes      | Variable name (Mustache-rendered).                                                                                                 |
+| `value`  | yes      | Variable value (Mustache-rendered).                                                                                                |
+| `secret` | no       | If `true`, the value is stored as a secret (encrypted) in ADO and masked in pipeline logs / scaffolding logs. Defaults to `false`. |
+
+### Secrets
+
+When `secret: true`, the variable's value is never displayed again in ADO once saved — not even in pipeline edit screens. Make sure to use a `secret: true` parameter as the source so the value is also masked in the scaffolding form:
+
+```yaml
+parameters:
+  - id: dbConnectionString
+    label: "Database Connection String"
+    type: string
+    secret: true # renders as a password input in the scaffolding form
+    when: "includeBackend"
+
+pipelines:
+  - name: "{{projectName}}-backend-ci"
+    repository: "{{projectName}}.backend"
+    yamlPath: "pipelines/ci.yml"
+    variables:
+      - name: "DB_CONNECTION_STRING"
+        value: "{{dbConnectionString}}"
+        secret: true
+```

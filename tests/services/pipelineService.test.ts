@@ -230,4 +230,83 @@ describe("scaffoldPipeline", () => {
     const def = buildClient.createDefinition.mock.calls[0][0];
     expect(def.path).toBe("\\BackendPipelines");
   });
+
+  // ─── Pipeline variables ──────────────────────────────────────────────────
+
+  it("attaches rendered variables to the BuildDefinition", async () => {
+    const { buildClient } = makeClients({});
+    const template = makePipelineTemplate({
+      variables: [
+        { name: "APP_NAME", value: "{{projectName}}" },
+        { name: "TEAM", value: "platform" },
+      ],
+    });
+
+    await scaffoldPipeline("proj1", template, PARAMS);
+
+    const def = buildClient.createDefinition.mock.calls[0][0];
+    expect(def.variables).toEqual({
+      APP_NAME: { value: "my-app", isSecret: false, allowOverride: false },
+      TEAM: { value: "platform", isSecret: false, allowOverride: false },
+    });
+  });
+
+  it("renders Mustache in variable names and values", async () => {
+    const { buildClient } = makeClients({});
+    const template = makePipelineTemplate({
+      variables: [{ name: "{{projectName}}_ENV", value: "{{projectName}}-prod" }],
+    });
+
+    await scaffoldPipeline("proj1", template, PARAMS);
+
+    const def = buildClient.createDefinition.mock.calls[0][0];
+    expect(def.variables).toEqual({
+      "my-app_ENV": { value: "my-app-prod", isSecret: false, allowOverride: false },
+    });
+  });
+
+  it("marks secret variables with secret: true", async () => {
+    const { buildClient } = makeClients({});
+    const template = makePipelineTemplate({
+      variables: [{ name: "DB_PASSWORD", value: "{{dbPassword}}", secret: true }],
+    });
+
+    await scaffoldPipeline("proj1", template, { projectName: "my-app", dbPassword: "hunter2" });
+
+    const def = buildClient.createDefinition.mock.calls[0][0];
+    expect(def.variables).toEqual({
+      DB_PASSWORD: { value: "hunter2", isSecret: true, allowOverride: false },
+    });
+  });
+
+  it("defaults secret to false when not specified", async () => {
+    const { buildClient } = makeClients({});
+    const template = makePipelineTemplate({
+      variables: [{ name: "PLAIN", value: "value" }],
+    });
+
+    await scaffoldPipeline("proj1", template, PARAMS);
+
+    const def = buildClient.createDefinition.mock.calls[0][0];
+    expect(def.variables.PLAIN.isSecret).toBe(false);
+  });
+
+  it("omits the variables field when no variables are defined", async () => {
+    const { buildClient } = makeClients({});
+
+    await scaffoldPipeline("proj1", makePipelineTemplate(), PARAMS);
+
+    const def = buildClient.createDefinition.mock.calls[0][0];
+    expect(def.variables).toBeUndefined();
+  });
+
+  it("omits the variables field when variables is an empty array", async () => {
+    const { buildClient } = makeClients({});
+    const template = makePipelineTemplate({ variables: [] });
+
+    await scaffoldPipeline("proj1", template, PARAMS);
+
+    const def = buildClient.createDefinition.mock.calls[0][0];
+    expect(def.variables).toBeUndefined();
+  });
 });

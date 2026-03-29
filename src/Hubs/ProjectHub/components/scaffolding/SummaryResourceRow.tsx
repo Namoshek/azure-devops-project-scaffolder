@@ -107,7 +107,7 @@ export function SummaryResourceRow({ item, isLast }: SummaryResourceRowProps) {
                   color: sub.included ? COLOR_INCLUDED : COLOR_EXCLUDED,
                 }}
               >
-                <Icon size={IconSize.small} iconName="Page" />
+                <Icon size={IconSize.small} iconName={item.type === "pipeline" ? "Variable" : "Page"} />
               </span>
               <span
                 className={sub.included ? undefined : "secondary-text"}

@@ -2,6 +2,7 @@ import { getClient } from "azure-devops-extension-api";
 import {
   BuildRestClient,
   BuildDefinition,
+  BuildDefinitionVariable,
   DefinitionType,
   YamlProcess,
   AgentPoolQueue,
@@ -71,7 +72,10 @@ export async function scaffoldPipeline(
     };
   }
 
-  // 4. Create the pipeline definition
+  // 4. Build the variables map (undefined when no variables are declared)
+  const variables = buildVariablesMap(pipelineTemplate, parameterValues);
+
+  // 5. Create the pipeline definition
   const definition: BuildDefinition = {
     name: pipelineName,
     path: folder,
@@ -89,6 +93,7 @@ export async function scaffoldPipeline(
       checkoutSubmodules: false,
     } as BuildRepository,
     triggers: [],
+    ...(variables !== undefined && { variables }),
   } as unknown as BuildDefinition;
 
   let created: BuildDefinition;
@@ -106,6 +111,22 @@ export async function scaffoldPipeline(
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
+
+function buildVariablesMap(
+  pipelineTemplate: TemplatePipeline,
+  parameterValues: Record<string, unknown>,
+): Record<string, BuildDefinitionVariable> | undefined {
+  if (!pipelineTemplate.variables || pipelineTemplate.variables.length === 0) {
+    return undefined;
+  }
+  const map: Record<string, BuildDefinitionVariable> = {};
+  for (const variable of pipelineTemplate.variables) {
+    const name = renderTemplate(variable.name, parameterValues);
+    const value = renderTemplate(variable.value, parameterValues);
+    map[name] = { value, isSecret: variable.secret ?? false, allowOverride: false };
+  }
+  return map;
+}
 
 async function resolveRepoId(gitClient: GitRestClient, projectId: string, repoName: string): Promise<string | null> {
   try {

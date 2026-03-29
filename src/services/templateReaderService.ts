@@ -228,6 +228,16 @@ function parsePipelines(raw: unknown): TemplatePipeline[] {
     if (typeof p.folder === "string") pipeline.folder = p.folder;
     if (typeof p.when === "string") pipeline.when = p.when;
 
+    if (Array.isArray(p.variables)) {
+      pipeline.variables = p.variables
+        .filter((v): v is Record<string, unknown> => !!v && typeof v === "object")
+        .map((v) => ({
+          name: typeof v.name === "string" ? v.name : String(v.name),
+          value: typeof v.value === "string" ? v.value : String(v.value),
+          ...(typeof v.secret === "boolean" ? { secret: v.secret } : {}),
+        }));
+    }
+
     return pipeline;
   });
 }

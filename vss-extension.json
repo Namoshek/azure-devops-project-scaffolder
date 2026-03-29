@@ -30,7 +30,7 @@
   ],
   "demands": ["api-version/7.0"],
   "branding": {
-    "color": "rgb(25, 29, 29)",
+    "color": "#1a1e28",
     "theme": "dark"
   },
   "content": {

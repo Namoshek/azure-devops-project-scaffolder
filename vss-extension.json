@@ -2,10 +2,11 @@
   "manifestVersion": 1,
   "id": "ado-project-scaffolder",
   "publisher": "namoshek",
-  "version": "0.14.4",
+  "version": "0.15.0",
   "name": "Project Scaffolder",
   "description": "Scaffold repositories and pipelines across your Azure DevOps projects from your own templates — guided, parameterized, and non-destructive.",
-  "public": false,
+  "public": true,
+  "galleryFlags": ["Preview"],
   "categories": ["Azure Repos", "Azure Pipelines"],
   "tags": [
     "scaffolding",
@@ -64,7 +65,9 @@
     { "path": "images/screenshot_template_parameterization.png" },
     { "path": "images/screenshot_template_summary_permission_error.png" },
     { "path": "images/screenshot_template_scaffolding_progress.png" },
-    { "path": "images/screenshot_admin_hub.png" }
+    { "path": "images/screenshot_admin_hub_project_restriction.png" },
+    { "path": "images/screenshot_admin_hub_template_categories.png" },
+    { "path": "images/screenshot_admin_hub_audit.png" }
   ],
   "contributions": [
     {

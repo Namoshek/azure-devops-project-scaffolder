@@ -2,7 +2,7 @@
 
 Scaffold repositories and Azure Pipelines across your Azure DevOps projects from your own templates — guided, parameterized, and non-destructive.
 
-![Project Scaffolder - Template Selection](https://raw.githubusercontent.com/Namoshek/azure-devops-project-scaffolder/refs/heads/main/images/screenshot_template_selection.png)
+![Template Selection](https://raw.githubusercontent.com/Namoshek/azure-devops-project-scaffolder/refs/heads/main/images/screenshot_template_selection.png)
 
 ---
 
@@ -117,3 +117,21 @@ The extension requests the following OAuth scopes on behalf of the signed-in use
 | `vso.project`       | Read the list of projects (used in the admin restriction dropdown)                             |
 
 All API calls are made directly from the browser using the user's own OAuth token — no server-side component or service principal is required.
+
+---
+
+## Screenshots
+
+![Template Selection](https://raw.githubusercontent.com/Namoshek/azure-devops-project-scaffolder/refs/heads/main/images/screenshot_template_selection.png)
+
+![Template Parameterization](https://raw.githubusercontent.com/Namoshek/azure-devops-project-scaffolder/refs/heads/main/images/screenshot_template_parameterization.png)
+
+![Template Summary / Permission Error](https://raw.githubusercontent.com/Namoshek/azure-devops-project-scaffolder/refs/heads/main/images/screenshot_template_summary_permission_error.png)
+
+![Template Scaffolding Progress](https://raw.githubusercontent.com/Namoshek/azure-devops-project-scaffolder/refs/heads/main/images/screenshot_template_scaffolding_progress.png)
+
+![Admin Hub Project Restriction](https://raw.githubusercontent.com/Namoshek/azure-devops-project-scaffolder/refs/heads/main/images/screenshot_admin_hub_project_restriction.png)
+
+![Admin Hub Template Categories](https://raw.githubusercontent.com/Namoshek/azure-devops-project-scaffolder/refs/heads/main/images/screenshot_admin_hub_template_categories.png)
+
+![Admin Hub Audit](https://raw.githubusercontent.com/Namoshek/azure-devops-project-scaffolder/refs/heads/main/images/screenshot_admin_hub_audit.png)

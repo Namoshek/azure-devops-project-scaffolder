@@ -227,7 +227,7 @@ repositories:
 - `when` uses the same expression syntax as parameter `when` fields. The file is excluded when the expression evaluates to **true** — the `when` expresses the _exclusion condition_, not the inclusion condition.
 - Omitting `when` always excludes the file.
 
-> **Tip:** Use `{{#if}}` blocks inside files for inline optional content, and `exclude` for entirely optional files.
+> **Tip:** Use `{{#myBooleanParameter}} ... conditional content ... {{/myBooleanParameter}}` blocks inside files for inline optional content, and `exclude` for entirely optional files.
 
 ---
 

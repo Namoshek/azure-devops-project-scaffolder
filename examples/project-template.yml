@@ -84,7 +84,7 @@ repositories:
 pipelines:
   - name: "{{projectName}}-backend-ci"
     repository: "{{projectName}}.backend"
-    yamlPath: "pipelines/ci.yml"
+    yamlPath: "pipelines/build.yml"
     folder: "\\CI"
     when: "includeBackend"
     variables:
@@ -96,7 +96,7 @@ pipelines:
 
   - name: "{{projectName}}-frontend-ci"
     repository: "{{projectName}}.frontend"
-    yamlPath: "pipelines/ci.yml"
+    yamlPath: "pipelines/build.yml"
     folder: "\\CI"
     when: "includeFrontend"
 

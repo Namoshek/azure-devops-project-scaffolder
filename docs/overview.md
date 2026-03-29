@@ -60,11 +60,30 @@ id: "your-guid-here"
 name: "My First Template"
 version: "1.0.0"
 description: "A short description shown on the template card."
+templateCategories:
+  - "Backend"
+maintainers:
+  - "Platform Team"
+
+parameters:
+  - id: projectName
+    label: "Project Name"
+    hint: "A descriptive but technical name for your project (lowercase, no spaces)"
+    type: string
+    required: true
+    validation:
+      regex: "^[a-zA-Z][a-zA-Z0-9-]+$"
+      message: "Letters, numbers, hyphens only. Must start with a letter."
 
 repositories:
   - name: "{{projectName}}.backend"
     sourcePath: "templates/backend"
     defaultBranch: "main"
+
+pipelines:
+  - name: "{{projectName}}-backend-ci"
+    repository: "{{projectName}}.backend"
+    yamlPath: "pipelines/ci.yml"
 ```
 
 Place the files you want to copy into the `templates/backend` subfolder. File names and file contents can use Mustache expressions like `{{projectName}}`.
@@ -81,8 +100,8 @@ For the full template schema and authoring guide, see the [Template Authoring Gu
 
 Organization administrators have access to a dedicated _Project Scaffolding_ page under _Organization Settings_:
 
-- **Template categories** — Define custom category names. Template authors assign one of these categories to their template via the `category` field in `project-template.yml`. An _All_ tab and an _Others_ fallback are always present.
-- **Project restriction** — Optionally restrict template discovery to a single project. This is useful when you maintain a dedicated "templates" project and want to prevent ad-hoc templates from appearing organization-wide.
+- **Template categories** — Define custom category names. Template authors assign one or more of these categories to their template via the `templateCategories` field in `project-template.yml`. An _All_ tab and an _Others_ fallback are always present.
+- **Project restriction** — Optionally restrict template discovery to one or more projects. This is useful when you maintain one or more dedicated "template" projects and want to prevent ad-hoc templates from appearing organization-wide.
 
 ---
 

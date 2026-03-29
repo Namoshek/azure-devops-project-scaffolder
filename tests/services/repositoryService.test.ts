@@ -85,7 +85,7 @@ describe("scaffoldRepository", () => {
     expect(gitClient.createPush).toHaveBeenCalledTimes(1);
   });
 
-  it("renders Handlebars expressions in file content before pushing", async () => {
+  it("renders Mustache expressions in file content before pushing", async () => {
     const gitClient = makeGitClient();
     mockGetClient.mockReturnValue(gitClient);
     mockFetchTemplateFiles.mockResolvedValue([
@@ -103,7 +103,7 @@ describe("scaffoldRepository", () => {
     expect(change.newContent.content).toBe("Hello my-app");
   });
 
-  it("renders Handlebars expressions in file paths", async () => {
+  it("renders Mustache expressions in file paths", async () => {
     const gitClient = makeGitClient();
     mockGetClient.mockReturnValue(gitClient);
     mockFetchTemplateFiles.mockResolvedValue([
@@ -121,7 +121,7 @@ describe("scaffoldRepository", () => {
     expect(change.item.path).toBe("/src/my-app/index.ts");
   });
 
-  it("does not render Handlebars in base64-encoded (binary) file content", async () => {
+  it("does not render Mustache in base64-encoded (binary) file content", async () => {
     const gitClient = makeGitClient();
     mockGetClient.mockReturnValue(gitClient);
     mockFetchTemplateFiles.mockResolvedValue([

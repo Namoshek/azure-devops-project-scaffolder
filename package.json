@@ -17,8 +17,8 @@
     "azure-devops-extension-api": "^4.0.0",
     "azure-devops-extension-sdk": "^4.0.0",
     "azure-devops-ui": "^2.270.0",
-    "handlebars": "^4.7.8",
     "js-yaml": "^4.1.0",
+    "mustache": "^4.2.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
@@ -27,6 +27,7 @@
     "@eslint/js": "^10.0.1",
     "@types/jest": "^30.0.0",
     "@types/js-yaml": "^4.0.9",
+    "@types/mustache": "^4.2.6",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
     "copy-webpack-plugin": "^14.0.0",

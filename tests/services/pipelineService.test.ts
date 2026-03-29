@@ -98,7 +98,7 @@ describe("scaffoldPipeline", () => {
     expect(result.pipelineId).toBe(99);
   });
 
-  it("renders Handlebars in the pipeline name and repository reference", async () => {
+  it("renders Mustache in the pipeline name and repository reference", async () => {
     const { buildClient, gitClient } = makeClients({});
 
     await scaffoldPipeline("proj1", makePipelineTemplate(), PARAMS);

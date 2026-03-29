@@ -50,8 +50,8 @@ export function HowItWorksDialog() {
               <li style={{ listStyle: "disc" }}>
                 Create one or more <strong>repositories</strong> by copying files from the template repository,
                 rendering all file content and file names through{" "}
-                <a href="https://handlebarsjs.com/" target="_blank" rel="noopener noreferrer">
-                  Handlebars.js
+                <a href="https://mustache.github.io/" target="_blank" rel="noopener noreferrer">
+                  Mustache
                 </a>{" "}
                 using the values you provide in the parameter form.
               </li>

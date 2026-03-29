@@ -302,7 +302,7 @@ describe("runScaffold", () => {
 
   // ─── Step label rendering ──────────────────────────────────────────────────
 
-  it("renders Handlebars expressions in the step label", async () => {
+  it("renders Mustache expressions in the step label", async () => {
     mockScaffoldRepository.mockResolvedValue({
       repoName: "my-app-api",
       status: "created",

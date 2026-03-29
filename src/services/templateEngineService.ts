@@ -1,12 +1,14 @@
-import * as Handlebars from "handlebars";
+import Mustache from "mustache";
+
+// Disable HTML escaping so file content and path variables are never mangled.
+Mustache.escape = (text: string) => text;
 
 /**
- * Renders a Handlebars template string with the provided parameter values.
+ * Renders a Mustache template string with the provided parameter values.
  * Used for both file content and file path/name templating.
  */
 export function renderTemplate(templateStr: string, values: Record<string, unknown>): string {
-  const compiled = Handlebars.compile(templateStr, { noEscape: true });
-  return compiled(values);
+  return Mustache.render(templateStr, values);
 }
 
 /**

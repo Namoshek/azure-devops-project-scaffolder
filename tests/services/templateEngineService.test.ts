@@ -35,8 +35,8 @@ describe("renderTemplate", () => {
     expect(renderTemplate("{{obj.key}}", { obj: { key: "nested" } })).toBe("nested");
   });
 
-  it("supports conditional blocks (#if)", () => {
-    const tpl = "{{#if flag}}yes{{else}}no{{/if}}";
+  it("supports truthy sections ({{#var}}) and inverted sections ({{^var}})", () => {
+    const tpl = "{{#flag}}yes{{/flag}}{{^flag}}no{{/flag}}";
     expect(renderTemplate(tpl, { flag: true })).toBe("yes");
     expect(renderTemplate(tpl, { flag: false })).toBe("no");
   });

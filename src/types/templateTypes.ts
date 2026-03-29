@@ -24,7 +24,7 @@ export interface TemplateFileExclude {
 }
 
 export interface TemplateRepository {
-  name: string; // may contain Handlebars expressions
+  name: string; // may contain Mustache expressions
   sourcePath: string; // subfolder within the template repo
   defaultBranch: string; // defaults to "main" if not specified
   when?: string; // skip this entire repository when expression is false
@@ -32,7 +32,7 @@ export interface TemplateRepository {
 }
 
 export interface TemplatePipeline {
-  name: string; // may contain Handlebars expressions
+  name: string; // may contain Mustache expressions
   repository: string; // must match a TemplateRepository name (after rendering)
   yamlPath: string;
   folder?: string; // pipeline folder grouping in ADO

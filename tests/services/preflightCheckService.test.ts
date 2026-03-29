@@ -374,7 +374,7 @@ describe("checkTemplateResourcesExistence", () => {
     expect(result.pipelines["\\teamc::ci"]).toEqual({ exists: false });
   });
 
-  it("renders Handlebars expressions in names before checking", async () => {
+  it("renders Mustache expressions in names before checking", async () => {
     const git = makeGitClient({
       repos: [{ id: "r2", name: "my-app-backend" }],
       refs: [{ name: "refs/heads/main" }],

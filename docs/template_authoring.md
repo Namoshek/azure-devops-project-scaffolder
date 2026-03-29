@@ -11,7 +11,7 @@ Users can only see templates from projects they have at least read access to.
 
 When a user selects a template and fills in the parameter form, the extension:
 
-1. Creates new repositories by copying files from `sourcePath` subfolders (or the template repository root if `sourcePath` is empty), rendering all content and file names through [Handlebars.js](https://handlebarsjs.com/).
+1. Creates new repositories by copying files from `sourcePath` subfolders (or the template repository root if `sourcePath` is empty), rendering all content and file names through [Mustache.js](https://mustache.github.io/).
 2. Creates YAML pipeline definitions pointing to designated files in the created repositories.
 
 Everything is **non-destructive**: if a repository already exists and has commits, it is skipped (not overwritten).
@@ -49,9 +49,9 @@ postScaffoldNotes:
     Remember to configure your service connections and environment-specific variable
     groups before deploying to production.
 
-# ── Parameters used by Handlebars.js ───────────────────────────────────────────────
+# ── Parameters used by Mustache.js ───────────────────────────────────────────────
 parameters:
-  - id: projectName # Used in Handlebars: {{projectName}}
+  - id: projectName # Used in Mustache: {{projectName}}
     label: "Project Name"
     hint: "Lowercase letters, numbers, and hyphens only"
     type: string # string | boolean | choice
@@ -80,7 +80,7 @@ parameters:
 
 # ── Repositories ───────────────────────────────────────────────────────────────────
 repositories:
-  - name: "{{projectName}}.backend" # Handlebars in repo name ✔
+  - name: "{{projectName}}.backend" # Mustache in repo name ✔
     sourcePath: "templates/backend" # Subfolder in the template repository
     defaultBranch: "main" # Optional, the default is 'main'
     exclude: # Optional: exclude individual files
@@ -125,7 +125,7 @@ Note: the `project-template.yml` itself is **never** copied into the created rep
     ├── backend/
     │   ├── README.md
     │   ├── src/
-    │   │   └── {{projectName}}.csproj    ← file name rendered via Handlebars
+    │   │   └── {{projectName}}.csproj    ← file name rendered via Mustache
     │   └── pipelines/
     │       └── ci.yml
     └── frontend/
@@ -136,9 +136,9 @@ Note: the `project-template.yml` itself is **never** copied into the created rep
 
 ---
 
-## Handlebars in File Content
+## Mustache in File Content
 
-All text files are rendered through [Handlebars.js](https://handlebarsjs.com/). Every parameter is available as a variable.
+All text files are rendered through [Mustache.js](https://mustache.github.io/). Every parameter is available as a variable.
 
 **Use `string` and `choice` parameters:**
 
@@ -147,13 +147,13 @@ All text files are rendered through [Handlebars.js](https://handlebarsjs.com/). 
 <Authors>{{teamName}}</Authors>
 ```
 
-**Use `boolean` parameters for conditions:**
+**Use `boolean` parameters for conditions (Mustache truthy sections):**
 
 ```xml
-{{#if includeDocker}}
+{{#includeDocker}}
 <ContainerImageName>{{projectName}}-backend</ContainerImageName>
 <ContainerImageTag>1.0.0</ContainerImageTag>
-{{/if}}
+{{/includeDocker}}
 ```
 
 File **paths and names** are also rendered:
@@ -162,7 +162,7 @@ File **paths and names** are also rendered:
 src/{{projectName}}.csproj   →   src/my-service.csproj
 ```
 
-Binary files (images, fonts, etc.) are copied as-is without Handlebars rendering.
+Binary files (images, fonts, etc.) are copied as-is without Mustache rendering.
 
 ---
 

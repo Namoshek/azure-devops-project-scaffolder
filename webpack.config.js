@@ -14,8 +14,6 @@ module.exports = {
   resolve: {
     extensions: [".ts", ".tsx", ".js"],
     alias: {
-      // Handlebars ships both CJS and ESM builds; point webpack to the precompiled browser build
-      handlebars: "handlebars/dist/handlebars.min.js",
       // Pin to a single entry point so the ESM import path and the AMD require
       // path used by azure-devops-extension-api both resolve to the same module
       // instance, preventing the "SDK is already loaded" duplicate-detection error.

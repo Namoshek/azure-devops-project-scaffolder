@@ -15,7 +15,7 @@ Everything is non-destructive. If a repository already exists and has commits, i
 ## Features
 
 - **Automatic template discovery** — Templates are discovered automatically from all repositories in the collection that contain a `project-template.yml` file. No manual registration required.
-- **Parameterized templates** — Templates declare typed parameters (string, boolean, choice) with optional validation, hints, and conditional visibility rules. Repository names, file paths, and file contents are all rendered through Handlebars.js.
+- **Parameterized templates** — Templates declare typed parameters (string, boolean, choice) with optional validation, hints, and conditional visibility rules. Repository names, file paths, and file contents are all rendered through Mustache.
 - **Conditional resources** — Entire repositories or pipelines can be skipped based on parameter values, keeping templates flexible without forking.
 - **Guided progress UI** — A step-by-step progress view shows which repositories and pipelines are being created, with clear success and error indicators.
 - **Non-destructive execution** — Existing repositories with content are never modified. The extension creates only what is missing.
@@ -64,7 +64,7 @@ pipelines:
     folder: "\\CI"
 ```
 
-Place your template files under `templates/backend/`. File names and file contents both support Handlebars expressions.
+Place your template files under `templates/backend/`. File names and file contents both support Mustache expressions.
 
 Code Search indexes new files within a few minutes. Once indexed, the template appears in **Project Settings → Project Scaffolding** for any project in the collection (subject to admin restrictions and access permissions).
 

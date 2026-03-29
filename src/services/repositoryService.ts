@@ -116,7 +116,7 @@ export async function scaffoldRepository(
     };
   }
 
-  // 4. Apply Handlebars to content and path, exclude project-template.yml
+  // 4. Apply Mustache to content and path, exclude project-template.yml
   // Normalise to an absolute prefix (Git API returns paths like /templates/backend/file.txt)
   const normalizedBase = repoTemplate.sourcePath.startsWith("/")
     ? repoTemplate.sourcePath
@@ -137,10 +137,10 @@ export async function scaffoldRepository(
       // Strip the sourcePath prefix to get the relative file path for the new repo
       let relativePath = f.path.startsWith(sourcePathPrefix) ? f.path.slice(sourcePathPrefix.length) : f.path;
 
-      // Apply Handlebars to the path (for dynamic file names)
+      // Apply Mustache to the path (for dynamic file names)
       relativePath = renderTemplate(relativePath, parameterValues);
 
-      // Apply Handlebars to text content only
+      // Apply Mustache to text content only
       const renderedContent = f.isBase64 ? f.content : renderTemplate(f.content, parameterValues);
 
       return {

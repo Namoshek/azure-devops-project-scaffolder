@@ -21,7 +21,7 @@ Everything is **non-destructive**: if a repository already exists and has commit
 ## Features
 
 - **Automatic template discovery** — Templates are discovered automatically from all repositories in the collection that contain a `project-template.yml` file. No manual registration required.
-- **Parameterized templates** — Templates declare typed parameters (string, boolean, choice) with optional validation, hints, and conditional visibility rules. Repository names, file paths, and file contents are all rendered through Handlebars.js.
+- **Parameterized templates** — Templates declare typed parameters (string, boolean, choice) with optional validation, hints, and conditional visibility rules. Repository names, file paths, and file contents are all rendered through Mustache.js.
 - **Conditional resources** — Entire repositories or pipelines can be skipped based on parameter values, keeping templates flexible without forking.
 - **Guided progress UI** — A step-by-step progress view shows which repositories and pipelines are being created, with clear success and error indicators.
 - **Non-destructive execution** — Existing repositories with content are never modified. The extension creates only what is missing.
@@ -41,7 +41,7 @@ Everything is **non-destructive**: if a repository already exists and has commit
 
 4. **Preview** — During parameterization, a preview summarizes the repositories and pipelines that will be created, or why they cannot be created. Any resources that already exist are clearly flagged.
 
-5. **Scaffold** — The extension creates repositories (copying and rendering template files via Handlebars) and registers YAML pipelines pointing to the newly created repos. A live progress view tracks each step.
+5. **Scaffold** — The extension creates repositories (copying and rendering template files via Mustache) and registers YAML pipelines pointing to the newly created repos. A live progress view tracks each step.
 
 ---
 
@@ -67,7 +67,7 @@ repositories:
     defaultBranch: "main"
 ```
 
-Place the files you want to copy into the `templates/backend` subfolder. File names and file contents can use Handlebars expressions like `{{projectName}}`.
+Place the files you want to copy into the `templates/backend` subfolder. File names and file contents can use Mustache expressions like `{{projectName}}`.
 
 ### 3. Open Project Scaffolding
 
@@ -95,8 +95,6 @@ The extension requests the following OAuth scopes on behalf of the signed-in use
 | `vso.code_manage`   | Read template files from source repositories and create new repositories in the target project |
 | `vso.build_execute` | Read existing pipeline definitions and create new YAML pipelines                               |
 | `vso.agentpools`    | Read available agent queues so pipelines can be registered against the correct pool            |
-| `vso.identity`      | Resolve the current user's identity descriptor for permission checks                           |
-| `vso.graph`         | Read user and group information for permission evaluation                                      |
 | `vso.project`       | Read the list of projects (used in the admin restriction dropdown)                             |
 
 All API calls are made directly from the browser using the user's own OAuth token — no server-side component or service principal is required.

@@ -30,8 +30,10 @@ export function useParameterForm(
   const { preflightChecks, preflightPending } = usePreflightChecks(projectId, template, values);
 
   function handleChange(id: string, value: unknown) {
-    setValues((prev) => ({ ...prev, [id]: value }));
-    setErrors((prev) => ({ ...prev, [id]: "" }));
+    const newValues = { ...values, [id]: value };
+    setValues(newValues);
+    const fieldErrors = validate(template.parameters, newValues);
+    setErrors((prev) => ({ ...prev, [id]: fieldErrors[id] ?? "" }));
   }
 
   function handleSubmit() {

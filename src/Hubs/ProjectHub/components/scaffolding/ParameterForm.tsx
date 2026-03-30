@@ -15,17 +15,8 @@ interface ParameterFormProps {
 }
 
 export function ParameterForm({ template, permissions, projectId, onSubmit, onBack }: ParameterFormProps) {
-  const {
-    values,
-    errors,
-    submitted,
-    visibleParams,
-    summaryItems,
-    submitDisabled,
-    submitTooltip,
-    handleChange,
-    handleSubmit,
-  } = useParameterForm(template, permissions, projectId, onSubmit);
+  const { values, errors, visibleParams, summaryItems, submitDisabled, submitTooltip, handleChange, handleSubmit } =
+    useParameterForm(template, permissions, projectId, onSubmit);
 
   return (
     <div className="flex-row" style={{ gap: 48 }}>
@@ -38,7 +29,7 @@ export function ParameterForm({ template, permissions, projectId, onSubmit, onBa
               key={param.id}
               param={param}
               value={values[param.id]}
-              error={submitted ? errors[param.id] : undefined}
+              error={errors[param.id] || undefined}
               onChange={handleChange}
             />
           ))}

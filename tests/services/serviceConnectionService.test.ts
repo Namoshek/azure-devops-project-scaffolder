@@ -50,6 +50,7 @@ function makeConnectionTemplate(overrides: Partial<TemplateServiceConnection> = 
       subscriptionId: "{{subscriptionId}}",
       subscriptionName: "My Subscription",
     },
+    description: "Azure service connection for {{projectName}}",
     ...overrides,
   };
 }
@@ -103,6 +104,16 @@ describe("scaffoldServiceConnection", () => {
 
     const endpoint = client.createServiceEndpoint.mock.calls[0][0];
     expect(endpoint.name).toBe("my-app-azure");
+  });
+
+  it("renders Mustache in the connection description", async () => {
+    const client = makeEndpointClient();
+    mockGetClient.mockReturnValue(client);
+
+    await scaffoldServiceConnection("proj-1", makeConnectionTemplate(), PARAMS);
+
+    const endpoint = client.createServiceEndpoint.mock.calls[0][0];
+    expect(endpoint.description).toBe("Azure service connection for my-app");
   });
 
   it("renders Mustache in authorization parameter values", async () => {

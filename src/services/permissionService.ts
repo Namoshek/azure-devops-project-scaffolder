@@ -209,7 +209,7 @@ export async function checkTemplatePermissions(
     let idx = 0;
     const canCreateRepos = needsRepos ? results[idx++] : true;
     const canCreatePipelines = needsPipelines ? results[idx++] : true;
-    const canCreateServiceConnections = needsServiceConnections ? results[idx] : true;
+    const canCreateServiceConnections = needsServiceConnections ? results[idx++] : true;
     return { canCreateRepos, canCreatePipelines, canCreateServiceConnections };
   } catch (err) {
     console.warn(`Template permission check failed: ${(err as Error).message}. Treating as denied.`);

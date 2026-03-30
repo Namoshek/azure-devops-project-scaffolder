@@ -17,9 +17,6 @@ postScaffoldNotes:
   - |-
     Your repositories have been created and the CI pipelines are ready.
     The first pipeline run will be triggered automatically on the next commit to main.
-  - |-
-    Remember to configure your service connections and environment-specific variable
-    groups before deploying to production.
 
 parameters:
   - id: projectName
@@ -112,6 +109,23 @@ repositories:
     defaultBranch: "main"
     when: "includeFrontend"
 
+serviceConnections:
+  - name: "{{projectName}}-azure"
+    type: "AzureRM"
+    authorizationScheme: "ServicePrincipal"
+    url: "https://management.azure.com/"
+    authorization:
+      tenantid: "{{azureTenantId}}"
+      serviceprincipalid: "{{azureClientId}}"
+      serviceprincipalkey: "{{azureClientSecret}}"
+    data:
+      subscriptionId: "{{azureSubscriptionId}}"
+      subscriptionName: "{{azureSubscriptionName}}"
+      environment: "AzureCloud"
+    description: "Azure service connection for {{projectName}} (created by scaffolder)"
+    grantAccessToAllPipelines: true
+    when: "includeBackend"
+
 pipelines:
   - name: "{{projectName}}-backend-ci"
     repository: "{{projectName}}.backend"
@@ -130,23 +144,6 @@ pipelines:
     yamlPath: "pipelines/build.yml"
     folder: "\\CI"
     when: "includeFrontend"
-
-serviceConnections:
-  - name: "{{projectName}}-azure"
-    type: "AzureRM"
-    authorizationScheme: "ServicePrincipal"
-    url: "https://management.azure.com/"
-    authorization:
-      tenantid: "{{azureTenantId}}"
-      serviceprincipalid: "{{azureClientId}}"
-      serviceprincipalkey: "{{azureClientSecret}}"
-    data:
-      subscriptionId: "{{azureSubscriptionId}}"
-      subscriptionName: "{{azureSubscriptionName}}"
-      environment: "AzureCloud"
-    description: "Azure service connection for {{projectName}} (created by scaffolder)"
-    grantAccessToAllPipelines: true
-    when: "includeBackend"
 
 # Expected folder structure of the repository containing this template:
 #   project-template.yml

@@ -12,7 +12,8 @@ Users can only see templates from projects they have at least read access to.
 When a user selects a template and fills in the parameter form, the extension:
 
 1. Creates new repositories by copying files from `sourcePath` subfolders (or the template repository root if `sourcePath` is empty), rendering all content and file names through [Mustache.js](https://mustache.github.io/).
-2. Creates YAML pipeline definitions pointing to designated files in the created repositories.
+2. Creates service connections as defined in the template, rendering all fields through Mustache. Credential fields should reference `secret: true` parameters to ensure secure handling (see Service Connections section below).
+3. Creates YAML pipeline definitions pointing to designated files in the created repositories.
 
 Everything is **non-destructive**: if a repository already exists and has commits, it is skipped (not overwritten).
 
@@ -45,9 +46,6 @@ postScaffoldNotes:
   - |-
     Your repositories have been created and the CI pipelines are ready.
     The first pipeline run will be triggered automatically on the next commit to main.
-  - |-
-    Remember to configure your service connections and environment-specific variable
-    groups before deploying to production.
 
 # ── Parameters used by Mustache.js ───────────────────────────────────────────────
 parameters:
@@ -78,6 +76,17 @@ parameters:
     type: string
     when: "includeDocker == true" # Only shown when includeDocker is checked
 
+  - id: includeSonarQube
+    label: "Include SonarQube Analysis"
+    type: boolean
+    defaultValue: true
+
+  - id: sonarqubePersonalAccessToken
+    label: "SonarQube Personal Access Token"
+    type: string
+    required: true
+    when: "includeSonarQube"
+
 # ── Repositories ───────────────────────────────────────────────────────────────────
 repositories:
   - name: "{{projectName}}.backend" # Mustache in repo name ✔
@@ -93,6 +102,19 @@ repositories:
     sourcePath: "templates/docker"
     defaultBranch: "main"
     when: "includeDocker" # Optional: skip this entire repo when false
+
+# ── Service Connections ─────────────────────────────────────────────────────────────
+serviceConnections:
+  - name: "SonarQube"
+    type: "sonarqube"
+    authorizationScheme: "UsernamePassword"
+    authorization:
+      username: "{{sonarqubePersonalAccessToken}}"
+      password: ""
+    url: "https://sonarqube.example.com"
+    description: "SonarQube for static code analysis"
+    grantAccessToAllPipelines: true
+    when: "includeSonarQube" # Optional: skip this connection when false
 
 # ── Pipelines ──────────────────────────────────────────────────────────────────────
 pipelines:

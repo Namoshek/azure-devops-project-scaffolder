@@ -87,12 +87,13 @@ All API calls are made directly from the browser using the signed-in user's OAut
 
 The extension requests these OAuth scopes:
 
-| Scope               | Purpose                                                                  |
-| ------------------- | ------------------------------------------------------------------------ |
-| `vso.code_manage`   | Required to read template files and create repositories                  |
-| `vso.build_execute` | Required to read and create YAML pipeline definitions                    |
-| `vso.agentpools`    | Required to read agent queues for pipeline registration                  |
-| `vso.project`       | Required to read project list (used in the admin restriction dropdown)   |
+| Scope                        | Purpose                                                                         |
+| ---------------------------- | ------------------------------------------------------------------------------- |
+| `vso.code_manage`            | Required to read template files and create repositories                         |
+| `vso.build_execute`          | Required to read and create YAML pipeline definitions                           |
+| `vso.agentpools`             | Required to read agent queues for pipeline registration                         |
+| `vso.project`                | Required to read project list (used in the admin restriction dropdown)          |
+| `vso.serviceendpoint_manage` | Required to manage service endpoints (create and configure service connections) |
 
 ## Development
 

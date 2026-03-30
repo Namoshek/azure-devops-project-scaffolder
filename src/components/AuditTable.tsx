@@ -2,7 +2,7 @@ import React from "react";
 import { Table, ITableColumn, SimpleTableCell, TwoLineTableCell } from "azure-devops-ui/Table";
 import { ArrayItemProvider } from "azure-devops-ui/Utilities/Provider";
 import { Tooltip as TooltipBase } from "azure-devops-ui/TooltipEx";
-import { AuditRecord } from "../types/auditTypes";
+import { AuditRecord, AuditStepResult } from "../types/auditTypes";
 import { statusColors } from "../types/statusColors";
 
 const Tooltip = TooltipBase as React.ComponentType<
@@ -41,6 +41,54 @@ function statusText(status: string): string {
     default:
       return status;
   }
+}
+
+function renderStepsTooltip(steps: AuditStepResult[]): React.ReactNode {
+  if (steps.length === 0) return null;
+  return (
+    <table style={{ borderCollapse: "collapse", fontSize: 12, minWidth: 600, maxWidth: 800, width: "fit-content" }}>
+      <thead>
+        <tr>
+          <th
+            style={{
+              textAlign: "left",
+              paddingRight: 12,
+              paddingBottom: 4,
+              borderBottom: "1px solid #ccc",
+              fontWeight: 600,
+            }}
+          >
+            Step
+          </th>
+          <th
+            style={{
+              textAlign: "left",
+              paddingRight: 12,
+              paddingBottom: 4,
+              borderBottom: "1px solid #ccc",
+              fontWeight: 600,
+            }}
+          >
+            Status
+          </th>
+          <th style={{ textAlign: "left", paddingBottom: 4, borderBottom: "1px solid #ccc", fontWeight: 600 }}>
+            Detail
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {steps.map((step) => (
+          <tr key={step.id}>
+            <td style={{ paddingRight: 12, paddingTop: 4 }}>{step.label}</td>
+            <td style={{ paddingRight: 12, paddingTop: 4, ...statusStyle(step.status) }}>{statusText(step.status)}</td>
+            <td style={{ paddingTop: 4, color: step.status === "failed" ? statusColors.error : undefined }}>
+              {step.detail ?? ""}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
 }
 
 function renderParamsTooltip(params: Record<string, unknown>): React.ReactNode {
@@ -90,6 +138,35 @@ function buildColumns(showProjectColumn: boolean): ITableColumn<AuditRecord>[] {
       ),
     },
     {
+      id: "status",
+      name: "Status",
+      width: showProjectColumn ? -8 : -10,
+      renderCell: (_rowIndex, columnIndex, tableColumn, item) => {
+        const stepsTooltipContent = renderStepsTooltip(item.steps ?? []);
+        return (
+          <SimpleTableCell key={`st-${columnIndex}`} columnIndex={columnIndex} tableColumn={tableColumn}>
+            {stepsTooltipContent ? (
+              <Tooltip renderContent={() => stepsTooltipContent}>
+                <span
+                  style={{
+                    ...statusStyle(item.status),
+                    cursor: "help",
+                    textDecoration: "underline",
+                    textDecorationStyle: "dashed",
+                    textUnderlineOffset: 3,
+                  }}
+                >
+                  {statusText(item.status)}
+                </span>
+              </Tooltip>
+            ) : (
+              <span style={statusStyle(item.status)}>{statusText(item.status)}</span>
+            )}
+          </SimpleTableCell>
+        );
+      },
+    },
+    {
       id: "template",
       name: "Template",
       width: -35,
@@ -110,16 +187,6 @@ function buildColumns(showProjectColumn: boolean): ITableColumn<AuditRecord>[] {
       renderCell: (_rowIndex, columnIndex, tableColumn, item) => (
         <SimpleTableCell key={`usr-${columnIndex}`} columnIndex={columnIndex} tableColumn={tableColumn}>
           <span className="text-ellipsis">{item.userDisplayName}</span>
-        </SimpleTableCell>
-      ),
-    },
-    {
-      id: "status",
-      name: "Status",
-      width: showProjectColumn ? -8 : -10,
-      renderCell: (_rowIndex, columnIndex, tableColumn, item) => (
-        <SimpleTableCell key={`st-${columnIndex}`} columnIndex={columnIndex} tableColumn={tableColumn}>
-          <span style={statusStyle(item.status)}>{statusText(item.status)}</span>
         </SimpleTableCell>
       ),
     },

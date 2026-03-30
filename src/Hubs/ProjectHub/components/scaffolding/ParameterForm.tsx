@@ -20,7 +20,7 @@ export function ParameterForm({ template, permissions, projectId, onSubmit, onBa
 
   return (
     <div className="flex-row" style={{ gap: 48 }}>
-      <div>
+      <form onSubmit={(e) => {e.preventDefault(); handleSubmit();}} noValidate>
         <TemplateFormHeader template={template} />
 
         <div className="flex-column rhythm-vertical-20">
@@ -46,12 +46,12 @@ export function ParameterForm({ template, permissions, projectId, onSubmit, onBa
           <Button
             text="Scaffold Project"
             primary
+            type="submit"
             disabled={submitDisabled}
             tooltipProps={submitTooltip ? { text: submitTooltip } : undefined}
-            onClick={handleSubmit}
           />
         </div>
-      </div>
+      </form>
 
       <div style={{ minWidth: 400 }}>
         <ScaffoldSummaryPanel permissions={permissions} summaryItems={summaryItems} />

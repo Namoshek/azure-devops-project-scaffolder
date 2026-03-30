@@ -10,7 +10,7 @@ import { SpinnerSize } from "azure-devops-ui/Components/Spinner/Spinner.Props";
 const COLOR_INCLUDED = statusColors.success;
 // warning = excluded by user-controlled when-expression (user can change this)
 const COLOR_EXCLUDED = statusColors.warning;
-// error   = system-level blocker the user cannot resolve here
+// error = system-level blocker the user cannot resolve here
 const COLOR_SYSTEM_ERROR = statusColors.error;
 
 interface SummaryResourceRowProps {
@@ -18,21 +18,29 @@ interface SummaryResourceRowProps {
   isLast: boolean;
 }
 
+const resourceIconMap: Record<ParameterSummaryItem["type"], string> = {
+  ["repository"]: "OpenSource",
+  ["serviceConnection"]: "PlugConnected",
+  ["pipeline"]: "Build",
+};
+
+const resourceNameMap: Record<ParameterSummaryItem["type"], string> = {
+  ["repository"]: "Repository",
+  ["serviceConnection"]: "Service connection",
+  ["pipeline"]: "Pipeline",
+};
+
 export function SummaryResourceRow({ item, isLast }: SummaryResourceRowProps) {
   const wrapperClass = isLast ? "flex-column justify-start" : "flex-column justify-start separator-line-bottom";
 
   const isSkipped = !item.included || item.permissionDenied || item.existsWillSkip;
-  const iconName = item.type === "repository" ? "OpenSource" : "Build";
-  const resourceType = item.type === "repository" ? "Repository" : "Pipeline";
+  const iconName = resourceIconMap[item.type] ?? "Page"; // Default icon if type is unrecognized
+  const resourceType = resourceNameMap[item.type] ?? "Resource";
 
   // Determine which system-level blocker applies (highest priority first).
   // Only one badge is shown per resource.
   const iconColor =
-    item.permissionDenied || item.existsWillSkip
-      ? COLOR_SYSTEM_ERROR
-      : !item.included
-        ? COLOR_EXCLUDED
-        : COLOR_INCLUDED;
+    item.permissionDenied || item.existsWillSkip ? COLOR_SYSTEM_ERROR : item.included ? COLOR_INCLUDED : COLOR_EXCLUDED;
 
   return (
     <div className={wrapperClass} style={{ gap: 6, paddingBottom: isLast ? 0 : 12 }}>

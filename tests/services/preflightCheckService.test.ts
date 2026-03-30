@@ -1,6 +1,7 @@
 import {
   checkRepoExists,
   checkPipelineExists,
+  checkServiceConnectionExists,
   checkTemplateResourcesExistence,
 } from "../../src/services/preflightCheckService";
 import type { TemplateDefinition } from "../../src/types/templateTypes";
@@ -17,8 +18,13 @@ jest.mock("azure-devops-extension-api/Build", () => ({
   BuildRestClient: jest.fn(),
 }));
 
+jest.mock("azure-devops-extension-api/ServiceEndpoint", () => ({
+  ServiceEndpointRestClient: jest.fn(),
+}));
+
 import { getClient } from "azure-devops-extension-api";
 import { BuildRestClient } from "azure-devops-extension-api/Build";
+import { ServiceEndpointRestClient } from "azure-devops-extension-api/ServiceEndpoint";
 
 const mockGetClient = getClient as jest.Mock;
 
@@ -71,9 +77,27 @@ function makeBuildClient(
   };
 }
 
-function setupClients(gitClient: ReturnType<typeof makeGitClient>, buildClient: ReturnType<typeof makeBuildClient>) {
+function makeServiceEndpointClient(overrides: { endpoints?: { id: string; name: string }[]; error?: Error } = {}) {
+  const eps = overrides.endpoints ?? [];
+  return {
+    getServiceEndpointsByNames: overrides.error
+      ? jest.fn().mockRejectedValue(overrides.error)
+      : jest
+          .fn()
+          .mockImplementation((_projectId: string, names: string[]) =>
+            Promise.resolve(eps.filter((e) => names.some((n) => n.toLowerCase() === e.name.toLowerCase()))),
+          ),
+  };
+}
+
+function setupClients(
+  gitClient: ReturnType<typeof makeGitClient>,
+  buildClient: ReturnType<typeof makeBuildClient>,
+  endpointClient: ReturnType<typeof makeServiceEndpointClient> = makeServiceEndpointClient(),
+) {
   mockGetClient.mockImplementation((clientClass: unknown) => {
     if (clientClass === BuildRestClient) return buildClient;
+    if (clientClass === ServiceEndpointRestClient) return endpointClient;
     return gitClient;
   });
 }
@@ -286,10 +310,76 @@ describe("checkPipelineExists", () => {
   });
 });
 
+// ─── checkServiceConnectionExists ────────────────────────────────────────────
+
+describe("checkServiceConnectionExists", () => {
+  it("returns { exists: false } when no connection with that name exists", async () => {
+    const ep = makeServiceEndpointClient({ endpoints: [] });
+    setupClients(makeGitClient(), makeBuildClient(), ep);
+
+    const result = await checkServiceConnectionExists("proj-sc1", "my-connection");
+
+    expect(result).toEqual({ exists: false });
+  });
+
+  it("returns { exists: true } when a connection with that name exists", async () => {
+    const ep = makeServiceEndpointClient({
+      endpoints: [{ id: "ep-1", name: "my-connection" }],
+    });
+    setupClients(makeGitClient(), makeBuildClient(), ep);
+
+    const result = await checkServiceConnectionExists("proj-sc2", "my-connection");
+
+    expect(result).toEqual({ exists: true });
+  });
+
+  it("fails open and returns { exists: false } when getServiceEndpointsByNames throws", async () => {
+    const ep = makeServiceEndpointClient({ error: new Error("Server error") });
+    setupClients(makeGitClient(), makeBuildClient(), ep);
+
+    const result = await checkServiceConnectionExists("proj-sc3", "broken-connection");
+
+    expect(result).toEqual({ exists: false });
+  });
+
+  it("returns a cached result on the second call without hitting the API", async () => {
+    const ep = makeServiceEndpointClient({ endpoints: [] });
+    setupClients(makeGitClient(), makeBuildClient(), ep);
+
+    await checkServiceConnectionExists("proj-sc-cache1", "cached-conn");
+    await checkServiceConnectionExists("proj-sc-cache1", "cached-conn");
+
+    expect(ep.getServiceEndpointsByNames).toHaveBeenCalledTimes(1);
+  });
+
+  it("bypasses the read cache when fresh: true is passed", async () => {
+    const ep = makeServiceEndpointClient({ endpoints: [] });
+    setupClients(makeGitClient(), makeBuildClient(), ep);
+
+    await checkServiceConnectionExists("proj-sc-cache2", "fresh-conn");
+    await checkServiceConnectionExists("proj-sc-cache2", "fresh-conn", { fresh: true });
+
+    expect(ep.getServiceEndpointsByNames).toHaveBeenCalledTimes(2);
+  });
+
+  it("passes the connection name to getServiceEndpointsByNames", async () => {
+    const ep = makeServiceEndpointClient({ endpoints: [] });
+    setupClients(makeGitClient(), makeBuildClient(), ep);
+
+    await checkServiceConnectionExists("proj-sc-name", "azure-prod");
+
+    expect(ep.getServiceEndpointsByNames).toHaveBeenCalledWith("proj-sc-name", ["azure-prod"]);
+  });
+});
+
 // ─── checkTemplateResourcesExistence ─────────────────────────────────────────
 
 describe("checkTemplateResourcesExistence", () => {
-  function makeTemplate(repos: string[], pipelines: { name: string; folder?: string }[]): TemplateDefinition {
+  function makeTemplate(
+    repos: string[],
+    pipelines: { name: string; folder?: string }[],
+    serviceConnections: string[] = [],
+  ): TemplateDefinition {
     return {
       id: "tpl-1",
       name: "Test",
@@ -306,6 +396,12 @@ describe("checkTemplateResourcesExistence", () => {
         yamlPath: "azure-pipelines.yml",
         ...(folder !== undefined ? { folder } : {}),
       })),
+      serviceConnections: serviceConnections.map((name) => ({
+        name,
+        type: "AzureRM",
+        authorizationScheme: "ServicePrincipal",
+        authorization: {},
+      })),
     };
   }
 
@@ -316,6 +412,7 @@ describe("checkTemplateResourcesExistence", () => {
 
     expect(result.repos).toEqual({});
     expect(result.pipelines).toEqual({});
+    expect(result.serviceConnections).toEqual({});
   });
 
   it("checks all repos and pipelines in parallel and returns a map keyed correctly", async () => {
@@ -374,7 +471,31 @@ describe("checkTemplateResourcesExistence", () => {
     expect(result.pipelines["\\teamc::ci"]).toEqual({ exists: false });
   });
 
-  it("renders Mustache expressions in names before checking", async () => {
+  it("includes service connection existence results keyed by lowercased name", async () => {
+    const ep = makeServiceEndpointClient({
+      endpoints: [{ id: "ep-1", name: "Prod-Azure" }],
+    });
+    setupClients(makeGitClient(), makeBuildClient(), ep);
+
+    const template = makeTemplate([], [], ["Prod-Azure", "Staging-Azure"]);
+    const result = await checkTemplateResourcesExistence("proj-c5", template, {});
+
+    expect(result.serviceConnections["prod-azure"]).toEqual({ exists: true });
+    expect(result.serviceConnections["staging-azure"]).toEqual({ exists: false });
+  });
+
+  it("renders Mustache in service connection names before checking", async () => {
+    const ep = makeServiceEndpointClient({ endpoints: [] });
+    setupClients(makeGitClient(), makeBuildClient(), ep);
+
+    const template = makeTemplate([], [], ["{{projectName}}-azure"]);
+    const result = await checkTemplateResourcesExistence("proj-c6", template, { projectName: "my-svc" });
+
+    expect(result.serviceConnections["my-svc-azure"]).toEqual({ exists: false });
+    expect(ep.getServiceEndpointsByNames).toHaveBeenCalledWith("proj-c6", ["my-svc-azure"]);
+  });
+
+  it("renders Mustache expressions in repo names before checking", async () => {
     const git = makeGitClient({
       repos: [{ id: "r2", name: "my-app-backend" }],
       refs: [{ name: "refs/heads/main" }],

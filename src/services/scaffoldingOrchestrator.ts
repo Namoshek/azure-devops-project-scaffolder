@@ -1,6 +1,7 @@
 import { TemplateDefinition, TemplatePermissions } from "../types/templateTypes";
 import { scaffoldRepository, RepoScaffoldResult } from "./repositoryService";
 import { scaffoldPipeline, PipelineScaffoldResult } from "./pipelineService";
+import { scaffoldServiceConnection, ServiceConnectionScaffoldResult } from "./serviceConnectionService";
 import { evaluateWhenExpression, renderTemplate } from "./templateEngineService";
 
 export type StepStatus = "pending" | "running" | "success" | "skipped" | "failed";
@@ -42,13 +43,19 @@ export async function runScaffold(
     status: "pending",
   }));
 
+  const serviceConnectionSteps: ScaffoldStep[] = (template.serviceConnections ?? []).map((sc) => ({
+    id: `serviceconnection:${sc.name}`,
+    label: `Create service connection: ${renderTemplate(sc.name, parameterValues)}`,
+    status: "pending",
+  }));
+
   const pipelineSteps: ScaffoldStep[] = (template.pipelines ?? []).map((p) => ({
     id: `pipeline:${p.name}`,
     label: `Create pipeline: ${renderTemplate(p.name, parameterValues)}`,
     status: "pending",
   }));
 
-  const allSteps: ScaffoldStep[] = [...repoSteps, ...pipelineSteps];
+  const allSteps: ScaffoldStep[] = [...repoSteps, ...serviceConnectionSteps, ...pipelineSteps];
   onProgress([...allSteps]);
 
   // ── Phase 1: Repositories ────────────────────────────────────────────────────
@@ -91,7 +98,46 @@ export async function runScaffold(
     onProgress([...allSteps]);
   }
 
-  // ── Phase 2: Pipelines ───────────────────────────────────────────────────────
+  // ── Phase 2: Service Connections ────────────────────────────────────────────
+  if (permissions && !permissions.canCreateServiceConnections && serviceConnectionSteps.length > 0) {
+    for (const step of serviceConnectionSteps) {
+      step.status = "skipped";
+      step.detail = "Skipped: insufficient permissions to create service connections.";
+    }
+    onProgress([...allSteps]);
+  }
+
+  for (let i = 0; i < serviceConnectionSteps.length; i++) {
+    if (serviceConnectionSteps[i].status === "skipped") continue;
+    const connectionTemplate = template.serviceConnections![i];
+
+    if (connectionTemplate.when && !evaluateWhenExpression(connectionTemplate.when, parameterValues)) {
+      serviceConnectionSteps[i].status = "skipped";
+      serviceConnectionSteps[i].detail = `Condition '${connectionTemplate.when}' was not met.`;
+      onProgress([...allSteps]);
+      continue;
+    }
+
+    serviceConnectionSteps[i].status = "running";
+    onProgress([...allSteps]);
+
+    let result: ServiceConnectionScaffoldResult;
+    try {
+      result = await scaffoldServiceConnection(projectId, connectionTemplate, parameterValues);
+    } catch (err) {
+      result = {
+        connectionName: connectionTemplate.name,
+        status: "failed",
+        reason: (err as Error).message,
+      };
+    }
+
+    serviceConnectionSteps[i].status = mapStatus(result.status);
+    if (result.reason) serviceConnectionSteps[i].detail = result.reason;
+    onProgress([...allSteps]);
+  }
+
+  // ── Phase 3: Pipelines ───────────────────────────────────────────────────────
   if (permissions && !permissions.canCreatePipelines && pipelineSteps.length > 0) {
     for (const step of pipelineSteps) {
       step.status = "skipped";

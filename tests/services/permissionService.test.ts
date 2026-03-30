@@ -1,6 +1,7 @@
 import {
   checkRepoPermission,
   checkPipelinePermission,
+  checkServiceConnectionPermission,
   checkTemplatePermissions,
   checkCollectionAdminPermission,
 } from "../../src/services/permissionService";
@@ -205,6 +206,7 @@ describe("On-premises", () => {
       expect(result).toEqual({
         canCreateRepos: true,
         canCreatePipelines: true,
+        canCreateServiceConnections: true,
       });
     });
 
@@ -258,6 +260,7 @@ describe("On-premises", () => {
       expect(result).toEqual({
         canCreateRepos: true,
         canCreatePipelines: true,
+        canCreateServiceConnections: true,
       });
       expect(mockFetch).not.toHaveBeenCalled();
     });
@@ -268,7 +271,94 @@ describe("On-premises", () => {
       expect(result).toEqual({
         canCreateRepos: false,
         canCreatePipelines: false,
+        canCreateServiceConnections: true,
       });
+    });
+
+    it("includes a service connection evaluation when template has service connections", async () => {
+      const mockFetch = mockFetchSequence(makeBatchResponse([true, true, true]));
+      (global as any).fetch = mockFetch;
+      const template = makeTemplate({
+        serviceConnections: [
+          {
+            name: "azure-prod",
+            type: "AzureRM",
+            authorizationScheme: "ServicePrincipal",
+            authorization: {},
+          },
+        ],
+      });
+      const result = await checkTemplatePermissions(PROJECT_ID, template);
+
+      expect(result.canCreateServiceConnections).toBe(true);
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body).evaluations;
+      // repo + pipeline + service connection = 3 evaluations
+      expect(body).toHaveLength(3);
+      const scEval = body.find(
+        (e: { securityNamespaceId: string }) => e.securityNamespaceId === "49b48001-ca20-4adc-8111-5b60c903a50c",
+      );
+      expect(scEval).toBeDefined();
+      expect(scEval.token).toBe(`endpoints/${PROJECT_ID}`);
+    });
+
+    it("returns canCreateServiceConnections:false when the service connection check is denied", async () => {
+      const mockFetch = mockFetchSequence(makeBatchResponse([true, true, false]));
+      (global as any).fetch = mockFetch;
+      const template = makeTemplate({
+        serviceConnections: [
+          {
+            name: "azure-prod",
+            type: "AzureRM",
+            authorizationScheme: "ServicePrincipal",
+            authorization: {},
+          },
+        ],
+      });
+      const result = await checkTemplatePermissions(PROJECT_ID, template);
+
+      expect(result.canCreateRepos).toBe(true);
+      expect(result.canCreatePipelines).toBe(true);
+      expect(result.canCreateServiceConnections).toBe(false);
+    });
+  });
+
+  // --- checkServiceConnectionPermission ------------------------------------
+
+  describe("checkServiceConnectionPermission", () => {
+    it("returns true when batch API grants the permission", async () => {
+      (global as any).fetch = mockFetchSequence(makeBatchResponse([true]));
+      expect(await checkServiceConnectionPermission(PROJECT_ID)).toBe(true);
+    });
+
+    it("returns false when batch API denies the permission", async () => {
+      (global as any).fetch = mockFetchSequence(makeBatchResponse([false]));
+      expect(await checkServiceConnectionPermission(PROJECT_ID)).toBe(false);
+    });
+
+    it("returns false on non-ok response (fail-closed)", async () => {
+      (global as any).fetch = mockFetchSequence({ ok: false, status: 403 });
+      expect(await checkServiceConnectionPermission(PROJECT_ID)).toBe(false);
+    });
+
+    it("returns false on network error (fail-closed)", async () => {
+      (global as any).fetch = jest.fn().mockRejectedValue(new Error("Network down"));
+      expect(await checkServiceConnectionPermission(PROJECT_ID)).toBe(false);
+    });
+
+    it("calls permissionevaluationbatch with correct namespace, token, and permission bits", async () => {
+      const mockFetch = mockFetchSequence(makeBatchResponse([true]));
+      (global as any).fetch = mockFetch;
+      await checkServiceConnectionPermission(PROJECT_ID);
+
+      const [url, options] = mockFetch.mock.calls[0];
+      expect(url).toBe(`${COLLECTION_URL}/_apis/security/permissionevaluationbatch?api-version=7.0`);
+      expect(JSON.parse(options.body).evaluations).toEqual([
+        expect.objectContaining({
+          securityNamespaceId: "49b48001-ca20-4adc-8111-5b60c903a50c",
+          token: `endpoints/${PROJECT_ID}`,
+          permissions: 2,
+        }),
+      ]);
     });
   });
 
@@ -410,6 +500,7 @@ describe("Cloud", () => {
       expect(result).toEqual({
         canCreateRepos: true,
         canCreatePipelines: true,
+        canCreateServiceConnections: true,
       });
     });
 
@@ -427,6 +518,7 @@ describe("Cloud", () => {
       expect(result).toEqual({
         canCreateRepos: true,
         canCreatePipelines: true,
+        canCreateServiceConnections: true,
       });
       expect(mockFetch).not.toHaveBeenCalled();
     });
@@ -437,7 +529,27 @@ describe("Cloud", () => {
       expect(result).toEqual({
         canCreateRepos: false,
         canCreatePipelines: false,
+        canCreateServiceConnections: true,
       });
+    });
+  });
+
+  // --- checkServiceConnectionPermission ------------------------------------
+
+  describe("checkServiceConnectionPermission", () => {
+    it("returns true when batch API grants the permission", async () => {
+      (global as any).fetch = mockFetchSequence(makeBatchResponse([true]));
+      expect(await checkServiceConnectionPermission(PROJECT_ID)).toBe(true);
+    });
+
+    it("returns false when batch API denies the permission", async () => {
+      (global as any).fetch = mockFetchSequence(makeBatchResponse([false]));
+      expect(await checkServiceConnectionPermission(PROJECT_ID)).toBe(false);
+    });
+
+    it("returns false on non-ok response (fail-closed)", async () => {
+      (global as any).fetch = mockFetchSequence({ ok: false, status: 403 });
+      expect(await checkServiceConnectionPermission(PROJECT_ID)).toBe(false);
     });
   });
 

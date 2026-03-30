@@ -1,6 +1,7 @@
 import { getClient } from "azure-devops-extension-api";
 import { GitRestClient } from "azure-devops-extension-api/Git";
 import { BuildRestClient } from "azure-devops-extension-api/Build";
+import { ServiceEndpointRestClient } from "azure-devops-extension-api/ServiceEndpoint";
 import { TemplateDefinition } from "../types/templateTypes";
 import { renderTemplate } from "./templateEngineService";
 
@@ -16,6 +17,10 @@ export interface PipelineExistenceResult {
   exists: boolean;
 }
 
+export interface ServiceConnectionExistenceResult {
+  exists: boolean;
+}
+
 export interface ResourceExistenceMap {
   /** Keyed by the rendered (final) repository name (lower-cased). */
   repos: Record<string, RepoExistenceResult>;
@@ -24,11 +29,13 @@ export interface ResourceExistenceMap {
    * that pipeline uniqueness in ADO is (folder, name), not name alone.
    */
   pipelines: Record<string, PipelineExistenceResult>;
+  /** Keyed by the rendered (final) connection name (lower-cased). */
+  serviceConnections: Record<string, ServiceConnectionExistenceResult>;
 }
 
 // ─── Module-level cache ────────────────────────────────────────────────────────
 
-const _cache = new Map<string, RepoExistenceResult | PipelineExistenceResult>();
+const _cache = new Map<string, RepoExistenceResult | PipelineExistenceResult | ServiceConnectionExistenceResult>();
 
 function repoCacheKey(projectId: string, repoName: string): string {
   return `repo:${projectId}:${repoName.toLowerCase()}`;
@@ -36,6 +43,10 @@ function repoCacheKey(projectId: string, repoName: string): string {
 
 function pipelineCacheKey(projectId: string, pipelineName: string, folder: string): string {
   return `pipeline:${projectId}:${folder.toLowerCase()}:${pipelineName.toLowerCase()}`;
+}
+
+function serviceConnectionCacheKey(projectId: string, connectionName: string): string {
+  return `serviceconnection:${projectId}:${connectionName.toLowerCase()}`;
 }
 
 // ─── Public exports ────────────────────────────────────────────────────────────
@@ -140,10 +151,41 @@ export async function checkPipelineExists(
 }
 
 /**
- * Batch-checks existence of all repositories and pipelines from a template,
- * rendering names against the provided parameter values first.
+ * Checks whether a service connection with the given name already exists in the project.
  *
- * All checks run in parallel for performance.  Uses the cache by default
+ * Caching and `fresh` semantics are identical to `checkRepoExists`.
+ * Fails open: returns `{ exists: false }` on any error.
+ */
+export async function checkServiceConnectionExists(
+  projectId: string,
+  connectionName: string,
+  opts: { fresh?: boolean } = {},
+): Promise<ServiceConnectionExistenceResult> {
+  const key = serviceConnectionCacheKey(projectId, connectionName);
+
+  if (!opts.fresh && _cache.has(key)) {
+    return _cache.get(key) as ServiceConnectionExistenceResult;
+  }
+
+  let result: ServiceConnectionExistenceResult;
+  try {
+    const client = getClient(ServiceEndpointRestClient);
+    const endpoints = await client.getServiceEndpointsByNames(projectId, [connectionName]);
+    result = { exists: endpoints.length > 0 };
+  } catch {
+    result = { exists: false };
+  }
+
+  _cache.set(key, result);
+  return result;
+}
+
+/**
+ * Batch-checks existence of all repositories, service connections, and
+ * pipelines from a template, rendering names against the provided parameter
+ * values first.
+ *
+ * All checks run in parallel for performance. Uses the cache by default
  * (no `fresh` flag — the preview does not need live data).
  */
 export async function checkTemplateResourcesExistence(
@@ -151,10 +193,13 @@ export async function checkTemplateResourcesExistence(
   template: TemplateDefinition,
   paramValues: Record<string, unknown>,
 ): Promise<ResourceExistenceMap> {
-  const repoEntries = (template.repositories ?? []).map((r) => ({
-    key: renderTemplate(r.name, paramValues).toLowerCase(),
-    rendered: renderTemplate(r.name, paramValues),
-  }));
+  const repositoryEntries = (template.repositories ?? []).map((r) => {
+    const renderedName = renderTemplate(r.name, paramValues);
+    return {
+      key: renderedName.toLowerCase(),
+      rendered: renderedName,
+    };
+  });
 
   const pipelineEntries = (template.pipelines ?? []).map((p) => {
     const renderedName = renderTemplate(p.name, paramValues);
@@ -166,14 +211,23 @@ export async function checkTemplateResourcesExistence(
     };
   });
 
-  const [repoResults, pipelineResults] = await Promise.all([
-    Promise.all(repoEntries.map((e) => checkRepoExists(projectId, e.rendered))),
+  const serviceConnectionEntries = (template.serviceConnections ?? []).map((sc) => {
+    const renderedName = renderTemplate(sc.name, paramValues);
+    return {
+      key: renderedName.toLowerCase(),
+      rendered: renderedName,
+    };
+  });
+
+  const [repositoryResults, pipelineResults, serviceConnectionResults] = await Promise.all([
+    Promise.all(repositoryEntries.map((e) => checkRepoExists(projectId, e.rendered))),
     Promise.all(pipelineEntries.map((e) => checkPipelineExists(projectId, e.rendered, e.folder))),
+    Promise.all(serviceConnectionEntries.map((e) => checkServiceConnectionExists(projectId, e.rendered))),
   ]);
 
-  const repos: Record<string, RepoExistenceResult> = {};
-  for (let i = 0; i < repoEntries.length; i++) {
-    repos[repoEntries[i].key] = repoResults[i];
+  const repositories: Record<string, RepoExistenceResult> = {};
+  for (let i = 0; i < repositoryEntries.length; i++) {
+    repositories[repositoryEntries[i].key] = repositoryResults[i];
   }
 
   const pipelines: Record<string, PipelineExistenceResult> = {};
@@ -181,5 +235,10 @@ export async function checkTemplateResourcesExistence(
     pipelines[pipelineEntries[i].key] = pipelineResults[i];
   }
 
-  return { repos, pipelines };
+  const serviceConnections: Record<string, ServiceConnectionExistenceResult> = {};
+  for (let i = 0; i < serviceConnectionEntries.length; i++) {
+    serviceConnections[serviceConnectionEntries[i].key] = serviceConnectionResults[i];
+  }
+
+  return { repos: repositories, pipelines, serviceConnections };
 }

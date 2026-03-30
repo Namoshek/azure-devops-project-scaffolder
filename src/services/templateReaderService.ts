@@ -7,6 +7,7 @@ import {
   TemplateRepository,
   TemplateFileExclude,
   TemplatePipeline,
+  TemplateServiceConnection,
 } from "../types/templateTypes";
 
 /**
@@ -163,6 +164,7 @@ function parseTemplateYaml(raw: string): TemplateDefinition {
     parameters,
     repositories: parseRepositories(obj.repositories),
     pipelines: parsePipelines(obj.pipelines),
+    serviceConnections: parseServiceConnections(obj.serviceConnections),
   };
 
   return definition;
@@ -239,6 +241,38 @@ function parsePipelines(raw: unknown): TemplatePipeline[] {
     }
 
     return pipeline;
+  });
+}
+
+function parseServiceConnections(raw: unknown): TemplateServiceConnection[] {
+  if (!Array.isArray(raw)) return [];
+
+  return raw.map((item, index) => {
+    if (!item || typeof item !== "object") {
+      throw new Error(`serviceConnections[${index}] must be an object`);
+    }
+    const sc = item as Record<string, unknown>;
+    if (typeof sc.name !== "string") throw new Error(`serviceConnections[${index}].name must be a string`);
+    if (typeof sc.type !== "string") throw new Error(`serviceConnections[${index}].type must be a string`);
+    if (typeof sc.authorizationScheme !== "string") {
+      throw new Error(`serviceConnections[${index}].authorizationScheme must be a string`);
+    }
+    if (!sc.authorization || typeof sc.authorization !== "object") throw new Error(`serviceConnections[${index}] must have an 'authorization' object`);
+
+    const serviceConnection: TemplateServiceConnection = {
+      name: sc.name,
+      type: sc.type,
+      authorizationScheme: sc.authorizationScheme,
+      authorization: sc.authorization as Record<string, string>,
+    };
+
+    if (typeof sc.description === "string") serviceConnection.description = sc.description;
+    if (typeof sc.url === "string") serviceConnection.url = sc.url;
+    if (typeof sc.data === "object") serviceConnection.data = sc.data as Record<string, string>;
+    if (typeof sc.grantAccessToAllPipelines === "boolean") serviceConnection.grantAccessToAllPipelines = sc.grantAccessToAllPipelines;
+    if (typeof sc.when === "string") serviceConnection.when = sc.when;
+
+    return serviceConnection;
   });
 }
 

@@ -278,3 +278,105 @@ pipelines:
         value: "{{dbConnectionString}}"
         secret: true
 ```
+
+---
+
+## Service Connections
+
+Use the `serviceConnections` section to create ADO service connections (endpoints) as part of scaffolding. Service connections are created after all repositories are provisioned and before pipelines, so pipelines can reference them immediately.
+
+### Basic example
+
+```yaml
+serviceConnections:
+  - name: "{{projectName}}-azure"
+    type: "AzureRM"
+    authorizationScheme: "ServicePrincipal"
+    url: "https://management.azure.com/"
+    authorization:
+      tenantid: "{{azureTenantId}}"
+      serviceprincipalid: "{{azureClientId}}"
+      serviceprincipalkey: "{{azureClientSecret}}"
+    data:
+      subscriptionId: "{{azureSubscriptionId}}"
+      subscriptionName: "{{azureSubscriptionName}}"
+      environment: "AzureCloud"
+    description: "Azure connection for {{projectName}}"
+    grantAccessToAllPipelines: true
+    when: "includeAzureDeployment"
+```
+
+### Fields
+
+| Field                       | Required | Description                                                                                                                       |
+| --------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `name`                      | yes      | Display name for the connection. Mustache-rendered.                                                                               |
+| `type`                      | yes      | ADO endpoint type name, e.g. `"AzureRM"`, `"github"`, `"dockerregistry"`. Accepts any type, including extension-contributed ones. |
+| `authorizationScheme`       | yes      | Scheme supported by the chosen type, e.g. `"ServicePrincipal"`, `"Token"`, `"UsernamePassword"`, `"ManagedServiceIdentity"`.      |
+| `url`                       | no       | Endpoint URL. Required by some types (see table below). Defaults to empty string.                                                 |
+| `authorization`             | yes      | Map of authorization parameter key-value pairs. Values are Mustache-rendered.                                                     |
+| `data`                      | no       | Map of non-auth type-specific fields (e.g. `subscriptionId`). Values are Mustache-rendered.                                       |
+| `description`               | no       | Human-readable description. Mustache-rendered.                                                                                    |
+| `grantAccessToAllPipelines` | no       | If `true`, grants "Allow all pipelines" access immediately after creation. Defaults to `false`.                                   |
+| `when`                      | no       | Skip this connection when the expression evaluates to false. Same syntax as parameter `when`.                                     |
+
+### Credential security — important
+
+> **Never hardcode credentials in the template YAML.** Authorization field values should always reference `secret: true` template parameters via Mustache expressions. Secret parameters are masked in the scaffolding form and never stored in the template repository.
+
+```yaml
+parameters:
+  - id: clientSecret
+    label: "Service Principal Client Secret"
+    type: string
+    secret: true # ← renders as a password input; value is never logged
+
+serviceConnections:
+  - name: "{{projectName}}-azure"
+    type: "AzureRM"
+    authorizationScheme: "ServicePrincipal"
+    url: "https://management.azure.com/"
+    authorization:
+      serviceprincipalkey: "{{clientSecret}}" # ← references the secret param
+```
+
+### Type reference
+
+To find field names for connection types (built-in or extension-contributed), inspect an existing connection via `GET /_apis/serviceendpoint/endpoints/{endpointId}?api-version=7.0`.
+
+Alternatively, you can also create a sample connection of the desired type and inspect the request payload in the browser dev tools network tab when saving it.
+
+Example for a SonarQube service connection (only relevant fields shown):
+
+```json
+// POST https://ado.example.com/DefaultCollection/_apis/serviceendpoint/endpoints?api-version=7.0
+{
+  "authorization": {
+    "parameters": {
+      "username": "MySecretPersonalAccessToken",
+      "password": ""
+    },
+    "scheme": "UsernamePassword"
+  },
+  "name": "SonarQube",
+  "type": "sonarqube",
+  "url": "https://sonarqube.example.com",
+  "description": "This service connection is used by our CI pipelines to run SonarQube analysis on our repositories.",
+  "serviceEndpointProjectReferences": [
+    {
+      "description": "",
+      "name": "SonarQube",
+      "projectReference": {
+        "id": "6ae1de48-ee89-49ab-97f0-6ff468ff5d81",
+        "name": "MySampleProject"
+      }
+    }
+  ]
+}
+```
+
+### Behaviour
+
+- **Non-destructive**: if a service connection with the same name already exists in the project, it is skipped, not overwritten. This is consistent with how repositories and pipelines are handled.
+- **`grantAccessToAllPipelines`**: sets "Grant access permission to all pipelines" on the connection. If this call fails after the connection is already created, scaffolding still reports success for that step and logs a warning — the connection exists and you can grant access manually.
+- **Extension-contributed types**: the scaffolder passes `type` and all `authorization`/`data` fields as-is to the ADO Service Endpoint API. Any endpoint type that ADO can create via REST — including types contributed by installed extensions — is supported.

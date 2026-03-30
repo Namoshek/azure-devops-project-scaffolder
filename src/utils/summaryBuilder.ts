@@ -8,7 +8,7 @@ export interface ParameterSummarySubItem {
 }
 
 export interface ParameterSummaryItem {
-  type: "repository" | "pipeline";
+  type: "repository" | "serviceConnection" | "pipeline";
   name: string;
   included: boolean;
   permissionDenied: boolean;
@@ -35,10 +35,10 @@ export function buildSummaryItems(
       })),
     ];
     const renderedName = renderTemplate(r.name, values);
-    const repoCheck = preflightChecks?.repos[renderedName.toLowerCase()];
+    const repositoryCheck = preflightChecks?.repos[renderedName.toLowerCase()];
     const permissionDenied = permissions !== null && !permissions.canCreateRepos;
-    const existsWillSkip = included && !permissionDenied && (repoCheck?.exists && repoCheck.isNonEmpty) === true;
-    const existsCheckPending = included && !permissionDenied && (preflightPending || repoCheck === undefined);
+    const existsWillSkip = included && !permissionDenied && (repositoryCheck?.exists && repositoryCheck.isNonEmpty) === true;
+    const existsCheckPending = included && !permissionDenied && (preflightPending || repositoryCheck === undefined);
 
     return {
       type: "repository" as const,
@@ -78,5 +78,23 @@ export function buildSummaryItems(
     };
   });
 
-  return [...repositories, ...pipelines];
+  const serviceConnections = (template.serviceConnections ?? []).map((sc) => {
+    const included = !sc.when || evaluateWhenExpression(sc.when, values);
+    const renderedName = renderTemplate(sc.name, values);
+    const serviceConnectionCheck = preflightChecks?.serviceConnections[renderedName.toLowerCase()];
+    const permissionDenied = permissions !== null && !permissions.canCreateServiceConnections;
+    const existsWillSkip = included && !permissionDenied && serviceConnectionCheck?.exists === true;
+    const existsCheckPending = included && !permissionDenied && (preflightPending || serviceConnectionCheck === undefined);
+
+    return {
+      type: "serviceConnection" as const,
+      name: renderedName,
+      included,
+      permissionDenied,
+      existsWillSkip,
+      existsCheckPending,
+    };
+  });
+
+  return [...repositories, ...serviceConnections, ...pipelines];
 }

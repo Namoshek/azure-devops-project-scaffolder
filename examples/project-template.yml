@@ -67,6 +67,37 @@ parameters:
     secret: true
     when: "includeBackend"
 
+  - id: azureTenantId
+    label: "Azure Tenant ID"
+    hint: "The Entra ID tenant to authenticate against (for the Azure service connection)"
+    type: string
+    when: "includeBackend"
+
+  - id: azureClientId
+    label: "Azure Service Principal Client ID"
+    hint: "App registration client ID for the service principal"
+    type: string
+    when: "includeBackend"
+
+  - id: azureClientSecret
+    label: "Azure Service Principal Client Secret"
+    hint: "App registration client secret — masked after submission"
+    type: string
+    secret: true
+    when: "includeBackend"
+
+  - id: azureSubscriptionId
+    label: "Azure Subscription ID"
+    hint: "The subscription to deploy resources to"
+    type: string
+    when: "includeBackend"
+
+  - id: azureSubscriptionName
+    label: "Azure Subscription Name"
+    hint: "Display name for the subscription (informational only)"
+    type: string
+    when: "includeBackend"
+
 repositories:
   - name: "{{projectName}}.backend"
     sourcePath: "templates/backend"
@@ -99,6 +130,23 @@ pipelines:
     yamlPath: "pipelines/build.yml"
     folder: "\\CI"
     when: "includeFrontend"
+
+serviceConnections:
+  - name: "{{projectName}}-azure"
+    type: "AzureRM"
+    authorizationScheme: "ServicePrincipal"
+    url: "https://management.azure.com/"
+    authorization:
+      tenantid: "{{azureTenantId}}"
+      serviceprincipalid: "{{azureClientId}}"
+      serviceprincipalkey: "{{azureClientSecret}}"
+    data:
+      subscriptionId: "{{azureSubscriptionId}}"
+      subscriptionName: "{{azureSubscriptionName}}"
+      environment: "AzureCloud"
+    description: "Azure service connection for {{projectName}} (created by scaffolder)"
+    grantAccessToAllPipelines: true
+    when: "includeBackend"
 
 # Expected folder structure of the repository containing this template:
 #   project-template.yml

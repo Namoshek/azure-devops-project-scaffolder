@@ -46,6 +46,47 @@ export interface TemplatePipeline {
   variables?: TemplatePipelineVariable[]; // pipeline-level variables to set on the definition
 }
 
+export interface TemplateServiceConnection {
+  /** Display name of the service connection. May contain Mustache expressions. */
+  name: string;
+  /**
+   * ADO endpoint type name, e.g. "AzureRM", "github", "dockerregistry".
+   * Accepts any string — including types contributed by third-party extensions.
+   */
+  type: string;
+  /**
+   * Authorization scheme, e.g. "ServicePrincipal", "Token", "UsernamePassword",
+   * "ManagedServiceIdentity". Must match a scheme supported by the chosen type.
+   */
+  authorizationScheme: string;
+  /**
+   * Endpoint URL. Required by some types (e.g. AzureRM →
+   * "https://management.azure.com/"); can be omitted or left empty for others.
+   */
+  url?: string;
+  /**
+   * Authorization parameter key-value pairs. Values may be Mustache
+   * expressions referencing template parameters (ideally secret ones for
+   * credentials). Keys are the field names expected by the endpoint type,
+   * e.g. { serviceprincipalid: "{{clientId}}", serviceprincipalkey: "{{clientSecret}}" }.
+   */
+  authorization: Record<string, string>;
+  /**
+   * Non-auth type-specific configuration fields, e.g. subscriptionId,
+   * environment, azureEnvironment. Values may contain Mustache expressions.
+   */
+  data?: Record<string, string>;
+  /** Human-readable description shown in ADO. May contain Mustache expressions. */
+  description?: string;
+  /**
+   * When true, the connection is authorized for use by all pipelines in the
+   * project immediately after creation (sets "Allow all pipelines" in ADO).
+   */
+  grantAccessToAllPipelines?: boolean;
+  /** Skip this connection when the expression evaluates to false. */
+  when?: string;
+}
+
 /**
  * The name of the virtual "All" category that is always prepended first and
  * shows every discovered template (after search filtering). This category is
@@ -71,6 +112,7 @@ export interface TemplateDefinition {
   templateCategories?: string[]; // optional list of category names declared in the YAML
   parameters: TemplateParameter[];
   repositories?: TemplateRepository[];
+  serviceConnections?: TemplateServiceConnection[];
   pipelines?: TemplatePipeline[];
 
   // Metadata set by discovery, not parsed from YAML
@@ -91,4 +133,6 @@ export interface TemplatePermissions {
   canCreateRepos: boolean;
   /** User can create build pipeline definitions in this project. */
   canCreatePipelines: boolean;
+  /** User can create service endpoint (service connection) definitions in this project. */
+  canCreateServiceConnections: boolean;
 }

@@ -49,6 +49,7 @@ export function useScaffoldNavigation(): UseScaffoldNavigationResult {
       setPermissions({
         canCreateRepos: (template.repositories ?? []).length === 0,
         canCreatePipelines: (template.pipelines ?? []).length === 0,
+        canCreateServiceConnections: (template.serviceConnections ?? []).length === 0,
       });
     }
   }

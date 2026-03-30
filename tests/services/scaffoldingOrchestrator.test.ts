@@ -9,11 +9,17 @@ jest.mock("../../src/services/pipelineService", () => ({
   scaffoldPipeline: jest.fn(),
 }));
 
+jest.mock("../../src/services/serviceConnectionService", () => ({
+  scaffoldServiceConnection: jest.fn(),
+}));
+
 import { scaffoldRepository } from "../../src/services/repositoryService";
 import { scaffoldPipeline } from "../../src/services/pipelineService";
+import { scaffoldServiceConnection } from "../../src/services/serviceConnectionService";
 
 const mockScaffoldRepository = scaffoldRepository as jest.Mock;
 const mockScaffoldPipeline = scaffoldPipeline as jest.Mock;
+const mockScaffoldServiceConnection = scaffoldServiceConnection as jest.Mock;
 
 // ─── Test fixtures ────────────────────────────────────────────────────────────
 
@@ -322,6 +328,96 @@ describe("runScaffold", () => {
     const steps = await runScaffold("proj1", template, PARAMS, jest.fn());
     expect(steps[0].label).toBe("Create repository: my-app-api");
   });
+
+  // ─── Service connection scaffolding ────────────────────────────────────────
+
+  const scTemplate = {
+    name: "Prod-Azure",
+    type: "AzureRM",
+    authorizationScheme: "ServicePrincipal",
+    authorization: { serviceprincipalid: "sp-id", serviceprincipalkey: "sp-key" },
+  };
+
+  it("marks a service connection step as 'success' when scaffoldServiceConnection returns 'created'", async () => {
+    mockScaffoldServiceConnection.mockResolvedValue({
+      connectionName: "Prod-Azure",
+      status: "created",
+      endpointId: "ep-1",
+    });
+
+    const template = makeTemplate({
+      repositories: [],
+      serviceConnections: [scTemplate],
+      pipelines: [],
+    });
+
+    const steps = await runScaffold("proj1", template, PARAMS, jest.fn());
+    expect(steps).toHaveLength(1);
+    expect(steps[0].id).toBe("serviceconnection:Prod-Azure");
+    expect(steps[0].status).toBe("success");
+  });
+
+  it("marks a service connection step as 'skipped' when scaffoldServiceConnection returns 'skipped'", async () => {
+    mockScaffoldServiceConnection.mockResolvedValue({
+      connectionName: "Prod-Azure",
+      status: "skipped",
+      reason: "Already exists.",
+    });
+
+    const template = makeTemplate({
+      repositories: [],
+      serviceConnections: [scTemplate],
+      pipelines: [],
+    });
+
+    const steps = await runScaffold("proj1", template, PARAMS, jest.fn());
+    expect(steps[0].status).toBe("skipped");
+    expect(steps[0].detail).toBe("Already exists.");
+  });
+
+  it("marks a service connection step as 'failed' when scaffoldServiceConnection throws", async () => {
+    mockScaffoldServiceConnection.mockRejectedValue(new Error("API error"));
+
+    const template = makeTemplate({
+      repositories: [],
+      serviceConnections: [scTemplate],
+      pipelines: [],
+    });
+
+    const steps = await runScaffold("proj1", template, PARAMS, jest.fn());
+    expect(steps[0].status).toBe("failed");
+    expect(steps[0].detail).toBe("API error");
+  });
+
+  it("skips a service connection whose 'when' expression evaluates to false", async () => {
+    const template = makeTemplate({
+      repositories: [],
+      serviceConnections: [{ ...scTemplate, when: "includeDocker" }],
+      pipelines: [],
+    });
+
+    const steps = await runScaffold("proj1", template, { includeDocker: false }, jest.fn());
+    expect(steps[0].status).toBe("skipped");
+    expect(mockScaffoldServiceConnection).not.toHaveBeenCalled();
+  });
+
+  it("returns all steps in order (repos, service connections, pipelines)", async () => {
+    mockScaffoldRepository.mockResolvedValue({ repoName: "api", status: "created" });
+    mockScaffoldServiceConnection.mockResolvedValue({ connectionName: "Prod-Azure", status: "created" });
+    mockScaffoldPipeline.mockResolvedValue({ pipelineName: "ci", status: "created" });
+
+    const template = makeTemplate({
+      repositories: [{ name: "api", sourcePath: "/src", defaultBranch: "main" }],
+      serviceConnections: [scTemplate],
+      pipelines: [{ name: "ci", repository: "api", yamlPath: "azure-pipelines.yml" }],
+    });
+
+    const steps = await runScaffold("proj1", template, PARAMS, jest.fn());
+    expect(steps).toHaveLength(3);
+    expect(steps[0].id).toBe("repo:api");
+    expect(steps[1].id).toBe("serviceconnection:Prod-Azure");
+    expect(steps[2].id).toBe("pipeline:ci");
+  });
 });
 // ─── Permission-based skipping ────────────────────────────────────────────────
 
@@ -336,6 +432,12 @@ describe("runScaffold — permission skipping", () => {
     repository: "api",
     yamlPath: "azure-pipelines.yml",
   };
+  const serviceConnectionTemplate = {
+    name: "Prod-Azure",
+    type: "AzureRM",
+    authorizationScheme: "ServicePrincipal",
+    authorization: { serviceprincipalid: "sp-id", serviceprincipalkey: "sp-key" },
+  };
 
   it("skips all repo steps when canCreateRepos is false", async () => {
     const template = makeTemplate({
@@ -346,6 +448,7 @@ describe("runScaffold — permission skipping", () => {
     const steps = await runScaffold("proj1", template, PARAMS, jest.fn(), {
       canCreateRepos: false,
       canCreatePipelines: true,
+      canCreateServiceConnections: true,
     });
 
     expect(steps).toHaveLength(1);
@@ -368,6 +471,7 @@ describe("runScaffold — permission skipping", () => {
     const steps = await runScaffold("proj1", template, PARAMS, jest.fn(), {
       canCreateRepos: true,
       canCreatePipelines: false,
+      canCreateServiceConnections: true,
     });
 
     const pipelineStep = steps.find((s) => s.id.startsWith("pipeline:"));
@@ -394,6 +498,7 @@ describe("runScaffold — permission skipping", () => {
     const steps = await runScaffold("proj1", template, PARAMS, jest.fn(), {
       canCreateRepos: true,
       canCreatePipelines: true,
+      canCreateServiceConnections: true,
     });
 
     expect(steps.every((s) => s.status === "success")).toBe(true);
@@ -416,10 +521,30 @@ describe("runScaffold — permission skipping", () => {
     const steps = await runScaffold("proj1", template, { includeDocker: false }, jest.fn(), {
       canCreateRepos: true,
       canCreatePipelines: true,
+      canCreateServiceConnections: true,
     });
 
     expect(steps[0].status).toBe("skipped");
     expect(steps[0].detail).toMatch(/Condition/);
     expect(mockScaffoldRepository).not.toHaveBeenCalled();
+  });
+
+  it("skips all service connection steps when canCreateServiceConnections is false", async () => {
+    const template = makeTemplate({
+      repositories: [],
+      serviceConnections: [serviceConnectionTemplate],
+      pipelines: [],
+    });
+
+    const steps = await runScaffold("proj1", template, PARAMS, jest.fn(), {
+      canCreateRepos: true,
+      canCreatePipelines: true,
+      canCreateServiceConnections: false,
+    });
+
+    expect(steps).toHaveLength(1);
+    expect(steps[0].status).toBe("skipped");
+    expect(steps[0].detail).toMatch(/insufficient permissions/i);
+    expect(mockScaffoldServiceConnection).not.toHaveBeenCalled();
   });
 });

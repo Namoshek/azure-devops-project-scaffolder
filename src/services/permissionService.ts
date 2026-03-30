@@ -10,6 +10,8 @@ const GIT_SECURITY_NAMESPACE = "2e9eb7ed-3c0a-47d4-87c1-0ffdd275fd87";
 const BUILD_SECURITY_NAMESPACE = "33344d9c-fc72-4d6f-aba5-fa317101a7e9";
 /** Collection/Organization-level security namespace */
 const COLLECTION_SECURITY_NAMESPACE = "3e65f728-f8bc-4ecd-8764-7e378b19bfa7";
+/** Service Endpoint (service connection) security namespace. */
+const ENDPOINT_SECURITY_NAMESPACE = "49b48001-ca20-4adc-8111-5b60c903a50c";
 
 /**
  * Combined bit for Git repo creation:
@@ -29,6 +31,12 @@ const BUILD_PIPELINE_PERMISSION_BIT = 2048;
  *   GENERIC_WRITE = 2
  */
 const EDIT_COLLECTION_PERMISSION_BIT = 2;
+
+/**
+ * Bit for creating/editing service connections:
+ *   Administer = 2
+ */
+const ADMINISTER_SERVICE_ENDPOINT_PERMISSION_BIT = 2;
 
 // ─── API types ───────────────────────────────────────────────────────────────
 
@@ -128,11 +136,33 @@ export async function checkPipelinePermission(projectId: string): Promise<boolea
 }
 
 /**
+ * Checks whether the current user can create (use) service connections in the given project.
+ *
+ * Fails closed: returns false on any error.
+ */
+export async function checkServiceConnectionPermission(projectId: string): Promise<boolean> {
+  try {
+    const [allowed] = await evaluatePermissionBatch([
+      {
+        securityNamespaceId: ENDPOINT_SECURITY_NAMESPACE,
+        token: `endpoints/${projectId}`,
+        permissions: ADMINISTER_SERVICE_ENDPOINT_PERMISSION_BIT,
+      },
+    ]);
+    return allowed;
+  } catch (err) {
+    console.warn(`Service connection permission check failed: ${(err as Error).message}. Treating as denied.`);
+    return false;
+  }
+}
+
+/**
  * Resolves the effective permissions for a given template in the given project.
  *
  * Sends a single batch request containing only the evaluations required by the
  * template. If the template defines no repositories, canCreateRepos is
- * trivially true (no permission required). Same for pipelines.
+ * trivially true (no permission required). Same for pipelines and service
+ * connections.
  *
  * Fails closed on errors.
  */
@@ -142,9 +172,10 @@ export async function checkTemplatePermissions(
 ): Promise<TemplatePermissions> {
   const needsRepos = (template.repositories ?? []).length > 0;
   const needsPipelines = (template.pipelines ?? []).length > 0;
+  const needsServiceConnections = (template.serviceConnections ?? []).length > 0;
 
-  if (!needsRepos && !needsPipelines) {
-    return { canCreateRepos: true, canCreatePipelines: true };
+  if (!needsRepos && !needsPipelines && !needsServiceConnections) {
+    return { canCreateRepos: true, canCreatePipelines: true, canCreateServiceConnections: true };
   }
 
   const evaluations: PermissionEvaluation[] = [];
@@ -165,17 +196,27 @@ export async function checkTemplatePermissions(
     });
   }
 
+  if (needsServiceConnections) {
+    evaluations.push({
+      securityNamespaceId: ENDPOINT_SECURITY_NAMESPACE,
+      token: `endpoints/${projectId}`,
+      permissions: ADMINISTER_SERVICE_ENDPOINT_PERMISSION_BIT,
+    });
+  }
+
   try {
     const results = await evaluatePermissionBatch(evaluations);
     let idx = 0;
     const canCreateRepos = needsRepos ? results[idx++] : true;
-    const canCreatePipelines = needsPipelines ? results[idx] : true;
-    return { canCreateRepos, canCreatePipelines };
+    const canCreatePipelines = needsPipelines ? results[idx++] : true;
+    const canCreateServiceConnections = needsServiceConnections ? results[idx] : true;
+    return { canCreateRepos, canCreatePipelines, canCreateServiceConnections };
   } catch (err) {
     console.warn(`Template permission check failed: ${(err as Error).message}. Treating as denied.`);
     return {
       canCreateRepos: needsRepos ? false : true,
       canCreatePipelines: needsPipelines ? false : true,
+      canCreateServiceConnections: needsServiceConnections ? false : true,
     };
   }
 }

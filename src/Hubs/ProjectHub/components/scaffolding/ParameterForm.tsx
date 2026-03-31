@@ -20,8 +20,14 @@ export function ParameterForm({ template, permissions, projectId, onSubmit, onBa
 
   return (
     <div className="flex-row" style={{ gap: 48 }}>
-      <form onSubmit={(e) => {e.preventDefault(); handleSubmit();}} noValidate>
-        <TemplateFormHeader template={template} />
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          handleSubmit();
+        }}
+        noValidate
+      >
+        <TemplateFormHeader template={template} values={values} />
 
         <div className="flex-column rhythm-vertical-20">
           {visibleParams.map((param) => (
@@ -30,6 +36,7 @@ export function ParameterForm({ template, permissions, projectId, onSubmit, onBa
               param={param}
               value={values[param.id]}
               error={errors[param.id] || undefined}
+              values={values}
               onChange={handleChange}
             />
           ))}

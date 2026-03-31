@@ -1,5 +1,5 @@
 import { TemplateDefinition, TemplatePermissions } from "../types/templateTypes";
-import { evaluateWhenExpression, renderTemplate } from "../services/templateEngineService";
+import { evaluateWhenExpression, renderTemplate, renderTemplatePreview } from "../services/templateEngineService";
 import { ResourceExistenceMap } from "../services/preflightCheckService";
 
 export interface ParameterSummarySubItem {
@@ -34,15 +34,16 @@ export function buildSummaryItems(
         included: !evaluateWhenExpression(e.when!, values),
       })),
     ];
-    const renderedName = renderTemplate(r.name, values);
-    const repositoryCheck = preflightChecks?.repos[renderedName.toLowerCase()];
+    const lookupName = renderTemplate(r.name, values);
+    const repositoryCheck = preflightChecks?.repos[lookupName.toLowerCase()];
     const permissionDenied = permissions !== null && !permissions.canCreateRepos;
-    const existsWillSkip = included && !permissionDenied && (repositoryCheck?.exists && repositoryCheck.isNonEmpty) === true;
+    const existsWillSkip =
+      included && !permissionDenied && (repositoryCheck?.exists && repositoryCheck.isNonEmpty) === true;
     const existsCheckPending = included && !permissionDenied && (preflightPending || repositoryCheck === undefined);
 
     return {
       type: "repository" as const,
-      name: renderedName,
+      name: renderTemplatePreview(r.name, values),
       included,
       permissionDenied,
       existsWillSkip,
@@ -53,23 +54,23 @@ export function buildSummaryItems(
 
   const pipelines = (template.pipelines ?? []).map((p) => {
     const included = !p.when || evaluateWhenExpression(p.when, values);
-    const renderedName = renderTemplate(p.name, values);
+    const lookupName = renderTemplate(p.name, values);
     const folder = p.folder ?? "\\";
-    const pipelineKey = `${folder.toLowerCase()}::${renderedName.toLowerCase()}`;
+    const pipelineKey = `${folder.toLowerCase()}::${lookupName.toLowerCase()}`;
     const pipelineCheck = preflightChecks?.pipelines[pipelineKey];
     const permissionDenied = permissions !== null && !permissions.canCreatePipelines;
     const existsWillSkip = included && !permissionDenied && pipelineCheck?.exists === true;
     const existsCheckPending = included && !permissionDenied && (preflightPending || pipelineCheck === undefined);
 
     const subItems: ParameterSummarySubItem[] = (p.variables ?? []).map((v) => {
-      const varName = renderTemplate(v.name, values);
-      const varValue = v.secret ? "******" : renderTemplate(v.value, values);
+      const varName = renderTemplatePreview(v.name, values);
+      const varValue = v.secret ? "******" : renderTemplatePreview(v.value, values);
       return { name: `${varName} = ${varValue}`, included: true };
     });
 
     return {
       type: "pipeline" as const,
-      name: renderedName,
+      name: renderTemplatePreview(p.name, values),
       included,
       permissionDenied,
       existsWillSkip,
@@ -80,15 +81,16 @@ export function buildSummaryItems(
 
   const serviceConnections = (template.serviceConnections ?? []).map((sc) => {
     const included = !sc.when || evaluateWhenExpression(sc.when, values);
-    const renderedName = renderTemplate(sc.name, values);
-    const serviceConnectionCheck = preflightChecks?.serviceConnections[renderedName.toLowerCase()];
+    const lookupName = renderTemplate(sc.name, values);
+    const serviceConnectionCheck = preflightChecks?.serviceConnections[lookupName.toLowerCase()];
     const permissionDenied = permissions !== null && !permissions.canCreateServiceConnections;
     const existsWillSkip = included && !permissionDenied && serviceConnectionCheck?.exists === true;
-    const existsCheckPending = included && !permissionDenied && (preflightPending || serviceConnectionCheck === undefined);
+    const existsCheckPending =
+      included && !permissionDenied && (preflightPending || serviceConnectionCheck === undefined);
 
     return {
       type: "serviceConnection" as const,
-      name: renderedName,
+      name: renderTemplatePreview(sc.name, values),
       included,
       permissionDenied,
       existsWillSkip,

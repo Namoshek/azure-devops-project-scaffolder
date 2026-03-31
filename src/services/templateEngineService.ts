@@ -12,6 +12,20 @@ export function renderTemplate(templateStr: string, values: Record<string, unkno
 }
 
 /**
+ * Renders a Mustache template string for live previews (e.g. hints, notes, summary panel).
+ * Parameters that are empty, null, or undefined are kept as their raw `{{paramId}}` tag
+ * so the user can see the placeholder until the field is filled in.
+ */
+export function renderTemplatePreview(templateStr: string | undefined, values: Record<string, unknown>): string {
+  if (!templateStr) return "";
+  const previewValues: Record<string, unknown> = {};
+  for (const [key, val] of Object.entries(values)) {
+    previewValues[key] = val !== undefined && val !== null && val !== "" ? val : `{{${key}}}`;
+  }
+  return Mustache.render(templateStr, previewValues);
+}
+
+/**
  * Evaluates a simple boolean `when` expression against the current parameter values.
  *
  * Supported syntax (intentionally minimal and safe — no eval()):

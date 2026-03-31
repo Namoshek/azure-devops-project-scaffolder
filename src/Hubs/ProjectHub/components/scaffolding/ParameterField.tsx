@@ -1,5 +1,6 @@
 import React, { useMemo, useEffect } from "react";
 import { TemplateParameter } from "../../../../types/templateTypes";
+import { renderTemplatePreview } from "../../../../services/templateEngineService";
 import { Checkbox } from "azure-devops-ui/Components/Checkbox/Checkbox";
 import { Dropdown } from "azure-devops-ui/Components/Dropdown/Dropdown";
 import { FormItem as FormItemBase } from "azure-devops-ui/Components/FormItem/FormItem";
@@ -15,10 +16,11 @@ export interface ParameterFieldProps {
   param: TemplateParameter;
   value: unknown;
   error?: string;
+  values: Record<string, unknown>;
   onChange: (id: string, value: unknown) => void;
 }
 
-export function ParameterField({ param, value, error, onChange }: ParameterFieldProps) {
+export function ParameterField({ param, value, error, values, onChange }: ParameterFieldProps) {
   const dropdownSelection = useMemo(() => new DropdownSelection(), []);
   const dropdownItems = useMemo<IListBoxItem[]>(
     () => (param.options || []).map((opt) => ({ id: opt, text: opt })),
@@ -38,7 +40,7 @@ export function ParameterField({ param, value, error, onChange }: ParameterField
 
   if (param.type === "boolean") {
     return (
-      <FormItem label={param.label} message={param.hint}>
+      <FormItem label={renderTemplatePreview(param.label, values)} message={renderTemplatePreview(param.hint, values)}>
         <Checkbox
           label={value ? "Yes" : "No"}
           checked={Boolean(value)}
@@ -50,7 +52,12 @@ export function ParameterField({ param, value, error, onChange }: ParameterField
 
   if (param.type === "choice" && param.options) {
     return (
-      <FormItem label={param.label} required={param.required} message={hasError ? error : param.hint} error={hasError}>
+      <FormItem
+        label={renderTemplatePreview(param.label, values)}
+        required={param.required}
+        message={hasError ? error : renderTemplatePreview(param.hint, values)}
+        error={hasError}
+      >
         <Dropdown
           items={dropdownItems}
           selection={dropdownSelection}
@@ -62,7 +69,12 @@ export function ParameterField({ param, value, error, onChange }: ParameterField
 
   // string / secret
   return (
-    <FormItem label={param.label} required={param.required} message={hasError ? error : param.hint} error={hasError}>
+    <FormItem
+      label={renderTemplatePreview(param.label, values)}
+      required={param.required}
+      message={hasError ? error : renderTemplatePreview(param.hint, values)}
+      error={hasError}
+    >
       <TextField
         value={typeof value === "string" ? value : ""}
         inputType={param.secret ? "password" : "text"}

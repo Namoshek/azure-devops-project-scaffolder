@@ -36,19 +36,25 @@
   "content": {
     "details": {
       "path": "docs/overview.md"
+    },
+    "license": {
+      "path": "LICENSE.md"
     }
   },
   "links": {
+    "issues": {
+      "uri": "https://github.com/Namoshek/azure-devops-project-scaffolder/issues"
+    },
     "getstarted": {
       "uri": "https://github.com/Namoshek/azure-devops-project-scaffolder"
     },
     "learn": {
       "uri": "https://github.com/Namoshek/azure-devops-project-scaffolder/blob/main/docs/template_authoring.md"
     },
-    "support": {
-      "uri": "https://github.com/Namoshek/azure-devops-project-scaffolder/issues"
+    "license": {
+      "uri": "https://github.com/Namoshek/azure-devops-project-scaffolder/blob/main/LICENSE.md"
     },
-    "issues": {
+    "support": {
       "uri": "https://github.com/Namoshek/azure-devops-project-scaffolder/issues"
     }
   },

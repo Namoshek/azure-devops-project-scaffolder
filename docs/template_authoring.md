@@ -228,9 +228,11 @@ pipelines:
 
 Skipped entries still appear in the scaffolding progress view with a **Skipped** status, giving the user full visibility into what was conditionally omitted.
 
-### Excluding individual files from a repository
+### Excluding files and folders from a repository
 
-Add an `exclude` list to a repository entry to drop specific files based on parameter values:
+Add an `exclude` list to a repository entry to drop specific files or entire folders based on parameter values:
+
+**Exclude individual files** — use a path with no trailing slash:
 
 ```yaml
 repositories:
@@ -245,11 +247,38 @@ repositories:
       - path: "always-omitted.txt" # no when = always excluded
 ```
 
-- `path` must match the file path **relative to `sourcePath`**, with no leading slash.
-- `when` uses the same expression syntax as parameter `when` fields. The file is excluded when the expression evaluates to **true** — the `when` expresses the _exclusion condition_, not the inclusion condition.
-- Omitting `when` always excludes the file.
+**Exclude an entire folder** — add a trailing slash to the path. All files under that folder (including subfolders) are excluded:
 
-> **Tip:** Use `{{#myBooleanParameter}} ... conditional content ... {{/myBooleanParameter}}` blocks inside files for inline optional content, and `exclude` for entirely optional files.
+```yaml
+repositories:
+  - name: "{{projectName}}.backend"
+    sourcePath: "templates/backend"
+    defaultBranch: "main"
+    exclude:
+      - path: "docker/" # always exclude everything under docker/
+      - path: "tests/" # conditionally exclude the entire tests folder
+        when: "!includeTests"
+      - path: "infra/terraform/" # nested folder exclusion is also supported
+        when: "!includeInfra"
+```
+
+The trailing slash is what signals folder exclusion. `"docker/"` excludes every file under `docker/` recursively, whereas `"docker"` (no slash) would only exclude a file literally named `docker` at the root.
+
+#### `path` field
+
+| Pattern                  | Behaviour                                                          |
+| ------------------------ | ------------------------------------------------------------------ |
+| `"Dockerfile"`           | Excludes the single file `Dockerfile` at the root of `sourcePath`. |
+| `"config/settings.json"` | Excludes that specific nested file.                                |
+| `"docker/"`              | Excludes **all** files recursively under the `docker/` folder.     |
+| `"infra/terraform/"`     | Excludes **all** files recursively under `infra/terraform/`.       |
+
+- `path` is always relative to `sourcePath`, with no leading slash.
+- `when` uses the same expression syntax as parameter `when` fields. The file or folder is excluded when the expression evaluates to **true** — the `when` expresses the _exclusion condition_, not the inclusion condition.
+- Omitting `when` always excludes the file or folder.
+- Glob wildcards (e.g. `"**/*.json"`) are **not** supported — use exact file paths or folder prefixes with a trailing slash.
+
+> **Tip:** Use `{{#myBooleanParameter}} ... conditional content ... {{/myBooleanParameter}}` blocks inside files for inline optional content, and `exclude` for entirely optional files or folders.
 
 ---
 

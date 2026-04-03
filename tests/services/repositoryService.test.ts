@@ -218,6 +218,95 @@ describe("scaffoldRepository", () => {
     expect(paths).toContain("/docker-compose.yml");
   });
 
+  // ─── Folder exclude rules ──────────────────────────────────────────────────
+
+  it("excludes all files recursively under a folder when no 'when' condition is given", async () => {
+    const gitClient = makeGitClient();
+    mockGetClient.mockReturnValue(gitClient);
+    mockFetchTemplateFiles.mockResolvedValue([
+      { path: "/templates/api/docker/Dockerfile", content: "", isBase64: false },
+      { path: "/templates/api/docker/docker-compose.yml", content: "", isBase64: false },
+      { path: "/templates/api/docker/config/daemon.json", content: "", isBase64: false },
+      { path: "/templates/api/README.md", content: "", isBase64: false },
+    ]);
+
+    const repoTemplate = makeRepoTemplate({ exclude: [{ path: "docker/" }] });
+
+    await scaffoldRepository("proj1", repoTemplate, "sp", "sr", PARAMS);
+
+    const pushCall = gitClient.createPush.mock.calls[0][0];
+    const paths = pushCall.commits[0].changes.map((c: any) => c.item.path);
+    expect(paths).not.toContain("/docker/Dockerfile");
+    expect(paths).not.toContain("/docker/docker-compose.yml");
+    expect(paths).not.toContain("/docker/config/daemon.json");
+    expect(paths).toContain("/README.md");
+  });
+
+  it("excludes all files under a folder when the folder exclude rule 'when' condition is met", async () => {
+    const gitClient = makeGitClient();
+    mockGetClient.mockReturnValue(gitClient);
+    mockFetchTemplateFiles.mockResolvedValue([
+      { path: "/templates/api/docker/Dockerfile", content: "", isBase64: false },
+      { path: "/templates/api/README.md", content: "", isBase64: false },
+    ]);
+
+    const repoTemplate = makeRepoTemplate({
+      exclude: [{ path: "docker/", when: "includeDocker == false" }],
+    });
+
+    await scaffoldRepository("proj1", repoTemplate, "sp", "sr", {
+      ...PARAMS,
+      includeDocker: false,
+    });
+
+    const pushCall = gitClient.createPush.mock.calls[0][0];
+    const paths = pushCall.commits[0].changes.map((c: any) => c.item.path);
+    expect(paths).not.toContain("/docker/Dockerfile");
+    expect(paths).toContain("/README.md");
+  });
+
+  it("keeps files under a folder when the folder exclude rule 'when' condition is NOT met", async () => {
+    const gitClient = makeGitClient();
+    mockGetClient.mockReturnValue(gitClient);
+    mockFetchTemplateFiles.mockResolvedValue([
+      { path: "/templates/api/docker/Dockerfile", content: "", isBase64: false },
+      { path: "/templates/api/README.md", content: "", isBase64: false },
+    ]);
+
+    const repoTemplate = makeRepoTemplate({
+      exclude: [{ path: "docker/", when: "includeDocker == false" }],
+    });
+
+    await scaffoldRepository("proj1", repoTemplate, "sp", "sr", {
+      ...PARAMS,
+      includeDocker: true,
+    });
+
+    const pushCall = gitClient.createPush.mock.calls[0][0];
+    const paths = pushCall.commits[0].changes.map((c: any) => c.item.path);
+    expect(paths).toContain("/docker/Dockerfile");
+    expect(paths).toContain("/README.md");
+  });
+
+  it("does not exclude a file whose name matches the folder name without a trailing slash", async () => {
+    const gitClient = makeGitClient();
+    mockGetClient.mockReturnValue(gitClient);
+    mockFetchTemplateFiles.mockResolvedValue([
+      { path: "/templates/api/docker", content: "", isBase64: false },
+      { path: "/templates/api/docker/Dockerfile", content: "", isBase64: false },
+    ]);
+
+    // Rule uses "docker/" (with slash) — only files *inside* docker/ should be excluded
+    const repoTemplate = makeRepoTemplate({ exclude: [{ path: "docker/" }] });
+
+    await scaffoldRepository("proj1", repoTemplate, "sp", "sr", PARAMS);
+
+    const pushCall = gitClient.createPush.mock.calls[0][0];
+    const paths = pushCall.commits[0].changes.map((c: any) => c.item.path);
+    expect(paths).toContain("/docker"); // bare file named "docker" is not excluded
+    expect(paths).not.toContain("/docker/Dockerfile");
+  });
+
   // ─── Existing repository (non-empty) → skipped ────────────────────────────
 
   it("returns 'skipped' when the repo already exists and has refs", async () => {

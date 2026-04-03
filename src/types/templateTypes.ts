@@ -19,7 +19,12 @@ export interface TemplateParameter {
 }
 
 export interface TemplateFileExclude {
-  path: string; // relative to sourcePath, no leading slash
+  /**
+   * Path relative to `sourcePath`, with no leading slash.
+   * - **File** (no trailing slash): excludes that single file, e.g. `"Dockerfile"`.
+   * - **Folder** (trailing slash): recursively excludes all files under that folder, e.g. `"docker/"`.
+   */
+  path: string;
   when?: string; // exclusion condition — file is excluded when this expression is true
 }
 
@@ -28,7 +33,7 @@ export interface TemplateRepository {
   sourcePath: string; // subfolder within the template repo
   defaultBranch: string; // defaults to "main" if not specified
   when?: string; // skip this entire repository when expression is false
-  exclude?: TemplateFileExclude[]; // individual files to exclude based on conditions
+  exclude?: TemplateFileExclude[]; // files or folders to exclude based on conditions
 }
 
 export interface TemplatePipelineVariable {

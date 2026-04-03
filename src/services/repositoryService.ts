@@ -130,7 +130,9 @@ export async function scaffoldRepository(
       // whose when expression evaluates to true (meaning: exclude condition is met)
       const relativePath = f.path.startsWith(sourcePathPrefix) ? f.path.slice(sourcePathPrefix.length) : f.path;
       return !(repoTemplate.exclude ?? []).some(
-        (rule) => rule.path === relativePath && (!rule.when || evaluateWhenExpression(rule.when, parameterValues)),
+        (rule) =>
+          (rule.path.endsWith("/") ? relativePath.startsWith(rule.path) : rule.path === relativePath) &&
+          (!rule.when || evaluateWhenExpression(rule.when, parameterValues)),
       );
     })
     .map((f) => {

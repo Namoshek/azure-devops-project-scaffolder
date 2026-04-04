@@ -1,5 +1,4 @@
 import React, { useMemo, useEffect } from "react";
-import { TemplateParameter } from "../../../../types/templateTypes";
 import { renderTemplatePreview } from "../../../../services/templateEngineService";
 import { Checkbox } from "azure-devops-ui/Components/Checkbox/Checkbox";
 import { Dropdown } from "azure-devops-ui/Components/Dropdown/Dropdown";
@@ -7,6 +6,7 @@ import { FormItem as FormItemBase } from "azure-devops-ui/Components/FormItem/Fo
 import { TextField } from "azure-devops-ui/Components/TextField/TextField";
 import { IListBoxItem } from "azure-devops-ui/Components/ListBox/ListBox.Props";
 import { DropdownSelection } from "azure-devops-ui/Utilities/DropdownSelection";
+import { TemplateParameter } from "src/types/templateTypes";
 
 const FormItem = FormItemBase as React.ComponentType<
   React.ComponentProps<typeof FormItemBase> & { children?: React.ReactNode }

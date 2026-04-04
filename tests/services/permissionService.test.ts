@@ -85,6 +85,7 @@ function makeTemplate(overrides: Partial<TemplateDefinition> = {}): TemplateDefi
         yamlPath: "azure-pipelines.yml",
       },
     ],
+    serviceConnections: [],
     ...overrides,
   };
 }

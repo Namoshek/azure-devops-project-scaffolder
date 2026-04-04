@@ -13,10 +13,6 @@ const MOCK_DEFINITION = {
   name: "Test Template",
   version: "1.0.0",
   parameters: [],
-  _sourceProjectId: "proj1",
-  _sourceProjectName: "Project One",
-  _sourceRepoId: "repo1",
-  _sourceRepoName: "Repo One",
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -163,15 +159,15 @@ describe("discoverTemplates", () => {
     expect(mockReadTemplate).toHaveBeenCalledTimes(1);
   });
 
-  it("sets _sourceProjectId/_sourceRepoId on the definition", async () => {
+  it("sets sourceProjectId/sourceRepoId on the discovered template", async () => {
     const { discoverTemplates } = loadFreshModule({
       fetchResponse: buildSearchResponse([makeSearchHit()]),
       readTemplateResult: { ...MOCK_DEFINITION },
     });
 
     const results = await discoverTemplates();
-    expect(results[0].definition._sourceProjectId).toBe("proj1");
-    expect(results[0].definition._sourceRepoId).toBe("repo1");
+    expect(results[0].sourceProjectId).toBe("proj1");
+    expect(results[0].sourceRepoId).toBe("repo1");
   });
 
   it("deduplicates multiple hits from the same repo", async () => {

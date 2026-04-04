@@ -1,5 +1,4 @@
 import { scaffoldServiceConnection } from "../../src/services/serviceConnectionService";
-import type { TemplateServiceConnection } from "../../src/types/templateTypes";
 
 // ─── Module mocks ─────────────────────────────────────────────────────────────
 
@@ -27,6 +26,7 @@ import * as SDK from "azure-devops-extension-sdk";
 import { getClient } from "azure-devops-extension-api";
 import { checkServiceConnectionExists } from "../../src/services/preflightCheckService";
 import { getCollectionUrl } from "../../src/services/locationService";
+import { TemplateServiceConnection } from "src/types/templateTypes";
 
 const mockGetAccessToken = SDK.getAccessToken as jest.Mock;
 const mockGetClient = getClient as jest.Mock;

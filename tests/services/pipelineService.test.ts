@@ -1,5 +1,4 @@
 import { scaffoldPipeline } from "../../src/services/pipelineService";
-import type { TemplatePipeline } from "../../src/types/templateTypes";
 
 jest.mock("azure-devops-extension-api", () => ({
   getClient: jest.fn(),
@@ -29,6 +28,7 @@ import { getClient } from "azure-devops-extension-api";
 import { BuildRestClient } from "azure-devops-extension-api/Build";
 import { TaskAgentRestClient } from "azure-devops-extension-api/TaskAgent";
 import { checkPipelineExists } from "../../src/services/preflightCheckService";
+import { TemplatePipeline } from "src/types/templateTypes";
 
 const mockGetClient = getClient as jest.Mock;
 const mockCheckPipelineExists = checkPipelineExists as jest.Mock;

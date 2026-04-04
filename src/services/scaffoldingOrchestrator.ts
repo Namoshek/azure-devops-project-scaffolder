@@ -1,4 +1,4 @@
-import { TemplateDefinition, TemplatePermissions } from "../types/templateTypes";
+import { DiscoveredTemplate, TemplatePermissions } from "../types/templateTypes";
 import { scaffoldRepository, RepoScaffoldResult } from "./repositoryService";
 import { scaffoldPipeline, PipelineScaffoldResult } from "./pipelineService";
 import { scaffoldServiceConnection, ServiceConnectionScaffoldResult } from "./serviceConnectionService";
@@ -28,28 +28,27 @@ export type ProgressCallback = (steps: ScaffoldStep[]) => void;
  */
 export async function runScaffold(
   projectId: string,
-  template: TemplateDefinition,
+  template: DiscoveredTemplate,
   parameterValues: Record<string, unknown>,
   onProgress: ProgressCallback,
   permissions?: TemplatePermissions,
 ): Promise<ScaffoldResult[]> {
-  const sourceProjectId = template._sourceProjectId!;
-  const sourceRepoId = template._sourceRepoId!;
+  const { definition: templateDefinition, sourceProjectId, sourceRepoId } = template;
 
   // Build the initial step list
-  const repoSteps: ScaffoldStep[] = (template.repositories ?? []).map((r) => ({
+  const repoSteps: ScaffoldStep[] = templateDefinition.repositories.map((r) => ({
     id: `repo:${r.name}`,
     label: `Create repository: ${renderTemplate(r.name, parameterValues)}`,
     status: "pending",
   }));
 
-  const serviceConnectionSteps: ScaffoldStep[] = (template.serviceConnections ?? []).map((sc) => ({
+  const serviceConnectionSteps: ScaffoldStep[] = templateDefinition.serviceConnections.map((sc) => ({
     id: `serviceconnection:${sc.name}`,
     label: `Create service connection: ${renderTemplate(sc.name, parameterValues)}`,
     status: "pending",
   }));
 
-  const pipelineSteps: ScaffoldStep[] = (template.pipelines ?? []).map((p) => ({
+  const pipelineSteps: ScaffoldStep[] = templateDefinition.pipelines.map((p) => ({
     id: `pipeline:${p.name}`,
     label: `Create pipeline: ${renderTemplate(p.name, parameterValues)}`,
     status: "pending",
@@ -69,7 +68,7 @@ export async function runScaffold(
 
   for (let i = 0; i < repoSteps.length; i++) {
     if (repoSteps[i].status === "skipped") continue;
-    const repoTemplate = template.repositories![i];
+    const repoTemplate = templateDefinition.repositories[i];
 
     // Skip this repository if its when condition is not satisfied
     if (repoTemplate.when && !evaluateWhenExpression(repoTemplate.when, parameterValues)) {
@@ -109,7 +108,7 @@ export async function runScaffold(
 
   for (let i = 0; i < serviceConnectionSteps.length; i++) {
     if (serviceConnectionSteps[i].status === "skipped") continue;
-    const connectionTemplate = template.serviceConnections![i];
+    const connectionTemplate = templateDefinition.serviceConnections[i];
 
     if (connectionTemplate.when && !evaluateWhenExpression(connectionTemplate.when, parameterValues)) {
       serviceConnectionSteps[i].status = "skipped";
@@ -148,7 +147,7 @@ export async function runScaffold(
 
   for (let i = 0; i < pipelineSteps.length; i++) {
     if (pipelineSteps[i].status === "skipped") continue;
-    const pipelineTemplate = template.pipelines![i];
+    const pipelineTemplate = templateDefinition.pipelines[i];
 
     // Skip this pipeline if its when condition is not satisfied
     if (pipelineTemplate.when && !evaluateWhenExpression(pipelineTemplate.when, parameterValues)) {

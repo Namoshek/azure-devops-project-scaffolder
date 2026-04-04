@@ -1,9 +1,9 @@
 import { getClient } from "azure-devops-extension-api";
 import { GitRestClient, GitPush, VersionControlChangeType, ItemContentType } from "azure-devops-extension-api/Git";
-import { TemplateRepository } from "../types/templateTypes";
 import { fetchTemplateFiles } from "./templateReaderService";
 import { renderTemplate, evaluateWhenExpression } from "./templateEngineService";
 import { checkRepoExists } from "./preflightCheckService";
+import { TemplateRepository } from "src/types/templateTypes";
 
 export type RepoScaffoldStatus = "created" | "skipped" | "failed";
 

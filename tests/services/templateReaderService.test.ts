@@ -18,14 +18,14 @@ import { getClient } from "azure-devops-extension-api";
 // ─── Minimal valid template YAML ──────────────────────────────────────────────
 
 const MINIMAL_YAML = `
-id: "abc123"
+id: "504c735f-8f8d-4365-b787-a8f135c45c62"
 name: "My Template"
 version: "1.0.0"
 parameters: []
 `;
 
 const FULL_YAML = `
-id: "abc123"
+id: "504c735f-8f8d-4365-b787-a8f135c45c62"
 name: "My Template"
 version: "1.0.0"
 description: "A full template"
@@ -89,7 +89,7 @@ describe("readTemplateFromRepo", () => {
 
     const result = await readTemplateFromRepo("proj1", "repo1", "/project-template.yml");
 
-    expect(result.id).toBe("abc123");
+    expect(result.id).toBe("504c735f-8f8d-4365-b787-a8f135c45c62");
     expect(result.name).toBe("My Template");
     expect(result.version).toBe("1.0.0");
     expect(result.parameters).toEqual([]);
@@ -203,7 +203,7 @@ describe("readTemplateFromRepo", () => {
   });
 
   it("throws when required field 'name' is missing", async () => {
-    const mockClient = makeMockGitClient(`id: "abc"\nversion: "1.0"\nparameters: []`);
+    const mockClient = makeMockGitClient(`id: "504c735f-8f8d-4365-b787-a8f135c45c62"\nversion: "1.0"\nparameters: []`);
     (getClient as jest.Mock).mockReturnValue(mockClient);
 
     await expect(readTemplateFromRepo("p", "r", "/project-template.yml")).rejects.toThrow("name");
@@ -218,7 +218,7 @@ describe("readTemplateFromRepo", () => {
 
   it("throws when a parameter type is invalid", async () => {
     const yaml = `
-id: "x"
+id: "504c735f-8f8d-4365-b787-a8f135c45c62"
 name: "X"
 version: "1"
 parameters:
@@ -234,7 +234,7 @@ parameters:
 
   it("defaults to 'main' when defaultBranch is not specified", async () => {
     const yaml = `
-id: "x"
+id: "504c735f-8f8d-4365-b787-a8f135c45c62"
 name: "X"
 version: "1"
 parameters: []
@@ -251,7 +251,7 @@ repositories:
 
   it("parses templateCategories when present", async () => {
     const yaml = `
-id: "abc"
+id: "504c735f-8f8d-4365-b787-a8f135c45c62"
 name: "Categorised Template"
 version: "1.0.0"
 templateCategories:

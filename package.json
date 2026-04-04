@@ -18,16 +18,16 @@
     "azure-devops-extension-api": "^4.0.0",
     "azure-devops-extension-sdk": "^4.0.0",
     "azure-devops-ui": "^2.270.0",
-    "js-yaml": "^4.1.0",
     "mustache": "^4.2.0",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "yaml": "^2.8.3",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@eslint/compat": "^2.0.3",
     "@eslint/js": "^10.0.1",
     "@types/jest": "^30.0.0",
-    "@types/js-yaml": "^4.0.9",
     "@types/mustache": "^4.2.6",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",

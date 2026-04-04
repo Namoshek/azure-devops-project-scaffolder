@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import * as SDK from "azure-devops-extension-sdk";
-import { TemplateDefinition, TemplatePermissions } from "../../../types/templateTypes";
+import { DiscoveredTemplate, TemplatePermissions } from "../../../types/templateTypes";
 import { ScaffoldResult } from "../../../services/scaffoldingOrchestrator";
 import { checkTemplatePermissions } from "../../../services/permissionService";
 
@@ -9,11 +9,11 @@ type Screen = "list" | "form" | "progress";
 export interface UseScaffoldNavigationResult {
   screen: Screen;
   projectId: string | null;
-  selectedTemplate: TemplateDefinition | null;
+  selectedTemplate: DiscoveredTemplate | null;
   permissions: TemplatePermissions | null;
   parameterValues: Record<string, unknown>;
   scaffoldResults: ScaffoldResult[];
-  handleTemplateSelected: (template: TemplateDefinition) => void;
+  handleTemplateSelected: (template: DiscoveredTemplate) => void;
   handleFormSubmit: (values: Record<string, unknown>) => void;
   handleBack: () => void;
   handleScaffoldComplete: (results: ScaffoldResult[]) => void;
@@ -23,7 +23,7 @@ export interface UseScaffoldNavigationResult {
 export function useScaffoldNavigation(): UseScaffoldNavigationResult {
   const [screen, setScreen] = useState<Screen>("list");
   const [projectId, setProjectId] = useState<string | null>(null);
-  const [selectedTemplate, setSelectedTemplate] = useState<TemplateDefinition | null>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<DiscoveredTemplate | null>(null);
   const [permissions, setPermissions] = useState<TemplatePermissions | null>(null);
   const [parameterValues, setParameterValues] = useState<Record<string, unknown>>({});
   const [scaffoldResults, setScaffoldResults] = useState<ScaffoldResult[]>([]);
@@ -36,20 +36,20 @@ export function useScaffoldNavigation(): UseScaffoldNavigationResult {
     void init();
   }, []);
 
-  async function handleTemplateSelected(template: TemplateDefinition) {
+  async function handleTemplateSelected(template: DiscoveredTemplate) {
     setSelectedTemplate(template);
     setPermissions(null);
     setScreen("form");
 
     if (projectId) {
-      const resolved = await checkTemplatePermissions(projectId, template);
+      const resolved = await checkTemplatePermissions(projectId, template.definition);
       setPermissions(resolved);
     } else {
       // No project context — fail closed for all resource types that exist.
       setPermissions({
-        canCreateRepos: (template.repositories ?? []).length === 0,
-        canCreatePipelines: (template.pipelines ?? []).length === 0,
-        canCreateServiceConnections: (template.serviceConnections ?? []).length === 0,
+        canCreateRepos: template.definition.repositories.length === 0,
+        canCreatePipelines: template.definition.pipelines.length === 0,
+        canCreateServiceConnections: template.definition.serviceConnections.length === 0,
       });
     }
   }

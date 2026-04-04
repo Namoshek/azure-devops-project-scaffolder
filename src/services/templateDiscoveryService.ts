@@ -117,14 +117,11 @@ async function fetchTemplates(): Promise<DiscoveredTemplate[]> {
   for (const hit of unique) {
     try {
       const definition = await readTemplateFromRepo(hit.project.id, hit.repository.id, hit.path);
-      definition._sourceProjectId = hit.project.id;
-      definition._sourceProjectName = hit.project.name;
-      definition._sourceRepoId = hit.repository.id;
-      definition._sourceRepoName = hit.repository.name;
-
       results.push({
         definition,
+        sourceProjectId: hit.project.id,
         sourceProjectName: hit.project.name,
+        sourceRepoId: hit.repository.id,
         sourceRepoName: hit.repository.name,
       });
     } catch (err) {

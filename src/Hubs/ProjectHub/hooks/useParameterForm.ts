@@ -1,9 +1,10 @@
 import { useState, useMemo } from "react";
-import { TemplateDefinition, TemplateParameter, TemplatePermissions } from "../../../types/templateTypes";
+import { TemplateDefinition, TemplatePermissions } from "../../../types/templateTypes";
 import { evaluateWhenExpression } from "../../../services/templateEngineService";
 import { buildDefaults, validate } from "../../../utils/formUtils";
 import { buildSummaryItems, ParameterSummaryItem } from "../../../utils/summaryBuilder";
 import { usePreflightChecks } from "./usePreflightChecks";
+import { TemplateParameter } from "src/types/templateTypes";
 
 export interface UseParameterFormResult {
   values: Record<string, unknown>;

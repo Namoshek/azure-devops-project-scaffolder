@@ -1,5 +1,5 @@
 import { runScaffold } from "../../src/services/scaffoldingOrchestrator";
-import type { TemplateDefinition } from "../../src/types/templateTypes";
+import type { DiscoveredTemplate, TemplateDefinition } from "../../src/types/templateTypes";
 
 jest.mock("../../src/services/repositoryService", () => ({
   scaffoldRepository: jest.fn(),
@@ -23,15 +23,22 @@ const mockScaffoldServiceConnection = scaffoldServiceConnection as jest.Mock;
 
 // ─── Test fixtures ────────────────────────────────────────────────────────────
 
-function makeTemplate(overrides: Partial<TemplateDefinition> = {}): TemplateDefinition {
+function makeTemplate(overrides: Partial<TemplateDefinition> = {}): DiscoveredTemplate {
   return {
-    id: "tpl-1",
-    name: "Test Template",
-    version: "1.0.0",
-    parameters: [],
-    _sourceProjectId: "src-proj",
-    _sourceRepoId: "src-repo",
-    ...overrides,
+    sourceProjectId: "src-proj",
+    sourceRepoId: "src-repo",
+    sourceProjectName: "Source Project",
+    sourceRepoName: "Source Repo",
+    definition: {
+      id: "tpl-1",
+      name: "Test Template",
+      version: "1.0.0",
+      parameters: [],
+      repositories: [],
+      pipelines: [],
+      serviceConnections: [],
+      ...overrides,
+    },
   };
 }
 

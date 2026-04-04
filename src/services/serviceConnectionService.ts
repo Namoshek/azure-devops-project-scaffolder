@@ -6,10 +6,10 @@ import {
   EndpointAuthorization,
   ServiceEndpointProjectReference,
 } from "azure-devops-extension-api/ServiceEndpoint";
-import { TemplateServiceConnection } from "../types/templateTypes";
 import { renderTemplate } from "./templateEngineService";
 import { checkServiceConnectionExists } from "./preflightCheckService";
 import { getCollectionUrl } from "./locationService";
+import { TemplateServiceConnection } from "src/types/templateTypes";
 
 export type ServiceConnectionScaffoldStatus = "created" | "skipped" | "failed";
 

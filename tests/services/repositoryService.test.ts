@@ -1,5 +1,4 @@
 import { scaffoldRepository } from "../../src/services/repositoryService";
-import type { TemplateRepository } from "../../src/types/templateTypes";
 
 jest.mock("azure-devops-extension-api", () => ({
   getClient: jest.fn(),
@@ -23,6 +22,7 @@ jest.mock("../../src/services/preflightCheckService", () => ({
 import { getClient } from "azure-devops-extension-api";
 import { fetchTemplateFiles } from "../../src/services/templateReaderService";
 import { checkRepoExists } from "../../src/services/preflightCheckService";
+import { TemplateRepository } from "src/types/templateTypes";
 
 const mockGetClient = getClient as jest.Mock;
 const mockFetchTemplateFiles = fetchTemplateFiles as jest.Mock;

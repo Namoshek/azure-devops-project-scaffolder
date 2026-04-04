@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import * as SDK from "azure-devops-extension-sdk";
 import { CommonServiceIds, IProjectPageService } from "azure-devops-extension-api";
-import { TemplateDefinition, TemplatePermissions } from "../../../types/templateTypes";
+import { DiscoveredTemplate, TemplatePermissions } from "../../../types/templateTypes";
 import { runScaffold, ScaffoldResult, ScaffoldStep } from "../../../services/scaffoldingOrchestrator";
 import { AuditRecord } from "../../../types/auditTypes";
 import { createAuditRecord, updateAuditRecord, redactSecretParams } from "../../../services/auditService";
@@ -16,7 +16,7 @@ export interface UseScaffoldExecutionResult {
 }
 
 export function useScaffoldExecution(
-  template: TemplateDefinition,
+  template: DiscoveredTemplate,
   parameterValues: Record<string, unknown>,
   permissions: TemplatePermissions,
   existingResults: ScaffoldResult[],
@@ -60,12 +60,12 @@ export function useScaffoldExecution(
           timestamp: new Date().toISOString(),
           projectId,
           projectName,
-          templateId: template.id,
-          templateName: template.name,
-          templateSourceProject: template._sourceProjectName ?? "",
+          templateId: template.definition.id,
+          templateName: template.definition.name,
+          templateSourceProject: template.sourceProjectName,
           userId: user.id,
           userDisplayName: user.displayName,
-          parameterValues: redactSecretParams(template, parameterValues),
+          parameterValues: redactSecretParams(template.definition, parameterValues),
           status: "inProgress",
         });
       } catch (auditErr) {

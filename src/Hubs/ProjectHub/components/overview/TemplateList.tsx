@@ -1,5 +1,5 @@
 import React from "react";
-import { TemplateDefinition } from "../../../../types/templateTypes";
+import { DiscoveredTemplate } from "../../../../types/templateTypes";
 import { TextField } from "azure-devops-ui/Components/TextField/TextField";
 import { MessageCard } from "azure-devops-ui/Components/MessageCard/MessageCard";
 import { MessageCardSeverity } from "azure-devops-ui/Components/MessageCard/MessageCard.Props";
@@ -15,7 +15,7 @@ import { TemplateCategory } from "../../../../utils/templateGrouping";
 import { useTemplateData } from "../../hooks/useTemplateData";
 
 interface TemplateListProps {
-  onTemplateSelected: (template: TemplateDefinition) => void;
+  onTemplateSelected: (template: DiscoveredTemplate) => void;
 }
 
 export function TemplateList({ onTemplateSelected }: TemplateListProps) {
@@ -131,7 +131,7 @@ export function TemplateList({ onTemplateSelected }: TemplateListProps) {
               }}
             >
               {activeGroup.templates.map((t) => (
-                <TemplateCard key={t.definition.id} template={t} onSelect={() => onTemplateSelected(t.definition)} />
+                <TemplateCard key={t.definition.id} template={t} onSelect={() => onTemplateSelected(t)} />
               ))}
             </div>
           )}

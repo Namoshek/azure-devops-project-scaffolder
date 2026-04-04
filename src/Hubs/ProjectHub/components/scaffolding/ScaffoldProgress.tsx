@@ -1,5 +1,5 @@
 import React from "react";
-import { TemplateDefinition, TemplatePermissions } from "../../../../types/templateTypes";
+import { DiscoveredTemplate, TemplatePermissions } from "../../../../types/templateTypes";
 import { ScaffoldResult } from "../../../../services/scaffoldingOrchestrator";
 import { Button } from "azure-devops-ui/Components/Button/Button";
 import { MessageCard } from "azure-devops-ui/Components/MessageCard/MessageCard";
@@ -9,7 +9,7 @@ import { renderTemplatePreview } from "../../../../services/templateEngineServic
 import { useScaffoldExecution } from "../../hooks/useScaffoldExecution";
 
 interface ScaffoldProgressProps {
-  template: TemplateDefinition;
+  template: DiscoveredTemplate;
   parameterValues: Record<string, unknown>;
   permissions: TemplatePermissions;
   results: ScaffoldResult[];
@@ -38,7 +38,7 @@ export function ScaffoldProgress({
       <div>
         <div className="title-m">{titleText}</div>
         <p className="body-m secondary-text" style={{ margin: "4px 0 0" }}>
-          Template: <strong>{template.name}</strong>
+          Template: <strong>{template.definition.name}</strong>
         </p>
       </div>
 
@@ -55,21 +55,24 @@ export function ScaffoldProgress({
         ))}
       </div>
 
-      {done && !hasFailures && template.postScaffoldNotes && template.postScaffoldNotes.length > 0 && (
-        <div className="flex-column rhythm-vertical-8">
-          {template.postScaffoldNotes.map((note, i) => (
-            <MessageCard key={i} severity={MessageCardSeverity.Info}>
-              {renderTemplatePreview(note, parameterValues)
-                .split("\n")
-                .map((line, li) => (
-                  <div key={li} style={{ width: "100%" }}>
-                    {line}
-                  </div>
-                ))}
-            </MessageCard>
-          ))}
-        </div>
-      )}
+      {done &&
+        !hasFailures &&
+        template.definition.postScaffoldNotes &&
+        template.definition.postScaffoldNotes.length > 0 && (
+          <div className="flex-column rhythm-vertical-8">
+            {template.definition.postScaffoldNotes.map((note, i) => (
+              <MessageCard key={i} severity={MessageCardSeverity.Info}>
+                {renderTemplatePreview(note, parameterValues)
+                  .split("\n")
+                  .map((line, li) => (
+                    <div key={li} style={{ width: "100%" }}>
+                      {line}
+                    </div>
+                  ))}
+              </MessageCard>
+            ))}
+          </div>
+        )}
 
       {done && (
         <div>

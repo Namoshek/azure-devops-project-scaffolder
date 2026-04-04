@@ -10,9 +10,9 @@ import {
 } from "azure-devops-extension-api/Build";
 import { GitRestClient } from "azure-devops-extension-api/Git";
 import { TaskAgentRestClient } from "azure-devops-extension-api/TaskAgent";
-import { TemplatePipeline } from "../types/templateTypes";
 import { renderTemplate } from "./templateEngineService";
 import { checkPipelineExists } from "./preflightCheckService";
+import { TemplatePipeline } from "src/types/templateTypes";
 
 export type PipelineScaffoldStatus = "created" | "skipped" | "failed";
 

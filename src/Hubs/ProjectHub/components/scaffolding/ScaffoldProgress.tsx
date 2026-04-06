@@ -2,11 +2,20 @@ import React from "react";
 import { DiscoveredTemplate, TemplatePermissions } from "../../../../types/templateTypes";
 import { ScaffoldResult } from "../../../../services/scaffoldingOrchestrator";
 import { Button } from "azure-devops-ui/Components/Button/Button";
+import { Card } from "azure-devops-ui/Components/Card/Card";
+import { TitleSize } from "azure-devops-ui/Components/Header/Header.Props";
 import { MessageCard } from "azure-devops-ui/Components/MessageCard/MessageCard";
 import { MessageCardSeverity } from "azure-devops-ui/Components/MessageCard/MessageCard.Props";
 import { StepRow } from "./StepRow";
 import { renderTemplatePreview } from "../../../../services/templateEngineService";
 import { useScaffoldExecution } from "../../hooks/useScaffoldExecution";
+
+const STEP_GROUPS = [
+  { type: "repo", title: "Repositories" },
+  { type: "serviceconnection", title: "Service Connections" },
+  { type: "variablegroup", title: "Variable Groups" },
+  { type: "pipeline", title: "Pipelines" },
+] as const;
 
 interface ScaffoldProgressProps {
   template: DiscoveredTemplate;
@@ -49,10 +58,25 @@ export function ScaffoldProgress({
         </MessageCard>
       )}
 
-      <div className="flex-column rhythm-vertical-4">
-        {steps.map((step) => (
-          <StepRow key={step.id} step={step} />
-        ))}
+      <div className="flex-column rhythm-vertical-8">
+        {STEP_GROUPS.map((group) => ({
+          ...group,
+          steps: steps.filter((s) => s.id.startsWith(`${group.type}:`)),
+        }))
+          .filter((group) => group.steps.length > 0)
+          .map((group) => (
+            <Card
+              key={group.type}
+              titleProps={{ text: group.title, size: TitleSize.Small }}
+              contentProps={{ contentPadding: false }}
+            >
+              <div>
+                {group.steps.map((step, idx) => (
+                  <StepRow key={step.id} step={step} isLast={idx === group.steps.length - 1} />
+                ))}
+              </div>
+            </Card>
+          ))}
       </div>
 
       {done &&

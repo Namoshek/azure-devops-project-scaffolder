@@ -12,6 +12,8 @@ export interface ScaffoldStep {
   label: string;
   status: StepStatus;
   detail?: string;
+  startTime?: number;
+  duration?: number;
 }
 
 export type ScaffoldResult = ScaffoldStep;
@@ -86,6 +88,7 @@ export async function runScaffold(
     }
 
     repoSteps[i].status = "running";
+    repoSteps[i].startTime = Date.now();
     onProgress([...allSteps]);
 
     let result: RepoScaffoldResult;
@@ -100,6 +103,7 @@ export async function runScaffold(
     }
 
     repoSteps[i].status = mapStatus(result.status);
+    repoSteps[i].duration = Date.now() - repoSteps[i].startTime!;
     if (result.reason) repoSteps[i].detail = result.reason;
     onProgress([...allSteps]);
   }
@@ -125,6 +129,7 @@ export async function runScaffold(
     }
 
     serviceConnectionSteps[i].status = "running";
+    serviceConnectionSteps[i].startTime = Date.now();
     onProgress([...allSteps]);
 
     let result: ServiceConnectionScaffoldResult;
@@ -139,6 +144,7 @@ export async function runScaffold(
     }
 
     serviceConnectionSteps[i].status = mapStatus(result.status);
+    serviceConnectionSteps[i].duration = Date.now() - serviceConnectionSteps[i].startTime!;
     if (result.reason) serviceConnectionSteps[i].detail = result.reason;
     onProgress([...allSteps]);
   }
@@ -164,6 +170,7 @@ export async function runScaffold(
     }
 
     variableGroupSteps[i].status = "running";
+    variableGroupSteps[i].startTime = Date.now();
     onProgress([...allSteps]);
 
     let result: VariableGroupScaffoldResult;
@@ -178,6 +185,7 @@ export async function runScaffold(
     }
 
     variableGroupSteps[i].status = mapStatus(result.status);
+    variableGroupSteps[i].duration = Date.now() - variableGroupSteps[i].startTime!;
     if (result.reason) variableGroupSteps[i].detail = result.reason;
     onProgress([...allSteps]);
   }
@@ -204,6 +212,7 @@ export async function runScaffold(
     }
 
     pipelineSteps[i].status = "running";
+    pipelineSteps[i].startTime = Date.now();
     onProgress([...allSteps]);
 
     let result: PipelineScaffoldResult;
@@ -218,6 +227,7 @@ export async function runScaffold(
     }
 
     pipelineSteps[i].status = mapStatus(result.status);
+    pipelineSteps[i].duration = Date.now() - pipelineSteps[i].startTime!;
     if (result.reason) pipelineSteps[i].detail = result.reason;
     onProgress([...allSteps]);
   }

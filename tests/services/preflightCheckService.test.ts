@@ -2,6 +2,7 @@ import {
   checkRepoExists,
   checkPipelineExists,
   checkServiceConnectionExists,
+  checkVariableGroupExists,
   checkTemplateResourcesExistence,
 } from "../../src/services/preflightCheckService";
 import type { TemplateDefinition } from "../../src/types/templateTypes";
@@ -22,9 +23,14 @@ jest.mock("azure-devops-extension-api/ServiceEndpoint", () => ({
   ServiceEndpointRestClient: jest.fn(),
 }));
 
+jest.mock("azure-devops-extension-api/TaskAgent", () => ({
+  TaskAgentRestClient: jest.fn(),
+}));
+
 import { getClient } from "azure-devops-extension-api";
 import { BuildRestClient } from "azure-devops-extension-api/Build";
 import { ServiceEndpointRestClient } from "azure-devops-extension-api/ServiceEndpoint";
+import { TaskAgentRestClient } from "azure-devops-extension-api/TaskAgent";
 
 const mockGetClient = getClient as jest.Mock;
 
@@ -90,14 +96,29 @@ function makeServiceEndpointClient(overrides: { endpoints?: { id: string; name: 
   };
 }
 
+function makeTaskAgentClient(overrides: { groups?: { id: number; name: string }[]; error?: Error } = {}) {
+  const groups = overrides.groups ?? [];
+  return {
+    getVariableGroups: overrides.error
+      ? jest.fn().mockRejectedValue(overrides.error)
+      : jest
+          .fn()
+          .mockImplementation((_projectId: string, groupName?: string) =>
+            Promise.resolve(groups.filter((g) => !groupName || g.name.toLowerCase() === groupName.toLowerCase())),
+          ),
+  };
+}
+
 function setupClients(
   gitClient: ReturnType<typeof makeGitClient>,
   buildClient: ReturnType<typeof makeBuildClient>,
   endpointClient: ReturnType<typeof makeServiceEndpointClient> = makeServiceEndpointClient(),
+  taskAgentClient: ReturnType<typeof makeTaskAgentClient> = makeTaskAgentClient(),
 ) {
   mockGetClient.mockImplementation((clientClass: unknown) => {
     if (clientClass === BuildRestClient) return buildClient;
     if (clientClass === ServiceEndpointRestClient) return endpointClient;
+    if (clientClass === TaskAgentRestClient) return taskAgentClient;
     return gitClient;
   });
 }
@@ -372,6 +393,87 @@ describe("checkServiceConnectionExists", () => {
   });
 });
 
+// ─── checkVariableGroupExists ─────────────────────────────────────────────────
+
+describe("checkVariableGroupExists", () => {
+  it("returns { exists: false } when no variable group with that name exists", async () => {
+    const ta = makeTaskAgentClient({ groups: [] });
+    setupClients(makeGitClient(), makeBuildClient(), makeServiceEndpointClient(), ta);
+
+    const result = await checkVariableGroupExists("proj-vg1", "my-group");
+
+    expect(result).toEqual({ exists: false });
+  });
+
+  it("returns { exists: true } when a variable group with that name exists", async () => {
+    const ta = makeTaskAgentClient({ groups: [{ id: 1, name: "my-group" }] });
+    setupClients(makeGitClient(), makeBuildClient(), makeServiceEndpointClient(), ta);
+
+    const result = await checkVariableGroupExists("proj-vg2", "my-group");
+
+    expect(result).toEqual({ exists: true });
+  });
+
+  it("fails open and returns { exists: false } when getVariableGroups throws", async () => {
+    const ta = makeTaskAgentClient({ error: new Error("Permission denied") });
+    setupClients(makeGitClient(), makeBuildClient(), makeServiceEndpointClient(), ta);
+
+    const result = await checkVariableGroupExists("proj-vg3", "broken-group");
+
+    expect(result).toEqual({ exists: false });
+  });
+
+  it("returns a cached result on the second call without hitting the API", async () => {
+    const ta = makeTaskAgentClient({ groups: [] });
+    setupClients(makeGitClient(), makeBuildClient(), makeServiceEndpointClient(), ta);
+
+    await checkVariableGroupExists("proj-vg-cache1", "cached-group");
+    await checkVariableGroupExists("proj-vg-cache1", "cached-group");
+
+    expect(ta.getVariableGroups).toHaveBeenCalledTimes(1);
+  });
+
+  it("bypasses the read cache when fresh: true is passed", async () => {
+    const ta = makeTaskAgentClient({ groups: [] });
+    setupClients(makeGitClient(), makeBuildClient(), makeServiceEndpointClient(), ta);
+
+    await checkVariableGroupExists("proj-vg-cache2", "fresh-group");
+    await checkVariableGroupExists("proj-vg-cache2", "fresh-group", { fresh: true });
+
+    expect(ta.getVariableGroups).toHaveBeenCalledTimes(2);
+  });
+
+  it("writes a fresh result back into the cache so subsequent calls benefit", async () => {
+    const ta = makeTaskAgentClient({ groups: [] });
+    setupClients(makeGitClient(), makeBuildClient(), makeServiceEndpointClient(), ta);
+
+    // First call with fresh
+    await checkVariableGroupExists("proj-vg-cache3", "write-back-group", { fresh: true });
+    // Second call without fresh — should use the cache entry written by the first call
+    await checkVariableGroupExists("proj-vg-cache3", "write-back-group");
+
+    expect(ta.getVariableGroups).toHaveBeenCalledTimes(1);
+  });
+
+  it("passes the group name to getVariableGroups", async () => {
+    const ta = makeTaskAgentClient({ groups: [] });
+    setupClients(makeGitClient(), makeBuildClient(), makeServiceEndpointClient(), ta);
+
+    await checkVariableGroupExists("proj-vg-name", "my-var-group");
+
+    expect(ta.getVariableGroups).toHaveBeenCalledWith("proj-vg-name", "my-var-group");
+  });
+
+  it("is case-insensitive when matching group names", async () => {
+    const ta = makeTaskAgentClient({ groups: [{ id: 5, name: "ProdVars" }] });
+    setupClients(makeGitClient(), makeBuildClient(), makeServiceEndpointClient(), ta);
+
+    const result = await checkVariableGroupExists("proj-vg-case", "prodvars");
+
+    expect(result.exists).toBe(true);
+  });
+});
+
 // ─── checkTemplateResourcesExistence ─────────────────────────────────────────
 
 describe("checkTemplateResourcesExistence", () => {
@@ -379,6 +481,7 @@ describe("checkTemplateResourcesExistence", () => {
     repos: string[],
     pipelines: { name: string; folder?: string }[],
     serviceConnections: string[] = [],
+    variableGroups: string[] = [],
   ): TemplateDefinition {
     return {
       id: "tpl-1",
@@ -402,6 +505,7 @@ describe("checkTemplateResourcesExistence", () => {
         authorizationScheme: "ServicePrincipal",
         authorization: {},
       })),
+      variableGroups: variableGroups.map((name) => ({ name })),
     };
   }
 
@@ -413,6 +517,7 @@ describe("checkTemplateResourcesExistence", () => {
     expect(result.repos).toEqual({});
     expect(result.pipelines).toEqual({});
     expect(result.serviceConnections).toEqual({});
+    expect(result.variableGroups).toEqual({});
   });
 
   it("checks all repos and pipelines in parallel and returns a map keyed correctly", async () => {
@@ -511,5 +616,27 @@ describe("checkTemplateResourcesExistence", () => {
       exists: true,
       isNonEmpty: true,
     });
+  });
+
+  it("includes variable group existence results keyed by lowercased name", async () => {
+    const ta = makeTaskAgentClient({ groups: [{ id: 1, name: "Prod-Vars" }] });
+    setupClients(makeGitClient(), makeBuildClient(), makeServiceEndpointClient(), ta);
+
+    const template = makeTemplate([], [], [], ["Prod-Vars", "Staging-Vars"]);
+    const result = await checkTemplateResourcesExistence("proj-c7", template, {});
+
+    expect(result.variableGroups["prod-vars"]).toEqual({ exists: true });
+    expect(result.variableGroups["staging-vars"]).toEqual({ exists: false });
+  });
+
+  it("renders Mustache in variable group names before checking", async () => {
+    const ta = makeTaskAgentClient({ groups: [] });
+    setupClients(makeGitClient(), makeBuildClient(), makeServiceEndpointClient(), ta);
+
+    const template = makeTemplate([], [], [], ["{{projectName}}-vars"]);
+    const result = await checkTemplateResourcesExistence("proj-c8", template, { projectName: "my-app" });
+
+    expect(result.variableGroups["my-app-vars"]).toEqual({ exists: false });
+    expect(ta.getVariableGroups).toHaveBeenCalledWith("proj-c8", "my-app-vars");
   });
 });

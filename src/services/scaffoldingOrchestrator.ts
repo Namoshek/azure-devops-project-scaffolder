@@ -2,6 +2,7 @@ import { DiscoveredTemplate, TemplatePermissions } from "../types/templateTypes"
 import { scaffoldRepository, RepoScaffoldResult } from "./repositoryService";
 import { scaffoldPipeline, PipelineScaffoldResult } from "./pipelineService";
 import { scaffoldServiceConnection, ServiceConnectionScaffoldResult } from "./serviceConnectionService";
+import { scaffoldVariableGroup, VariableGroupScaffoldResult } from "./variableGroupService";
 import { evaluateWhenExpression, renderTemplate } from "./templateEngineService";
 
 export type StepStatus = "pending" | "running" | "success" | "skipped" | "failed";
@@ -48,13 +49,19 @@ export async function runScaffold(
     status: "pending",
   }));
 
+  const variableGroupSteps: ScaffoldStep[] = templateDefinition.variableGroups.map((vg) => ({
+    id: `variablegroup:${vg.name}`,
+    label: `Create variable group: ${renderTemplate(vg.name, parameterValues)}`,
+    status: "pending",
+  }));
+
   const pipelineSteps: ScaffoldStep[] = templateDefinition.pipelines.map((p) => ({
     id: `pipeline:${p.name}`,
     label: `Create pipeline: ${renderTemplate(p.name, parameterValues)}`,
     status: "pending",
   }));
 
-  const allSteps: ScaffoldStep[] = [...repoSteps, ...serviceConnectionSteps, ...pipelineSteps];
+  const allSteps: ScaffoldStep[] = [...repoSteps, ...serviceConnectionSteps, ...variableGroupSteps, ...pipelineSteps];
   onProgress([...allSteps]);
 
   // ── Phase 1: Repositories ────────────────────────────────────────────────────
@@ -136,7 +143,46 @@ export async function runScaffold(
     onProgress([...allSteps]);
   }
 
-  // ── Phase 3: Pipelines ───────────────────────────────────────────────────────
+  // ── Phase 3: Variable Groups ─────────────────────────────────────────────────
+  if (permissions && !permissions.canCreateVariableGroups && variableGroupSteps.length > 0) {
+    for (const step of variableGroupSteps) {
+      step.status = "skipped";
+      step.detail = "Skipped: insufficient permissions to create variable groups.";
+    }
+    onProgress([...allSteps]);
+  }
+
+  for (let i = 0; i < variableGroupSteps.length; i++) {
+    if (variableGroupSteps[i].status === "skipped") continue;
+    const groupTemplate = templateDefinition.variableGroups[i];
+
+    if (groupTemplate.when && !evaluateWhenExpression(groupTemplate.when, parameterValues)) {
+      variableGroupSteps[i].status = "skipped";
+      variableGroupSteps[i].detail = `Condition '${groupTemplate.when}' was not met.`;
+      onProgress([...allSteps]);
+      continue;
+    }
+
+    variableGroupSteps[i].status = "running";
+    onProgress([...allSteps]);
+
+    let result: VariableGroupScaffoldResult;
+    try {
+      result = await scaffoldVariableGroup(projectId, groupTemplate, parameterValues);
+    } catch (err) {
+      result = {
+        groupName: groupTemplate.name,
+        status: "failed",
+        reason: (err as Error).message,
+      };
+    }
+
+    variableGroupSteps[i].status = mapStatus(result.status);
+    if (result.reason) variableGroupSteps[i].detail = result.reason;
+    onProgress([...allSteps]);
+  }
+
+  // ── Phase 4: Pipelines ───────────────────────────────────────────────────────
   if (permissions && !permissions.canCreatePipelines && pipelineSteps.length > 0) {
     for (const step of pipelineSteps) {
       step.status = "skipped";

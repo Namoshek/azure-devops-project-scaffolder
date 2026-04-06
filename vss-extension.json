@@ -99,7 +99,14 @@
       }
     }
   ],
-  "scopes": ["vso.agentpools", "vso.build_execute", "vso.code_manage", "vso.project", "vso.serviceendpoint_manage"],
+  "scopes": [
+    "vso.agentpools",
+    "vso.build_execute",
+    "vso.code_manage",
+    "vso.project",
+    "vso.serviceendpoint_manage",
+    "vso.variablegroups_manage"
+  ],
   "files": [
     {
       "path": "dist",

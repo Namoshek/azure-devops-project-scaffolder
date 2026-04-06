@@ -8,6 +8,8 @@ import {
   TemplatePipelineVariableSchema,
   TemplatePipelineSchema,
   TemplateServiceConnectionSchema,
+  TemplateVariableGroupVariableSchema,
+  TemplateVariableGroupSchema,
 } from "./templateSchemas";
 
 export type TemplateDefinition = z.infer<typeof TemplateDefinitionSchema>;
@@ -19,6 +21,8 @@ export type TemplateRepository = z.infer<typeof TemplateRepositorySchema>;
 export type TemplatePipelineVariable = z.infer<typeof TemplatePipelineVariableSchema>;
 export type TemplatePipeline = z.infer<typeof TemplatePipelineSchema>;
 export type TemplateServiceConnection = z.infer<typeof TemplateServiceConnectionSchema>;
+export type TemplateVariableGroupVariable = z.infer<typeof TemplateVariableGroupVariableSchema>;
+export type TemplateVariableGroup = z.infer<typeof TemplateVariableGroupSchema>;
 
 /**
  * The name of the virtual "All" category that is always prepended first and
@@ -60,4 +64,6 @@ export interface TemplatePermissions {
   canCreatePipelines: boolean;
   /** User can create service endpoint (service connection) definitions in this project. */
   canCreateServiceConnections: boolean;
+  /** User can create variable groups in the project's Library. */
+  canCreateVariableGroups: boolean;
 }

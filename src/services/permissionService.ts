@@ -12,6 +12,8 @@ const BUILD_SECURITY_NAMESPACE = "33344d9c-fc72-4d6f-aba5-fa317101a7e9";
 const COLLECTION_SECURITY_NAMESPACE = "3e65f728-f8bc-4ecd-8764-7e378b19bfa7";
 /** Service Endpoint (service connection) security namespace. */
 const ENDPOINT_SECURITY_NAMESPACE = "49b48001-ca20-4adc-8111-5b60c903a50c";
+/** Library (variable groups) security namespace. */
+const LIBRARY_SECURITY_NAMESPACE = "b7e84409-6553-448a-bbb2-af228e07cbeb";
 
 /**
  * Combined bit for Git repo creation:
@@ -37,6 +39,12 @@ const EDIT_COLLECTION_PERMISSION_BIT = 2;
  *   Administer = 2
  */
 const ADMINISTER_SERVICE_ENDPOINT_PERMISSION_BIT = 2;
+
+/**
+ * Bit for creating variable groups in the Library:
+ *   Administer = 2
+ */
+const CREATE_VARIABLE_GROUP_PERMISSION_BIT = 2;
 
 // ─── API types ───────────────────────────────────────────────────────────────
 
@@ -157,6 +165,27 @@ export async function checkServiceConnectionPermission(projectId: string): Promi
 }
 
 /**
+ * Checks whether the current user can create variable groups in the given project's Library.
+ *
+ * Fails closed: returns false on any error.
+ */
+export async function checkVariableGroupPermission(projectId: string): Promise<boolean> {
+  try {
+    const [allowed] = await evaluatePermissionBatch([
+      {
+        securityNamespaceId: LIBRARY_SECURITY_NAMESPACE,
+        token: `Library/${projectId}`,
+        permissions: CREATE_VARIABLE_GROUP_PERMISSION_BIT,
+      },
+    ]);
+    return allowed;
+  } catch (err) {
+    console.warn(`Variable group permission check failed: ${(err as Error).message}. Treating as denied.`);
+    return false;
+  }
+}
+
+/**
  * Resolves the effective permissions for a given template in the given project.
  *
  * Sends a single batch request containing only the evaluations required by the
@@ -173,9 +202,10 @@ export async function checkTemplatePermissions(
   const needsRepos = (template.repositories ?? []).length > 0;
   const needsPipelines = (template.pipelines ?? []).length > 0;
   const needsServiceConnections = (template.serviceConnections ?? []).length > 0;
+  const needsVariableGroups = (template.variableGroups ?? []).length > 0;
 
-  if (!needsRepos && !needsPipelines && !needsServiceConnections) {
-    return { canCreateRepos: true, canCreatePipelines: true, canCreateServiceConnections: true };
+  if (!needsRepos && !needsPipelines && !needsServiceConnections && !needsVariableGroups) {
+    return { canCreateRepos: true, canCreatePipelines: true, canCreateServiceConnections: true, canCreateVariableGroups: true };
   }
 
   const evaluations: PermissionEvaluation[] = [];
@@ -204,19 +234,29 @@ export async function checkTemplatePermissions(
     });
   }
 
+  if (needsVariableGroups) {
+    evaluations.push({
+      securityNamespaceId: LIBRARY_SECURITY_NAMESPACE,
+      token: `Library/${projectId}`,
+      permissions: CREATE_VARIABLE_GROUP_PERMISSION_BIT,
+    });
+  }
+
   try {
     const results = await evaluatePermissionBatch(evaluations);
     let idx = 0;
     const canCreateRepos = needsRepos ? results[idx++] : true;
     const canCreatePipelines = needsPipelines ? results[idx++] : true;
     const canCreateServiceConnections = needsServiceConnections ? results[idx++] : true;
-    return { canCreateRepos, canCreatePipelines, canCreateServiceConnections };
+    const canCreateVariableGroups = needsVariableGroups ? results[idx++] : true;
+    return { canCreateRepos, canCreatePipelines, canCreateServiceConnections, canCreateVariableGroups };
   } catch (err) {
     console.warn(`Template permission check failed: ${(err as Error).message}. Treating as denied.`);
     return {
       canCreateRepos: needsRepos ? false : true,
       canCreatePipelines: needsPipelines ? false : true,
       canCreateServiceConnections: needsServiceConnections ? false : true,
+      canCreateVariableGroups: needsVariableGroups ? false : true,
     };
   }
 }

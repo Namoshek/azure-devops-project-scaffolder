@@ -13,7 +13,8 @@ When a user selects a template and fills in the parameter form, the extension:
 
 1. Creates new repositories by copying files from `sourcePath` subfolders (or the template repository root if `sourcePath` is empty), rendering all content and file names through [Mustache.js](https://mustache.github.io/).
 2. Creates service connections as defined in the template, rendering all fields through Mustache. Credential fields should reference `secret: true` parameters to ensure secure handling (see Service Connections section below).
-3. Creates YAML pipeline definitions pointing to designated files in the created repositories.
+3. Creates Library variable groups as defined in the template, rendering all fields through Mustache. Secret variables should reference `secret: true` parameters (see Variable Groups section below).
+4. Creates YAML pipeline definitions pointing to designated files in the created repositories.
 
 Everything is **non-destructive**: if a repository already exists and has commits, it is skipped (not overwritten).
 
@@ -115,6 +116,19 @@ serviceConnections:
     description: "SonarQube for static code analysis"
     grantAccessToAllPipelines: true
     when: "includeSonarQube" # Optional: skip this connection when false
+
+# ── Variable Groups ────────────────────────────────────────────────────────────────
+variableGroups:
+  - name: "{{projectName}}-pipeline-vars"
+    description: "Shared pipeline variables for {{projectName}}"
+    grantAccessToAllPipelines: true
+    variables:
+      - name: "PROJECT_NAME"
+        value: "{{projectName}}"
+      - name: "DB_PASSWORD"
+        value: "{{dbPassword}}"
+        secret: true
+    when: "includeBackend"
 
 # ── Pipelines ──────────────────────────────────────────────────────────────────────
 pipelines:
@@ -431,3 +445,77 @@ Example for a SonarQube service connection (only relevant fields shown):
 - **Non-destructive**: if a service connection with the same name already exists in the project, it is skipped, not overwritten. This is consistent with how repositories and pipelines are handled.
 - **`grantAccessToAllPipelines`**: sets "Grant access permission to all pipelines" on the connection. If this call fails after the connection is already created, scaffolding still reports success for that step and logs a warning — the connection exists and you can grant access manually.
 - **Extension-contributed types**: the scaffolder passes `type` and all `authorization`/`data` fields as-is to the ADO Service Endpoint API. Any endpoint type that ADO can create via REST — including types contributed by installed extensions — is supported.
+
+---
+
+## Variable Groups
+
+Use the `variableGroups` section to create [Azure Pipelines Library variable groups](https://learn.microsoft.com/en-us/azure/devops/pipelines/library/variable-groups) as part of scaffolding. Variable groups are created before pipelines, so the groups are available by name when pipelines run.
+
+### Basic example
+
+```yaml
+variableGroups:
+  - name: "{{projectName}}-pipeline-vars"
+    description: "Shared pipeline variables for {{projectName}}"
+    grantAccessToAllPipelines: true
+    variables:
+      - name: "PROJECT_NAME"
+        value: "{{projectName}}"
+      - name: "DB_PASSWORD"
+        value: "{{dbPassword}}"
+        secret: true
+    when: "includeBackend"
+```
+
+### Fields
+
+| Field                       | Required | Description                                                                                                |
+| --------------------------- | -------- | ---------------------------------------------------------------------------------------------------------- |
+| `name`                      | yes      | Display name for the variable group. Mustache-rendered.                                                    |
+| `description`               | no       | Human-readable description shown in the Library. Mustache-rendered.                                        |
+| `variables`                 | no       | List of variables to add to the group (see sub-table below). Omit or leave empty to create an empty group. |
+| `grantAccessToAllPipelines` | no       | If `true`, grants "Allow all pipelines" access immediately after creation. Defaults to `false`.            |
+| `when`                      | no       | Skip this group when the expression evaluates to false. Same syntax as parameter `when`.                   |
+
+#### `variables` sub-fields
+
+| Field    | Required | Description                                                                                          |
+| -------- | -------- | ---------------------------------------------------------------------------------------------------- |
+| `name`   | yes      | Variable name as it will appear in the Library group.                                                |
+| `value`  | yes      | Variable value. Mustache-rendered. May be an empty string (useful for secret placeholder variables). |
+| `secret` | no       | If `true`, the variable is stored as a secret in ADO (masked in logs and UI). Defaults to `false`.   |
+
+### Secret variables
+
+Secret variables are never revealed in the ADO UI after creation. If a value placeholder is needed (so teams can fill it in later), use an empty string value:
+
+```yaml
+variables:
+  - name: "API_KEY"
+    value: "" # placeholder — team fills this in after scaffolding
+    secret: true
+```
+
+To populate a secret variable from a template parameter, reference the secret parameter via Mustache:
+
+```yaml
+parameters:
+  - id: dbPassword
+    label: "Database Password"
+    type: string
+    secret: true # masked in the scaffolding form; never logged
+
+variableGroups:
+  - name: "{{projectName}}-secrets"
+    variables:
+      - name: "DB_PASSWORD"
+        value: "{{dbPassword}}"
+        secret: true
+```
+
+### Behaviour
+
+- **Non-destructive**: if a variable group with the same name already exists in the project, it is skipped, not overwritten.
+- **`grantAccessToAllPipelines`**: sets "Allow all pipelines" access. If this call fails after the group is already created, scaffolding still reports success for that step and logs a warning.
+- **Empty groups**: a group with no `variables` (or an empty list) is created successfully — useful when the group will be populated manually after scaffolding.

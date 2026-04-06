@@ -86,6 +86,7 @@ function makeTemplate(overrides: Partial<TemplateDefinition> = {}): TemplateDefi
       },
     ],
     serviceConnections: [],
+    variableGroups: [],
     ...overrides,
   };
 }
@@ -208,6 +209,7 @@ describe("On-premises", () => {
         canCreateRepos: true,
         canCreatePipelines: true,
         canCreateServiceConnections: true,
+        canCreateVariableGroups: true,
       });
     });
 
@@ -262,6 +264,7 @@ describe("On-premises", () => {
         canCreateRepos: true,
         canCreatePipelines: true,
         canCreateServiceConnections: true,
+        canCreateVariableGroups: true,
       });
       expect(mockFetch).not.toHaveBeenCalled();
     });
@@ -273,6 +276,7 @@ describe("On-premises", () => {
         canCreateRepos: false,
         canCreatePipelines: false,
         canCreateServiceConnections: true,
+        canCreateVariableGroups: true,
       });
     });
 
@@ -502,6 +506,7 @@ describe("Cloud", () => {
         canCreateRepos: true,
         canCreatePipelines: true,
         canCreateServiceConnections: true,
+        canCreateVariableGroups: true,
       });
     });
 
@@ -520,6 +525,7 @@ describe("Cloud", () => {
         canCreateRepos: true,
         canCreatePipelines: true,
         canCreateServiceConnections: true,
+        canCreateVariableGroups: true,
       });
       expect(mockFetch).not.toHaveBeenCalled();
     });
@@ -531,6 +537,7 @@ describe("Cloud", () => {
         canCreateRepos: false,
         canCreatePipelines: false,
         canCreateServiceConnections: true,
+        canCreateVariableGroups: true,
       });
     });
   });

@@ -50,6 +50,7 @@ export function useScaffoldNavigation(): UseScaffoldNavigationResult {
         canCreateRepos: template.definition.repositories.length === 0,
         canCreatePipelines: template.definition.pipelines.length === 0,
         canCreateServiceConnections: template.definition.serviceConnections.length === 0,
+        canCreateVariableGroups: template.definition.variableGroups.length === 0,
       });
     }
   }

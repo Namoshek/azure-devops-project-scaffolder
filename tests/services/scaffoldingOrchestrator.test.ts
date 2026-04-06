@@ -13,13 +13,19 @@ jest.mock("../../src/services/serviceConnectionService", () => ({
   scaffoldServiceConnection: jest.fn(),
 }));
 
+jest.mock("../../src/services/variableGroupService", () => ({
+  scaffoldVariableGroup: jest.fn(),
+}));
+
 import { scaffoldRepository } from "../../src/services/repositoryService";
 import { scaffoldPipeline } from "../../src/services/pipelineService";
 import { scaffoldServiceConnection } from "../../src/services/serviceConnectionService";
+import { scaffoldVariableGroup } from "../../src/services/variableGroupService";
 
 const mockScaffoldRepository = scaffoldRepository as jest.Mock;
 const mockScaffoldPipeline = scaffoldPipeline as jest.Mock;
 const mockScaffoldServiceConnection = scaffoldServiceConnection as jest.Mock;
+const mockScaffoldVariableGroup = scaffoldVariableGroup as jest.Mock;
 
 // ─── Test fixtures ────────────────────────────────────────────────────────────
 
@@ -37,6 +43,7 @@ function makeTemplate(overrides: Partial<TemplateDefinition> = {}): DiscoveredTe
       repositories: [],
       pipelines: [],
       serviceConnections: [],
+      variableGroups: [],
       ...overrides,
     },
   };
@@ -408,22 +415,86 @@ describe("runScaffold", () => {
     expect(mockScaffoldServiceConnection).not.toHaveBeenCalled();
   });
 
-  it("returns all steps in order (repos, service connections, pipelines)", async () => {
+  it("returns all steps in order (repos, service connections, variable groups, pipelines)", async () => {
     mockScaffoldRepository.mockResolvedValue({ repoName: "api", status: "created" });
     mockScaffoldServiceConnection.mockResolvedValue({ connectionName: "Prod-Azure", status: "created" });
+    mockScaffoldVariableGroup.mockResolvedValue({ groupName: "Prod-Vars", status: "created" });
     mockScaffoldPipeline.mockResolvedValue({ pipelineName: "ci", status: "created" });
 
     const template = makeTemplate({
       repositories: [{ name: "api", sourcePath: "/src", defaultBranch: "main" }],
       serviceConnections: [scTemplate],
+      variableGroups: [{ name: "Prod-Vars" }],
       pipelines: [{ name: "ci", repository: "api", yamlPath: "azure-pipelines.yml" }],
     });
 
     const steps = await runScaffold("proj1", template, PARAMS, jest.fn());
-    expect(steps).toHaveLength(3);
+    expect(steps).toHaveLength(4);
     expect(steps[0].id).toBe("repo:api");
     expect(steps[1].id).toBe("serviceconnection:Prod-Azure");
-    expect(steps[2].id).toBe("pipeline:ci");
+    expect(steps[2].id).toBe("variablegroup:Prod-Vars");
+    expect(steps[3].id).toBe("pipeline:ci");
+  });
+
+  // ─── Variable group scaffolding ────────────────────────────────────────────
+
+  const vgTemplate = { name: "Prod-Vars" };
+
+  it("marks a variable group step as 'success' when scaffoldVariableGroup returns 'created'", async () => {
+    mockScaffoldVariableGroup.mockResolvedValue({ groupName: "Prod-Vars", status: "created" });
+
+    const template = makeTemplate({ variableGroups: [vgTemplate] });
+
+    const steps = await runScaffold("proj1", template, PARAMS, jest.fn());
+    expect(steps).toHaveLength(1);
+    expect(steps[0].id).toBe("variablegroup:Prod-Vars");
+    expect(steps[0].status).toBe("success");
+  });
+
+  it("marks a variable group step as 'skipped' when scaffoldVariableGroup returns 'skipped'", async () => {
+    mockScaffoldVariableGroup.mockResolvedValue({
+      groupName: "Prod-Vars",
+      status: "skipped",
+      reason: "Already exists.",
+    });
+
+    const template = makeTemplate({ variableGroups: [vgTemplate] });
+
+    const steps = await runScaffold("proj1", template, PARAMS, jest.fn());
+    expect(steps[0].status).toBe("skipped");
+    expect(steps[0].detail).toBe("Already exists.");
+  });
+
+  it("marks a variable group step as 'failed' when scaffoldVariableGroup throws", async () => {
+    mockScaffoldVariableGroup.mockRejectedValue(new Error("API error"));
+
+    const template = makeTemplate({ variableGroups: [vgTemplate] });
+
+    const steps = await runScaffold("proj1", template, PARAMS, jest.fn());
+    expect(steps[0].status).toBe("failed");
+    expect(steps[0].detail).toBe("API error");
+  });
+
+  it("skips a variable group whose 'when' expression evaluates to false", async () => {
+    const template = makeTemplate({
+      variableGroups: [{ name: "docker-vars", when: "includeDocker" }],
+    });
+
+    const steps = await runScaffold("proj1", template, { includeDocker: false }, jest.fn());
+    expect(steps[0].status).toBe("skipped");
+    expect(mockScaffoldVariableGroup).not.toHaveBeenCalled();
+  });
+
+  it("processes a variable group whose 'when' expression evaluates to true", async () => {
+    mockScaffoldVariableGroup.mockResolvedValue({ groupName: "docker-vars", status: "created" });
+
+    const template = makeTemplate({
+      variableGroups: [{ name: "docker-vars", when: "includeDocker" }],
+    });
+
+    const steps = await runScaffold("proj1", template, { includeDocker: true }, jest.fn());
+    expect(steps[0].status).toBe("success");
+    expect(mockScaffoldVariableGroup).toHaveBeenCalledTimes(1);
   });
 });
 // ─── Permission-based skipping ────────────────────────────────────────────────
@@ -456,6 +527,7 @@ describe("runScaffold — permission skipping", () => {
       canCreateRepos: false,
       canCreatePipelines: true,
       canCreateServiceConnections: true,
+      canCreateVariableGroups: true,
     });
 
     expect(steps).toHaveLength(1);
@@ -479,6 +551,7 @@ describe("runScaffold — permission skipping", () => {
       canCreateRepos: true,
       canCreatePipelines: false,
       canCreateServiceConnections: true,
+      canCreateVariableGroups: true,
     });
 
     const pipelineStep = steps.find((s) => s.id.startsWith("pipeline:"));
@@ -506,6 +579,7 @@ describe("runScaffold — permission skipping", () => {
       canCreateRepos: true,
       canCreatePipelines: true,
       canCreateServiceConnections: true,
+      canCreateVariableGroups: true,
     });
 
     expect(steps.every((s) => s.status === "success")).toBe(true);
@@ -529,6 +603,7 @@ describe("runScaffold — permission skipping", () => {
       canCreateRepos: true,
       canCreatePipelines: true,
       canCreateServiceConnections: true,
+      canCreateVariableGroups: true,
     });
 
     expect(steps[0].status).toBe("skipped");
@@ -547,11 +622,32 @@ describe("runScaffold — permission skipping", () => {
       canCreateRepos: true,
       canCreatePipelines: true,
       canCreateServiceConnections: false,
+      canCreateVariableGroups: true,
     });
 
     expect(steps).toHaveLength(1);
     expect(steps[0].status).toBe("skipped");
     expect(steps[0].detail).toMatch(/insufficient permissions/i);
     expect(mockScaffoldServiceConnection).not.toHaveBeenCalled();
+  });
+
+  it("skips all variable group steps when canCreateVariableGroups is false", async () => {
+    const template = makeTemplate({
+      repositories: [],
+      variableGroups: [{ name: "Prod-Vars" }],
+      pipelines: [],
+    });
+
+    const steps = await runScaffold("proj1", template, PARAMS, jest.fn(), {
+      canCreateRepos: true,
+      canCreatePipelines: true,
+      canCreateServiceConnections: true,
+      canCreateVariableGroups: false,
+    });
+
+    expect(steps).toHaveLength(1);
+    expect(steps[0].status).toBe("skipped");
+    expect(steps[0].detail).toMatch(/insufficient permissions/i);
+    expect(mockScaffoldVariableGroup).not.toHaveBeenCalled();
   });
 });

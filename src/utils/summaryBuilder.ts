@@ -8,7 +8,7 @@ export interface ParameterSummarySubItem {
 }
 
 export interface ParameterSummaryItem {
-  type: "repository" | "serviceConnection" | "pipeline";
+  type: "repository" | "serviceConnection" | "variableGroup" | "pipeline";
   name: string;
   included: boolean;
   permissionDenied: boolean;
@@ -98,5 +98,31 @@ export function buildSummaryItems(
     };
   });
 
-  return [...repositories, ...serviceConnections, ...pipelines];
+  const variableGroups = (template.variableGroups ?? []).map((vg) => {
+    const included = !vg.when || evaluateWhenExpression(vg.when, values);
+    const lookupName = renderTemplate(vg.name, values);
+    const variableGroupCheck = preflightChecks?.variableGroups[lookupName.toLowerCase()];
+    const permissionDenied = permissions !== null && !permissions.canCreateVariableGroups;
+    const existsWillSkip = included && !permissionDenied && variableGroupCheck?.exists === true;
+    const existsCheckPending =
+      included && !permissionDenied && (preflightPending || variableGroupCheck === undefined);
+
+    const subItems: ParameterSummarySubItem[] = (vg.variables ?? []).map((v) => {
+      const varName = renderTemplatePreview(v.name, values);
+      const varValue = v.secret ? "******" : renderTemplatePreview(v.value, values);
+      return { name: `${varName} = ${varValue}`, included: true };
+    });
+
+    return {
+      type: "variableGroup" as const,
+      name: renderTemplatePreview(vg.name, values),
+      included,
+      permissionDenied,
+      existsWillSkip,
+      existsCheckPending,
+      subItems,
+    };
+  });
+
+  return [...repositories, ...serviceConnections, ...variableGroups, ...pipelines];
 }

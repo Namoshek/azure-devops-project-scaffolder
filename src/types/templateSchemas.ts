@@ -139,6 +139,49 @@ export const TemplatePipelineSchema = z.object({
   variables: z.array(TemplatePipelineVariableSchema).optional(),
 });
 
+export const TemplateVariableGroupVariableSchema = z.object({
+  /**
+   * Variable name as it will appear in the variable group. May contain Mustache expressions,
+   * e.g. `"{{projectName}}_ENV"`.
+   */
+  name: z.string().min(1),
+  /**
+   * Variable value. May contain Mustache expressions referencing any template parameter.
+   * An empty string is valid — ADO allows empty values, and secrets are often set to an empty
+   * placeholder that is filled in manually after scaffolding.
+   */
+  value: z.string(),
+  /**
+   * When true, the variable is stored encrypted (as a secret) in the ADO variable group.
+   * Secret variables cannot be read back through the API once saved.
+   */
+  secret: z.boolean().optional(),
+});
+
+export const TemplateVariableGroupSchema = z.object({
+  /**
+   * Display name of the variable group in ADO Library. May contain Mustache expressions,
+   * e.g. `"{{projectName}}-vars"`. Must be unique within the project.
+   */
+  name: z.string().min(1),
+  /** Human-readable description shown in ADO Library. May contain Mustache expressions. */
+  description: z.string().optional(),
+  /**
+   * Variables to populate in the group at creation time. Both `name` and `value` support Mustache
+   * expressions. Use `secret: true` to store sensitive values encrypted. Omitting this field or
+   * providing an empty list creates an empty variable group, which is valid in ADO and can be
+   * populated manually after scaffolding.
+   */
+  variables: z.array(TemplateVariableGroupVariableSchema).optional(),
+  /**
+   * When true, the variable group is authorized for use by all pipelines in the project immediately
+   * after creation (sets "Allow access to all pipelines" in ADO Library).
+   */
+  grantAccessToAllPipelines: z.boolean().optional(),
+  /** Skip this variable group when the expression evaluates to false. */
+  when: z.string().optional(),
+});
+
 export const TemplateServiceConnectionSchema = z.object({
   /** Display name of the service connection. May contain Mustache expressions. */
   name: z.string().min(1),
@@ -225,4 +268,6 @@ export const TemplateDefinitionSchema = z.object({
   pipelines: z.array(TemplatePipelineSchema).default([]),
   /** Service connections to create in the target project as part of this template's scaffold. */
   serviceConnections: z.array(TemplateServiceConnectionSchema).default([]),
+  /** Variable groups to create in the target project's Library as part of this template's scaffold. */
+  variableGroups: z.array(TemplateVariableGroupSchema).default([]),
 });

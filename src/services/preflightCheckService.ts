@@ -2,6 +2,7 @@ import { getClient } from "azure-devops-extension-api";
 import { GitRestClient } from "azure-devops-extension-api/Git";
 import { BuildRestClient } from "azure-devops-extension-api/Build";
 import { ServiceEndpointRestClient } from "azure-devops-extension-api/ServiceEndpoint";
+import { TaskAgentRestClient } from "azure-devops-extension-api/TaskAgent";
 import { TemplateDefinition } from "../types/templateTypes";
 import { renderTemplate } from "./templateEngineService";
 
@@ -21,6 +22,10 @@ export interface ServiceConnectionExistenceResult {
   exists: boolean;
 }
 
+export interface VariableGroupExistenceResult {
+  exists: boolean;
+}
+
 export interface ResourceExistenceMap {
   /** Keyed by the rendered (final) repository name (lower-cased). */
   repos: Record<string, RepoExistenceResult>;
@@ -31,11 +36,16 @@ export interface ResourceExistenceMap {
   pipelines: Record<string, PipelineExistenceResult>;
   /** Keyed by the rendered (final) connection name (lower-cased). */
   serviceConnections: Record<string, ServiceConnectionExistenceResult>;
+  /** Keyed by the rendered (final) variable group name (lower-cased). */
+  variableGroups: Record<string, VariableGroupExistenceResult>;
 }
 
 // ─── Module-level cache ────────────────────────────────────────────────────────
 
-const _cache = new Map<string, RepoExistenceResult | PipelineExistenceResult | ServiceConnectionExistenceResult>();
+const _cache = new Map<
+  string,
+  RepoExistenceResult | PipelineExistenceResult | ServiceConnectionExistenceResult | VariableGroupExistenceResult
+>();
 
 function repoCacheKey(projectId: string, repoName: string): string {
   return `repo:${projectId}:${repoName.toLowerCase()}`;
@@ -47,6 +57,10 @@ function pipelineCacheKey(projectId: string, pipelineName: string, folder: strin
 
 function serviceConnectionCacheKey(projectId: string, connectionName: string): string {
   return `serviceconnection:${projectId}:${connectionName.toLowerCase()}`;
+}
+
+function variableGroupCacheKey(projectId: string, groupName: string): string {
+  return `variablegroup:${projectId}:${groupName.toLowerCase()}`;
 }
 
 // ─── Public exports ────────────────────────────────────────────────────────────
@@ -181,7 +195,37 @@ export async function checkServiceConnectionExists(
 }
 
 /**
- * Batch-checks existence of all repositories, service connections, and
+ * Checks whether a variable group with the given name already exists in the project's Library.
+ *
+ * Caching and `fresh` semantics are identical to `checkRepoExists`.
+ * Fails open: returns `{ exists: false }` on any error.
+ */
+export async function checkVariableGroupExists(
+  projectId: string,
+  groupName: string,
+  opts: { fresh?: boolean } = {},
+): Promise<VariableGroupExistenceResult> {
+  const key = variableGroupCacheKey(projectId, groupName);
+
+  if (!opts.fresh && _cache.has(key)) {
+    return _cache.get(key) as VariableGroupExistenceResult;
+  }
+
+  let result: VariableGroupExistenceResult;
+  try {
+    const client = getClient(TaskAgentRestClient);
+    const groups = await client.getVariableGroups(projectId, groupName);
+    result = { exists: groups.length > 0 };
+  } catch {
+    result = { exists: false };
+  }
+
+  _cache.set(key, result);
+  return result;
+}
+
+/**
+ * Batch-checks existence of all repositories, service connections, variable groups, and
  * pipelines from a template, rendering names against the provided parameter
  * values first.
  *
@@ -219,10 +263,19 @@ export async function checkTemplateResourcesExistence(
     };
   });
 
-  const [repositoryResults, pipelineResults, serviceConnectionResults] = await Promise.all([
+  const variableGroupEntries = (template.variableGroups ?? []).map((vg) => {
+    const renderedName = renderTemplate(vg.name, paramValues);
+    return {
+      key: renderedName.toLowerCase(),
+      rendered: renderedName,
+    };
+  });
+
+  const [repositoryResults, pipelineResults, serviceConnectionResults, variableGroupResults] = await Promise.all([
     Promise.all(repositoryEntries.map((e) => checkRepoExists(projectId, e.rendered))),
     Promise.all(pipelineEntries.map((e) => checkPipelineExists(projectId, e.rendered, e.folder))),
     Promise.all(serviceConnectionEntries.map((e) => checkServiceConnectionExists(projectId, e.rendered))),
+    Promise.all(variableGroupEntries.map((e) => checkVariableGroupExists(projectId, e.rendered))),
   ]);
 
   const repositories: Record<string, RepoExistenceResult> = {};
@@ -240,5 +293,10 @@ export async function checkTemplateResourcesExistence(
     serviceConnections[serviceConnectionEntries[i].key] = serviceConnectionResults[i];
   }
 
-  return { repos: repositories, pipelines, serviceConnections };
+  const variableGroups: Record<string, VariableGroupExistenceResult> = {};
+  for (let i = 0; i < variableGroupEntries.length; i++) {
+    variableGroups[variableGroupEntries[i].key] = variableGroupResults[i];
+  }
+
+  return { repos: repositories, pipelines, serviceConnections, variableGroups };
 }

@@ -21,12 +21,21 @@ interface SummaryResourceRowProps {
 const resourceIconMap: Record<ParameterSummaryItem["type"], string> = {
   ["repository"]: "OpenSource",
   ["serviceConnection"]: "PlugConnected",
+  ["variableGroup"]: "Library",
   ["pipeline"]: "Build",
+};
+
+const subResourceIconMap: Record<ParameterSummaryItem["type"], string> = {
+  ["repository"]: "Page",
+  ["serviceConnection"]: "Page",
+  ["variableGroup"]: "Variable",
+  ["pipeline"]: "Variable",
 };
 
 const resourceNameMap: Record<ParameterSummaryItem["type"], string> = {
   ["repository"]: "Repository",
   ["serviceConnection"]: "Service connection",
+  ["variableGroup"]: "Variable group",
   ["pipeline"]: "Pipeline",
 };
 
@@ -115,7 +124,7 @@ export function SummaryResourceRow({ item, isLast }: SummaryResourceRowProps) {
                   color: sub.included ? COLOR_INCLUDED : COLOR_EXCLUDED,
                 }}
               >
-                <Icon size={IconSize.small} iconName={item.type === "pipeline" ? "Variable" : "Page"} />
+                <Icon size={IconSize.small} iconName={subResourceIconMap[item.type] ?? "Page"} />
               </span>
               <span
                 className={sub.included ? undefined : "secondary-text"}

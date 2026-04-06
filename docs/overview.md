@@ -22,8 +22,8 @@ Everything is **non-destructive**: if a repository already exists and has commit
 
 - **Automatic template discovery** — Templates are discovered automatically from all repositories in the collection that contain a `project-template.yml` file. No manual registration required.
 - **Parameterized templates** — Templates declare typed parameters (string, boolean, choice) with optional validation, hints, and conditional visibility rules. Repository names, file paths, and file contents are all rendered through Mustache.js.
-- **Conditional resources** — Entire repositories, service connections or pipelines can be skipped based on parameter values, keeping templates flexible without forking.
-- **Guided progress UI** — A step-by-step progress view shows which repositories, service connections and pipelines are being created, with clear success and error indicators.
+- **Conditional resources** — Entire repositories, service connections, variable groups, or pipelines can be skipped based on parameter values, keeping templates flexible without forking.
+- **Guided progress UI** — A step-by-step progress view shows which repositories, service connections, variable groups, and pipelines are being created, with clear success and error indicators.
 - **Non-destructive execution** — Existing repositories with content are never modified. The extension creates only what is missing.
 - **Template categories** — Organization administrators can define categories to group and filter templates, making large template libraries easy to navigate.
 - **Project restriction** — Administrators may restrict which project's templates are offered to users, enabling centralized governance of the template library.
@@ -39,9 +39,9 @@ Everything is **non-destructive**: if a repository already exists and has commit
 
 3. **Fill in parameters** — A form renders the template's declared parameters including validation rules and conditional fields. All inputs are validated before submission.
 
-4. **Preview** — During parameterization, a preview summarizes the repositories, service connections and pipelines that will be created, or why they cannot be created. Any resources that already exist are clearly flagged.
+4. **Preview** — During parameterization, a preview summarizes the repositories, service connections, variable groups, and pipelines that will be created, or why they cannot be created. Any resources that already exist are clearly flagged.
 
-5. **Scaffold** — The extension creates repositories (copying and rendering template files via Mustache), create service connections and registers YAML pipelines pointing to the newly created repos. A live progress view tracks each step.
+5. **Scaffold** — The extension creates repositories (copying and rendering template files via Mustache), creates service connections, creates Library variable groups, and registers YAML pipelines pointing to the newly created repos. A live progress view tracks each step.
 
 ---
 
@@ -116,6 +116,7 @@ The extension requests the following OAuth scopes on behalf of the signed-in use
 | `vso.agentpools`             | Required to read agent queues for pipeline registration                         |
 | `vso.project`                | Required to read project list (used in the admin restriction dropdown)          |
 | `vso.serviceendpoint_manage` | Required to manage service endpoints (create and configure service connections) |
+| `vso.variablegroups_manage`  | Required to create and configure library variable groups                        |
 
 All API calls are made directly from the browser using the user's own OAuth token — no server-side component or service principal is required.
 

@@ -126,6 +126,30 @@ serviceConnections:
     grantAccessToAllPipelines: true
     when: "includeBackend"
 
+variableGroups:
+  - name: "{{projectName}}-pipeline-vars"
+    description: "Shared pipeline variables for {{projectName}}"
+    grantAccessToAllPipelines: true
+    when: "includeBackend"
+    variables:
+      - name: "PROJECT_NAME"
+        value: "{{projectName}}"
+      - name: "TEAM_NAME"
+        value: "{{teamName}}"
+      - name: "DB_CONNECTION_STRING"
+        value: "{{dbConnectionString}}"
+        secret: true
+      - name: "AZURE_SUBSCRIPTION_ID"
+        value: "{{azureSubscriptionId}}"
+
+  - name: "{{projectName}}-docker-vars"
+    description: "Docker-specific variables for {{projectName}}"
+    grantAccessToAllPipelines: true
+    when: "includeDocker"
+    variables:
+      - name: "DOCKER_IMAGE_NAME"
+        value: "{{projectName}}"
+
 pipelines:
   - name: "{{projectName}}-backend-ci"
     repository: "{{projectName}}.backend"

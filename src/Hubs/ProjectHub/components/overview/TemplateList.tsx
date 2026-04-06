@@ -7,7 +7,7 @@ import { Spinner } from "azure-devops-ui/Components/Spinner/Spinner";
 import { SpinnerSize } from "azure-devops-ui/Components/Spinner/Spinner.Props";
 import { ZeroData } from "azure-devops-ui/Components/ZeroData/ZeroData";
 import { TemplateCard } from "./TemplateCard";
-import { HowItWorksDialog } from "../dialogs/HowItWorksDialog";
+import { HelpDropdownMenu } from "../dialogs/HelpDropdownMenu";
 import { ScaffoldingHistoryDialog } from "../dialogs/ScaffoldingHistoryDialog";
 import { SingleLayerMasterPanel, SingleLayerMasterPanelHeader } from "azure-devops-ui/MasterDetails";
 import { List, ListItem } from "azure-devops-ui/List";
@@ -70,7 +70,7 @@ export function TemplateList({ onTemplateSelected }: TemplateListProps) {
           Select a template to scaffold a new project.
         </p>
         <ScaffoldingHistoryDialog />
-        <HowItWorksDialog />
+        <HelpDropdownMenu />
       </div>
 
       <div style={{ margin: "0 0 16px", maxWidth: 480 }}>

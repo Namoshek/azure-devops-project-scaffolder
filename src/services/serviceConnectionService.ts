@@ -9,7 +9,7 @@ import {
 import { renderTemplate } from "./templateEngineService";
 import { checkServiceConnectionExists } from "./preflightCheckService";
 import { getCollectionUrl } from "./locationService";
-import { TemplateServiceConnection } from "src/types/templateTypes";
+import { TemplateServiceConnection } from "../types/templateTypes";
 
 export type ServiceConnectionScaffoldStatus = "created" | "skipped" | "failed";
 

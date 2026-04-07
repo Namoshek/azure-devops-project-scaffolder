@@ -6,7 +6,7 @@ import { FormItem as FormItemBase } from "azure-devops-ui/Components/FormItem/Fo
 import { TextField } from "azure-devops-ui/Components/TextField/TextField";
 import { IListBoxItem } from "azure-devops-ui/Components/ListBox/ListBox.Props";
 import { DropdownSelection } from "azure-devops-ui/Utilities/DropdownSelection";
-import { TemplateParameter } from "src/types/templateTypes";
+import { TemplateParameter } from "../../../../types/templateTypes";
 
 const FormItem = FormItemBase as React.ComponentType<
   React.ComponentProps<typeof FormItemBase> & { children?: React.ReactNode }

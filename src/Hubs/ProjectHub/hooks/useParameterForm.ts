@@ -4,7 +4,7 @@ import { evaluateWhenExpression } from "../../../services/templateEngineService"
 import { buildDefaults, validate } from "../../../utils/formUtils";
 import { buildSummaryItems, ParameterSummaryItem } from "../../../utils/summaryBuilder";
 import { usePreflightChecks } from "./usePreflightChecks";
-import { TemplateParameter } from "src/types/templateTypes";
+import { TemplateParameter } from "../../../types/templateTypes";
 
 export interface UseParameterFormResult {
   values: Record<string, unknown>;

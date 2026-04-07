@@ -3,7 +3,7 @@ import { GitRestClient, GitPush, VersionControlChangeType, ItemContentType } fro
 import { fetchTemplateFiles } from "./templateReaderService";
 import { renderTemplate, evaluateWhenExpression } from "./templateEngineService";
 import { checkRepoExists } from "./preflightCheckService";
-import { TemplateRepository } from "src/types/templateTypes";
+import { TemplateRepository } from "../types/templateTypes";
 
 export type RepoScaffoldStatus = "created" | "skipped" | "failed";
 

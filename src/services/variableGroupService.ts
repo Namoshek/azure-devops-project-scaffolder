@@ -8,7 +8,7 @@ import {
 import { renderTemplate } from "./templateEngineService";
 import { checkVariableGroupExists } from "./preflightCheckService";
 import { getCollectionUrl } from "./locationService";
-import { TemplateVariableGroup } from "src/types/templateTypes";
+import { TemplateVariableGroup } from "../types/templateTypes";
 
 export type VariableGroupScaffoldStatus = "created" | "skipped" | "failed";
 

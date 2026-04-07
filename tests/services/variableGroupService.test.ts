@@ -26,7 +26,7 @@ import * as SDK from "azure-devops-extension-sdk";
 import { getClient } from "azure-devops-extension-api";
 import { checkVariableGroupExists } from "../../src/services/preflightCheckService";
 import { getCollectionUrl } from "../../src/services/locationService";
-import { TemplateVariableGroup } from "src/types/templateTypes";
+import { TemplateVariableGroup } from "../../src/types/templateTypes";
 
 const mockGetAccessToken = SDK.getAccessToken as jest.Mock;
 const mockGetClient = getClient as jest.Mock;

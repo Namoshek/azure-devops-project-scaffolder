@@ -1,4 +1,4 @@
-import { TemplateParameter } from "src/types/templateTypes";
+import { TemplateParameter } from "../types/templateTypes";
 import { evaluateWhenExpression } from "../services/templateEngineService";
 
 export function buildDefaults(parameters: TemplateParameter[]): Record<string, unknown> {

@@ -1,4 +1,8 @@
-import { renderTemplate, evaluateWhenExpression } from "../../src/services/templateEngineService";
+import {
+  renderTemplate,
+  renderTemplatePreview,
+  evaluateWhenExpression,
+} from "../../src/services/templateEngineService";
 
 // ─── renderTemplate ────────────────────────────────────────────────────────────
 
@@ -180,5 +184,46 @@ describe("evaluateWhenExpression", () => {
   it("handles numeric literal comparison", () => {
     expect(evaluateWhenExpression("count == 0", { count: 0 })).toBe(true);
     expect(evaluateWhenExpression("count == 1", { count: 0 })).toBe(false);
+  });
+});
+
+// ─── renderTemplatePreview — Markdown-safe interpolation ─────────────────────
+
+describe("renderTemplatePreview — Markdown-safe interpolation", () => {
+  it("interpolates a token inside a GFM table cell without corrupting pipe syntax", () => {
+    expect(renderTemplatePreview("| Resource | {{value}} |", { value: "my-service" })).toBe(
+      "| Resource | my-service |",
+    );
+  });
+
+  it("interpolates a token inside Markdown bold without breaking asterisks", () => {
+    expect(renderTemplatePreview("**{{name}}**", { name: "Alice" })).toBe("**Alice**");
+  });
+
+  it("interpolates a token inside a heading without breaking the # prefix", () => {
+    expect(renderTemplatePreview("## {{title}}", { title: "Next Steps" })).toBe("## Next Steps");
+  });
+
+  it("preserves a multi-line Markdown note structure with tokens", () => {
+    const template = "## {{heading}}\n\nSee [{{linkLabel}}]({{url}}) for details.";
+    const values = { heading: "Onboarding", linkLabel: "docs", url: "https://example.com" };
+    expect(renderTemplatePreview(template, values)).toBe(
+      "## Onboarding\n\nSee [docs](https://example.com) for details.",
+    );
+  });
+
+  it("preserves unfilled token as literal {{token}} when value is empty", () => {
+    expect(renderTemplatePreview("**{{name}}**", { name: "" })).toBe("**{{name}}**");
+  });
+
+  it("renders a key absent from values as empty string (standard Mustache behaviour)", () => {
+    // The function only replaces empty/null values with {{token}} placeholders for keys
+    // that ARE present in the values object. A completely absent key passes through
+    // Mustache's default rendering (empty string).
+    expect(renderTemplatePreview("**{{name}}**", {})).toBe("****");
+  });
+
+  it("returns empty string for an undefined template", () => {
+    expect(renderTemplatePreview(undefined, { name: "Alice" })).toBe("");
   });
 });

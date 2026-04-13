@@ -7,7 +7,7 @@ import { TitleSize } from "azure-devops-ui/Components/Header/Header.Props";
 import { MessageCard } from "azure-devops-ui/Components/MessageCard/MessageCard";
 import { MessageCardSeverity } from "azure-devops-ui/Components/MessageCard/MessageCard.Props";
 import { StepRow } from "./StepRow";
-import { renderTemplatePreview } from "../../../../services/templateEngineService";
+import { ScaffoldNote } from "../../../../components/ScaffoldNote";
 import { useScaffoldExecution } from "../../hooks/useScaffoldExecution";
 
 const STEP_GROUPS = [
@@ -85,15 +85,7 @@ export function ScaffoldProgress({
         template.definition.postScaffoldNotes.length > 0 && (
           <div className="flex-column rhythm-vertical-8">
             {template.definition.postScaffoldNotes.map((note, i) => (
-              <MessageCard key={i} severity={MessageCardSeverity.Info}>
-                {renderTemplatePreview(note, parameterValues)
-                  .split("\n")
-                  .map((line, li) => (
-                    <div key={li} style={{ width: "100%" }}>
-                      {line}
-                    </div>
-                  ))}
-              </MessageCard>
+              <ScaffoldNote key={i} note={note} values={parameterValues} />
             ))}
           </div>
         )}

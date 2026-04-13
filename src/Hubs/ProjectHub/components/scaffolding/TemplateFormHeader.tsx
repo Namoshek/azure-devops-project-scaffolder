@@ -1,8 +1,6 @@
 import React from "react";
 import { TemplateDefinition } from "../../../../types/templateTypes";
-import { renderTemplatePreview } from "../../../../services/templateEngineService";
-import { MessageCard } from "azure-devops-ui/Components/MessageCard/MessageCard";
-import { MessageCardSeverity } from "azure-devops-ui/Components/MessageCard/MessageCard.Props";
+import { ScaffoldNote } from "../../../../components/ScaffoldNote";
 
 interface TemplateFormHeaderProps {
   template: TemplateDefinition;
@@ -26,15 +24,7 @@ export function TemplateFormHeader({ template, values }: TemplateFormHeaderProps
       {template.preScaffoldNotes && template.preScaffoldNotes.length > 0 && (
         <div className="flex-column rhythm-vertical-8" style={{ marginBottom: 20 }}>
           {template.preScaffoldNotes.map((note, i) => (
-            <MessageCard key={i} severity={MessageCardSeverity.Info}>
-              {renderTemplatePreview(note, values)
-                .split("\n")
-                .map((line, li) => (
-                  <div key={li} style={{ width: "100%" }}>
-                    {line}
-                  </div>
-                ))}
-            </MessageCard>
+            <ScaffoldNote key={i} note={note} values={values} />
           ))}
         </div>
       )}

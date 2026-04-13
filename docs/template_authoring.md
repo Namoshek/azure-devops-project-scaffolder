@@ -39,14 +39,22 @@ maintainers:
 
 preScaffoldNotes:
   - |-
-    Make sure your project name matches the naming convention agreed upon by the Platform Team.
-    Use kebab-case (e.g. my-awesome-service).
-  - "You will need at least Project Administrator permissions in the target project."
+    **Before you start**, please ensure the following:
+
+    | Requirement | Details |
+    |---|---|
+    | Naming convention | Use kebab-case, e.g. `my-awesome-service` |
+    | Permissions | Project Administrator in the target project |
+  - "Contact the **{{teamName}}** team if you have questions before proceeding."
 
 postScaffoldNotes:
   - |-
     Your repositories have been created and the CI pipelines are ready.
-    The first pipeline run will be triggered automatically on the next commit to main.
+
+    **Next steps:**
+    1. Clone your new **{{projectName}}** repository and push your first commit.
+    2. The pipeline will trigger automatically on every push to `main`.
+    3. Review the onboarding checklist in the repo's `README.md`.
 
 # ── Parameters used by Mustache.js ───────────────────────────────────────────────
 parameters:
@@ -143,6 +151,55 @@ pipelines:
     folder: "\\CI"
     when: "includeDocker" # Optional: skip this pipeline when false
 ```
+
+---
+
+## Markdown in Notes
+
+`preScaffoldNotes` and `postScaffoldNotes` support GitHub-flavored Markdown (GFM). Use Markdown to structure guidance clearly, particularly for multi-step instructions or tables of required information.
+
+### Supported syntax
+
+| Syntax          | Example                                  |
+| --------------- | ---------------------------------------- |
+| **Bold**        | `**important**`                          |
+| _Italic_        | `*note*`                                 |
+| Headings        | `## Section Title`                       |
+| Bullet list     | `- item one`                             |
+| Numbered list   | `1. first step`                          |
+| Table           | `\| Col A \| Col B \|` + pipe rows (GFM) |
+| Strikethrough   | `~~removed~~`                            |
+| Inline code     | `` `kebab-case` ``                       |
+| Link            | `[docs](https://example.com)`            |
+| Horizontal rule | `---`                                    |
+| Task list       | `- [ ] unchecked` / `- [x] checked`      |
+
+### Mustache tokens inside Markdown
+
+`{{paramId}}` tokens are **interpolated before** the Markdown step, so they work anywhere inside your Markdown:
+
+```yaml
+postScaffoldNotes:
+  - |-
+    ## Your project **{{projectName}}** is ready
+
+    | Resource | Link |
+    |---|---|
+    | Repository | `{{projectName}}.backend` |
+    | Team | {{teamName}} |
+
+    Contact **{{teamName}}** for onboarding support.
+```
+
+Unfilled tokens (values not yet entered or left empty) are shown as literal `{{paramId}}` text rather than blank space.
+
+### Backwards compatibility
+
+Existing plain-text notes continue to work without any changes. Multi-line entries written with the YAML `|-` block scalar already displayed each line as a separate visible line, and that behaviour is preserved — single newlines are rendered as visible line breaks.
+
+### Security
+
+Raw HTML inside note strings is **intentionally stripped** and never executed. Only Markdown syntax is rendered. This prevents any HTML injection through template files.
 
 ---
 

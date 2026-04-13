@@ -2,7 +2,8 @@
 module.exports = {
   preset: "ts-jest",
   testEnvironment: "node",
-  testMatch: ["**/tests/**/*.test.ts"],
+  testMatch: ["**/tests/**/*.test.ts", "**/tests/**/*.test.tsx"],
+  setupFilesAfterEnv: ["@testing-library/jest-dom"],
   transform: {
     "^.+\\.tsx?$": [
       "ts-jest",

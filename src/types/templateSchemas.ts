@@ -244,13 +244,29 @@ export const TemplateDefinitionSchema = z.object({
    */
   maintainers: z.array(z.string()).optional(),
   /**
-   * Lines of guidance shown to the user **before** they submit the scaffolding form, e.g. naming
-   * conventions or required permissions. Each array entry is rendered as a separate paragraph.
+   * Guidance shown to the user **before** they submit the scaffolding form, e.g. naming
+   * conventions or required permissions. Each array entry is rendered as a separate
+   * [MessageCard](https://developer.microsoft.com/en-us/azure-devops/components/message-card).
+   *
+   * **GitHub-flavored Markdown is supported** — use bold, italic, headings, bullet/numbered
+   * lists, tables, strikethrough, inline code, and links. Raw HTML is intentionally stripped
+   * for security.
+   *
+   * `{{paramId}}` Mustache tokens work inside Markdown and are interpolated from the current
+   * form values before the Markdown is rendered.
    */
   preScaffoldNotes: z.array(z.string()).optional(),
   /**
-   * Lines of guidance shown to the user **after** scaffolding completes successfully, e.g. next
-   * steps or links to onboarding documentation. Each array entry is rendered as a separate paragraph.
+   * Guidance shown to the user **after** scaffolding completes successfully, e.g. next steps
+   * or links to onboarding documentation. Each array entry is rendered as a separate
+   * [MessageCard](https://developer.microsoft.com/en-us/azure-devops/components/message-card).
+   *
+   * **GitHub-flavored Markdown is supported** — use bold, italic, headings, bullet/numbered
+   * lists, tables, strikethrough, inline code, and links. Raw HTML is intentionally stripped
+   * for security.
+   *
+   * `{{paramId}}` Mustache tokens work inside Markdown and are interpolated from the final
+   * parameter values before the Markdown is rendered.
    */
   postScaffoldNotes: z.array(z.string()).optional(),
   /**

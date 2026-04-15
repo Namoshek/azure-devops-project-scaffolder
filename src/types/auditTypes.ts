@@ -35,6 +35,14 @@ export interface AuditRecord {
   templateName: string;
   /** Display name of the ADO project that hosts the template repository. */
   templateSourceProject: string;
+  /** ADO project ID of the project that hosts the template repository. */
+  templateSourceProjectId?: string;
+  /** Repository ID of the Git repository containing the template file. */
+  templateSourceRepoId?: string;
+  /** Name of the Git repository containing the template file. */
+  templateSourceRepoName?: string;
+  /** Git commit SHA of the template file at the time scaffolding was triggered. */
+  templateCommitId?: string;
   /** ADO object ID of the user who triggered the scaffolding run. */
   userId: string;
   /** Friendly display name of the user who triggered the scaffolding run, e.g. `"Jane Smith"`. */

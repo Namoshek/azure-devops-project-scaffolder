@@ -116,13 +116,14 @@ async function fetchTemplates(): Promise<DiscoveredTemplate[]> {
 
   for (const hit of unique) {
     try {
-      const definition = await readTemplateFromRepo(hit.project.id, hit.repository.id, hit.path);
+      const { definition, commitId } = await readTemplateFromRepo(hit.project.id, hit.repository.id, hit.path);
       results.push({
         definition,
         sourceProjectId: hit.project.id,
         sourceProjectName: hit.project.name,
         sourceRepoId: hit.repository.id,
         sourceRepoName: hit.repository.name,
+        sourceCommitId: commitId,
       });
     } catch (err) {
       // Skip malformed templates; log to console so authors can diagnose

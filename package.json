@@ -8,6 +8,7 @@
     "watch": "webpack --mode development --watch",
     "package": "npm run build && tfx extension create --manifest-globs vss-extension.json",
     "clean": "rimraf dist",
+    "check": "npm run typecheck && npm run lint && npm run test",
     "test": "jest",
     "test:watch": "jest --watch",
     "typecheck": "tsc --noEmit",

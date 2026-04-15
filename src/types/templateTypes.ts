@@ -57,6 +57,11 @@ export interface DiscoveredTemplate {
    * template card alongside the source project name.
    */
   sourceRepoName: string;
+  /**
+   * Git commit SHA of the `project-template.yml` file at the time it was discovered. Used for
+   * traceability — recorded in the audit log so the exact version of the template can be traced.
+   */
+  sourceCommitId?: string;
 }
 
 export interface TemplatePermissions {

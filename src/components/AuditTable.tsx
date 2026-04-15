@@ -170,15 +170,26 @@ function buildColumns(showProjectColumn: boolean): ITableColumn<AuditRecord>[] {
       id: "template",
       name: "Template",
       width: -35,
-      renderCell: (_rowIndex, columnIndex, tableColumn, item) => (
-        <TwoLineTableCell
-          key={`tpl-${columnIndex}`}
-          columnIndex={columnIndex}
-          tableColumn={tableColumn}
-          line1={<span className="primary-text text-ellipsis">{item.templateName}</span>}
-          line2={<span className="secondary-text text-ellipsis">{item.templateSourceProject}</span>}
-        />
-      ),
+      renderCell: (_rowIndex, columnIndex, tableColumn, item) => {
+        const repoLabel = item.templateSourceRepoName
+          ? `${item.templateSourceProject} / ${item.templateSourceRepoName}`
+          : item.templateSourceProject;
+        const commitSuffix = item.templateCommitId ? ` @ ${item.templateCommitId.slice(0, 8)}` : "";
+        return (
+          <TwoLineTableCell
+            key={`tpl-${columnIndex}`}
+            columnIndex={columnIndex}
+            tableColumn={tableColumn}
+            line1={<span className="primary-text text-ellipsis">{item.templateName}</span>}
+            line2={
+              <span className="secondary-text text-ellipsis">
+                {repoLabel}
+                {commitSuffix}
+              </span>
+            }
+          />
+        );
+      },
     },
     {
       id: "user",

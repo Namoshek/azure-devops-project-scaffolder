@@ -6,22 +6,35 @@ import { ZodError } from "zod";
 import { TemplateDefinition } from "../types/templateTypes";
 import { TemplateDefinitionSchema } from "../types/templateSchemas";
 
+export interface ReadTemplateResult {
+  definition: TemplateDefinition;
+  /** Git commit SHA of the template file at the time it was read. */
+  commitId: string;
+}
+
 /**
  * Fetches and parses a project-template.yml from a specific repository path
- * using the Git Items API.
+ * using the Git Items API. Returns both the parsed definition and the commit
+ * SHA of the file so callers can record the exact version used.
  */
 export async function readTemplateFromRepo(
   projectId: string,
   repoId: string,
   filePath: string,
-): Promise<TemplateDefinition> {
+): Promise<ReadTemplateResult> {
   const gitClient = getClient(GitRestClient);
 
   // Normalize path — Code Search returns paths like /project-template.yml
   const normalizedPath = filePath.startsWith("/") ? filePath : `/${filePath}`;
 
-  const content = await gitClient.getItemText(repoId, normalizedPath, projectId);
-  return parseTemplateYaml(content);
+  // getItem returns metadata including the commitId of the last commit that
+  // touched this file; getItemText fetches the raw file content.
+  const [item, content] = await Promise.all([
+    gitClient.getItem(repoId, normalizedPath, projectId),
+    gitClient.getItemText(repoId, normalizedPath, projectId),
+  ]);
+
+  return { definition: parseTemplateYaml(content), commitId: item.commitId ?? "" };
 }
 
 /**

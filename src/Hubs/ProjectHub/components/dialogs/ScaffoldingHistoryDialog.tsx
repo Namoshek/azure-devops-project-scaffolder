@@ -51,7 +51,7 @@ export function ScaffoldingHistoryDialog() {
           titleProps={{ text: "Scaffolding History", size: TitleSize.Large }}
           showCloseButton
           onDismiss={() => setOpen(false)}
-          contentSize={ContentSize.ExtraLarge}
+          contentSize={ContentSize.Auto}
         >
           <div style={{ minWidth: 680 }}>
             {loading && (

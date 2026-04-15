@@ -77,8 +77,11 @@ pipelines:
     when: "includeDocker"
 `;
 
-function makeMockGitClient(yamlContent: string) {
-  return { getItemText: jest.fn().mockResolvedValue(yamlContent) };
+function makeMockGitClient(yamlContent: string, commitId = "abc1234567890") {
+  return {
+    getItem: jest.fn().mockResolvedValue({ commitId }),
+    getItemText: jest.fn().mockResolvedValue(yamlContent),
+  };
 }
 
 // ─── readTemplateFromRepo ──────────────────────────────────────────────────────
@@ -89,15 +92,16 @@ describe("readTemplateFromRepo", () => {
   });
 
   it("parses a minimal valid YAML and returns a TemplateDefinition", async () => {
-    const mockClient = makeMockGitClient(MINIMAL_YAML);
+    const mockClient = makeMockGitClient(MINIMAL_YAML, "deadbeef1234");
     (getClient as jest.Mock).mockReturnValue(mockClient);
 
     const result = await readTemplateFromRepo("proj1", "repo1", "/project-template.yml");
 
-    expect(result.id).toBe("504c735f-8f8d-4365-b787-a8f135c45c62");
-    expect(result.name).toBe("My Template");
-    expect(result.version).toBe("1.0.0");
-    expect(result.parameters).toEqual([]);
+    expect(result.definition.id).toBe("504c735f-8f8d-4365-b787-a8f135c45c62");
+    expect(result.definition.name).toBe("My Template");
+    expect(result.definition.version).toBe("1.0.0");
+    expect(result.definition.parameters).toEqual([]);
+    expect(result.commitId).toBe("deadbeef1234");
   });
 
   it("normalises a path without a leading slash", async () => {
@@ -106,6 +110,7 @@ describe("readTemplateFromRepo", () => {
 
     await readTemplateFromRepo("proj1", "repo1", "project-template.yml");
 
+    expect(mockClient.getItem).toHaveBeenCalledWith("repo1", "/project-template.yml", "proj1");
     expect(mockClient.getItemText).toHaveBeenCalledWith("repo1", "/project-template.yml", "proj1");
   });
 
@@ -115,10 +120,10 @@ describe("readTemplateFromRepo", () => {
 
     const result = await readTemplateFromRepo("p", "r", "/project-template.yml");
 
-    expect(result.description).toBe("A full template");
-    expect(result.maintainers).toEqual(["alice@example.com"]);
-    expect(result.preScaffoldNotes).toEqual(["Read the docs first"]);
-    expect(result.postScaffoldNotes).toEqual(["Done!"]);
+    expect(result.definition.description).toBe("A full template");
+    expect(result.definition.maintainers).toEqual(["alice@example.com"]);
+    expect(result.definition.preScaffoldNotes).toEqual(["Read the docs first"]);
+    expect(result.definition.postScaffoldNotes).toEqual(["Done!"]);
   });
 
   it("parses parameters with all optional fields", async () => {
@@ -127,7 +132,7 @@ describe("readTemplateFromRepo", () => {
 
     const result = await readTemplateFromRepo("p", "r", "/project-template.yml");
 
-    const param = result.parameters[0];
+    const param = result.definition.parameters[0];
     expect(param.id).toBe("projectName");
     expect(param.label).toBe("Project Name");
     expect(param.type).toBe("string");
@@ -145,7 +150,7 @@ describe("readTemplateFromRepo", () => {
 
     const result = await readTemplateFromRepo("p", "r", "/project-template.yml");
 
-    const boolParam = result.parameters[1];
+    const boolParam = result.definition.parameters[1];
     expect(boolParam.type).toBe("boolean");
     expect(boolParam.defaultValue).toBe(false);
     expect(boolParam.when).toBe("projectName");
@@ -157,7 +162,7 @@ describe("readTemplateFromRepo", () => {
 
     const result = await readTemplateFromRepo("p", "r", "/project-template.yml");
 
-    const choiceParam = result.parameters[2];
+    const choiceParam = result.definition.parameters[2];
     expect(choiceParam.type).toBe("choice");
     expect(choiceParam.options).toEqual(["dotnet", "node", "python"]);
   });
@@ -168,7 +173,7 @@ describe("readTemplateFromRepo", () => {
 
     const result = await readTemplateFromRepo("p", "r", "/project-template.yml");
 
-    const repo = result.repositories![0];
+    const repo = result.definition.repositories![0];
     expect(repo.name).toBe("{{projectName}}-api");
     expect(repo.sourcePath).toBe("/templates/api");
     expect(repo.defaultBranch).toBe("main");
@@ -182,7 +187,7 @@ describe("readTemplateFromRepo", () => {
 
     const result = await readTemplateFromRepo("p", "r", "/project-template.yml");
 
-    const pipeline = result.pipelines![0];
+    const pipeline = result.definition.pipelines![0];
     expect(pipeline.name).toBe("{{projectName}}-ci");
     expect(pipeline.repository).toBe("{{projectName}}-api");
     expect(pipeline.yamlPath).toBe("azure-pipelines.yml");
@@ -251,7 +256,7 @@ repositories:
     (getClient as jest.Mock).mockReturnValue(mockClient);
 
     const result = await readTemplateFromRepo("p", "r", "/project-template.yml");
-    expect(result.repositories![0].defaultBranch).toBe("main");
+    expect(result.definition.repositories![0].defaultBranch).toBe("main");
   });
 
   it("parses templateCategories when present", async () => {
@@ -267,7 +272,7 @@ parameters: []
     (getClient as jest.Mock).mockReturnValue(mockClient);
 
     const result = await readTemplateFromRepo("p", "r", "/project-template.yml");
-    expect(result.templateCategories).toEqual(["Backend"]);
+    expect(result.definition.templateCategories).toEqual(["Backend"]);
   });
 
   it("leaves templateCategories undefined when the field is absent", async () => {
@@ -275,7 +280,7 @@ parameters: []
     (getClient as jest.Mock).mockReturnValue(mockClient);
 
     const result = await readTemplateFromRepo("p", "r", "/project-template.yml");
-    expect(result.templateCategories).toBeUndefined();
+    expect(result.definition.templateCategories).toBeUndefined();
   });
 
   it("parses computed entries with id and expression", async () => {
@@ -284,7 +289,7 @@ parameters: []
 
     const result = await readTemplateFromRepo("p", "r", "/project-template.yml");
 
-    expect(result.computed).toEqual([
+    expect(result.definition.computed).toEqual([
       { id: "isDotnet", expression: "framework == 'dotnet'" },
       { id: "backendWithDocker", expression: "includeDocker && includeDocker" },
     ]);
@@ -295,6 +300,6 @@ parameters: []
     (getClient as jest.Mock).mockReturnValue(mockClient);
 
     const result = await readTemplateFromRepo("p", "r", "/project-template.yml");
-    expect(result.computed).toBeUndefined();
+    expect(result.definition.computed).toBeUndefined();
   });
 });

@@ -148,7 +148,7 @@ describe("discoverTemplates", () => {
   it("maps a single search result to a DiscoveredTemplate", async () => {
     const { discoverTemplates, mockReadTemplate } = loadFreshModule({
       fetchResponse: buildSearchResponse([makeSearchHit()]),
-      readTemplateResult: { ...MOCK_DEFINITION },
+      readTemplateResult: { definition: { ...MOCK_DEFINITION }, commitId: "sha123" },
     });
 
     const results = await discoverTemplates();
@@ -156,13 +156,14 @@ describe("discoverTemplates", () => {
     expect(results).toHaveLength(1);
     expect(results[0].sourceProjectName).toBe("Project One");
     expect(results[0].sourceRepoName).toBe("Repo One");
+    expect(results[0].sourceCommitId).toBe("sha123");
     expect(mockReadTemplate).toHaveBeenCalledTimes(1);
   });
 
   it("sets sourceProjectId/sourceRepoId on the discovered template", async () => {
     const { discoverTemplates } = loadFreshModule({
       fetchResponse: buildSearchResponse([makeSearchHit()]),
-      readTemplateResult: { ...MOCK_DEFINITION },
+      readTemplateResult: { definition: { ...MOCK_DEFINITION }, commitId: "sha123" },
     });
 
     const results = await discoverTemplates();
@@ -176,7 +177,7 @@ describe("discoverTemplates", () => {
         makeSearchHit({ path: "/project-template.yml" }),
         makeSearchHit({ path: "/subfolder/project-template.yml" }), // same proj+repo
       ]),
-      readTemplateResult: { ...MOCK_DEFINITION },
+      readTemplateResult: { definition: { ...MOCK_DEFINITION }, commitId: "sha123" },
     });
 
     const results = await discoverTemplates();
@@ -192,7 +193,7 @@ describe("discoverTemplates", () => {
         makeSearchHit({ repoId: "repo1", repoName: "Repo One" }),
         makeSearchHit({ repoId: "repo2", repoName: "Repo Two" }),
       ]),
-      readTemplateResult: { ...MOCK_DEFINITION },
+      readTemplateResult: { definition: { ...MOCK_DEFINITION }, commitId: "sha123" },
     });
 
     const results = await discoverTemplates();
@@ -272,7 +273,7 @@ describe("discoverTemplates", () => {
     };
     const { discoverTemplates } = loadFreshModule({
       fetchResponse: buildSearchResponse([makeSearchHit()]),
-      readTemplateResult: definitionWithCategories,
+      readTemplateResult: { definition: definitionWithCategories, commitId: "sha123" },
     });
 
     const results = await discoverTemplates();

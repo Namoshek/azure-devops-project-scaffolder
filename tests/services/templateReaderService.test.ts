@@ -64,6 +64,11 @@ repositories:
     exclude:
       - path: docker-compose.yml
         when: "includeDocker == false"
+computed:
+  - id: isDotnet
+    expression: "framework == 'dotnet'"
+  - id: backendWithDocker
+    expression: "includeDocker && includeDocker"
 pipelines:
   - name: "{{projectName}}-ci"
     repository: "{{projectName}}-api"
@@ -271,5 +276,25 @@ parameters: []
 
     const result = await readTemplateFromRepo("p", "r", "/project-template.yml");
     expect(result.templateCategories).toBeUndefined();
+  });
+
+  it("parses computed entries with id and expression", async () => {
+    const mockClient = makeMockGitClient(FULL_YAML);
+    (getClient as jest.Mock).mockReturnValue(mockClient);
+
+    const result = await readTemplateFromRepo("p", "r", "/project-template.yml");
+
+    expect(result.computed).toEqual([
+      { id: "isDotnet", expression: "framework == 'dotnet'" },
+      { id: "backendWithDocker", expression: "includeDocker && includeDocker" },
+    ]);
+  });
+
+  it("leaves computed undefined when the field is absent", async () => {
+    const mockClient = makeMockGitClient(MINIMAL_YAML);
+    (getClient as jest.Mock).mockReturnValue(mockClient);
+
+    const result = await readTemplateFromRepo("p", "r", "/project-template.yml");
+    expect(result.computed).toBeUndefined();
   });
 });

@@ -111,6 +111,14 @@ parameters:
     type: string
     when: "includeBackend"
 
+computed:
+  - id: isPlatformTeam
+    expression: "teamName == 'Platform Team'"
+  - id: isWebTeam
+    expression: "teamName == 'Web Team'"
+  - id: fullStack
+    expression: "includeBackend && includeFrontend"
+
 repositories:
   - name: "{{projectName}}.backend"
     sourcePath: "templates/backend"

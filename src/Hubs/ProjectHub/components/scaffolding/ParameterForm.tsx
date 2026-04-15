@@ -15,8 +15,17 @@ interface ParameterFormProps {
 }
 
 export function ParameterForm({ template, permissions, projectId, onSubmit, onBack }: ParameterFormProps) {
-  const { values, errors, visibleParams, summaryItems, submitDisabled, submitTooltip, handleChange, handleSubmit } =
-    useParameterForm(template, permissions, projectId, onSubmit);
+  const {
+    values,
+    viewValues,
+    errors,
+    visibleParams,
+    summaryItems,
+    submitDisabled,
+    submitTooltip,
+    handleChange,
+    handleSubmit,
+  } = useParameterForm(template, permissions, projectId, onSubmit);
 
   return (
     <div className="flex-row" style={{ gap: 48 }}>
@@ -27,7 +36,7 @@ export function ParameterForm({ template, permissions, projectId, onSubmit, onBa
         }}
         noValidate
       >
-        <TemplateFormHeader template={template} values={values} />
+        <TemplateFormHeader template={template} values={viewValues} />
 
         <div className="flex-column rhythm-vertical-20">
           {visibleParams.map((param) => (
@@ -36,7 +45,7 @@ export function ParameterForm({ template, permissions, projectId, onSubmit, onBa
               param={param}
               value={values[param.id]}
               error={errors[param.id] || undefined}
-              values={values}
+              values={viewValues}
               onChange={handleChange}
             />
           ))}

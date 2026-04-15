@@ -1,7 +1,30 @@
 import Mustache from "mustache";
+import { TemplateDefinition } from "../types/templateTypes";
 
 // Disable HTML escaping so file content and path variables are never mangled.
 Mustache.escape = (text: string) => text;
+
+/**
+ * Merges computed boolean entries into the raw parameter values object.
+ * Each entry's expression is evaluated using `evaluateWhenExpression` against the
+ * raw values only (never accumulated), so computed entries cannot reference each other.
+ * The returned object is `{ ...rawValues, ...computedBooleans }` — computed values
+ * spread last so they take precedence over any raw parameter with the same name.
+ *
+ * Pass the result of this function to `renderTemplate`, `renderTemplatePreview`, and
+ * `evaluateWhenExpression` instead of passing raw parameter values directly.
+ */
+export function buildViewValues(
+  computed: TemplateDefinition["computed"],
+  rawValues: Record<string, unknown>,
+): Record<string, unknown> {
+  if (!computed || computed.length === 0) return rawValues;
+  const computedBooleans: Record<string, boolean> = {};
+  for (const entry of computed) {
+    computedBooleans[entry.id] = evaluateWhenExpression(entry.expression, rawValues);
+  }
+  return { ...rawValues, ...computedBooleans };
+}
 
 /**
  * Renders a Mustache template string with the provided parameter values.

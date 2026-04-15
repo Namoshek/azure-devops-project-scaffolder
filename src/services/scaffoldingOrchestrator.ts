@@ -3,7 +3,7 @@ import { scaffoldRepository, RepoScaffoldResult } from "./repositoryService";
 import { scaffoldPipeline, PipelineScaffoldResult } from "./pipelineService";
 import { scaffoldServiceConnection, ServiceConnectionScaffoldResult } from "./serviceConnectionService";
 import { scaffoldVariableGroup, VariableGroupScaffoldResult } from "./variableGroupService";
-import { evaluateWhenExpression, renderTemplate } from "./templateEngineService";
+import { evaluateWhenExpression, renderTemplate, buildViewValues } from "./templateEngineService";
 
 export type StepStatus = "pending" | "running" | "success" | "skipped" | "failed";
 
@@ -37,29 +37,30 @@ export async function runScaffold(
   permissions?: TemplatePermissions,
 ): Promise<ScaffoldResult[]> {
   const { definition: templateDefinition, sourceProjectId, sourceRepoId } = template;
+  const viewValues = buildViewValues(templateDefinition.computed, parameterValues);
 
   // Build the initial step list
   const repoSteps: ScaffoldStep[] = templateDefinition.repositories.map((r) => ({
     id: `repo:${r.name}`,
-    label: `Create repository: ${renderTemplate(r.name, parameterValues)}`,
+    label: `Create repository: ${renderTemplate(r.name, viewValues)}`,
     status: "pending",
   }));
 
   const serviceConnectionSteps: ScaffoldStep[] = templateDefinition.serviceConnections.map((sc) => ({
     id: `serviceconnection:${sc.name}`,
-    label: `Create service connection: ${renderTemplate(sc.name, parameterValues)}`,
+    label: `Create service connection: ${renderTemplate(sc.name, viewValues)}`,
     status: "pending",
   }));
 
   const variableGroupSteps: ScaffoldStep[] = templateDefinition.variableGroups.map((vg) => ({
     id: `variablegroup:${vg.name}`,
-    label: `Create variable group: ${renderTemplate(vg.name, parameterValues)}`,
+    label: `Create variable group: ${renderTemplate(vg.name, viewValues)}`,
     status: "pending",
   }));
 
   const pipelineSteps: ScaffoldStep[] = templateDefinition.pipelines.map((p) => ({
     id: `pipeline:${p.name}`,
-    label: `Create pipeline: ${renderTemplate(p.name, parameterValues)}`,
+    label: `Create pipeline: ${renderTemplate(p.name, viewValues)}`,
     status: "pending",
   }));
 
@@ -80,7 +81,7 @@ export async function runScaffold(
     const repoTemplate = templateDefinition.repositories[i];
 
     // Skip this repository if its when condition is not satisfied
-    if (repoTemplate.when && !evaluateWhenExpression(repoTemplate.when, parameterValues)) {
+    if (repoTemplate.when && !evaluateWhenExpression(repoTemplate.when, viewValues)) {
       repoSteps[i].status = "skipped";
       repoSteps[i].detail = `Condition '${repoTemplate.when}' was not met.`;
       onProgress([...allSteps]);
@@ -93,7 +94,7 @@ export async function runScaffold(
 
     let result: RepoScaffoldResult;
     try {
-      result = await scaffoldRepository(projectId, repoTemplate, sourceProjectId, sourceRepoId, parameterValues);
+      result = await scaffoldRepository(projectId, repoTemplate, sourceProjectId, sourceRepoId, viewValues);
     } catch (err) {
       result = {
         repoName: repoTemplate.name,
@@ -121,7 +122,7 @@ export async function runScaffold(
     if (serviceConnectionSteps[i].status === "skipped") continue;
     const connectionTemplate = templateDefinition.serviceConnections[i];
 
-    if (connectionTemplate.when && !evaluateWhenExpression(connectionTemplate.when, parameterValues)) {
+    if (connectionTemplate.when && !evaluateWhenExpression(connectionTemplate.when, viewValues)) {
       serviceConnectionSteps[i].status = "skipped";
       serviceConnectionSteps[i].detail = `Condition '${connectionTemplate.when}' was not met.`;
       onProgress([...allSteps]);
@@ -134,7 +135,7 @@ export async function runScaffold(
 
     let result: ServiceConnectionScaffoldResult;
     try {
-      result = await scaffoldServiceConnection(projectId, connectionTemplate, parameterValues);
+      result = await scaffoldServiceConnection(projectId, connectionTemplate, viewValues);
     } catch (err) {
       result = {
         connectionName: connectionTemplate.name,
@@ -162,7 +163,7 @@ export async function runScaffold(
     if (variableGroupSteps[i].status === "skipped") continue;
     const groupTemplate = templateDefinition.variableGroups[i];
 
-    if (groupTemplate.when && !evaluateWhenExpression(groupTemplate.when, parameterValues)) {
+    if (groupTemplate.when && !evaluateWhenExpression(groupTemplate.when, viewValues)) {
       variableGroupSteps[i].status = "skipped";
       variableGroupSteps[i].detail = `Condition '${groupTemplate.when}' was not met.`;
       onProgress([...allSteps]);
@@ -175,7 +176,7 @@ export async function runScaffold(
 
     let result: VariableGroupScaffoldResult;
     try {
-      result = await scaffoldVariableGroup(projectId, groupTemplate, parameterValues);
+      result = await scaffoldVariableGroup(projectId, groupTemplate, viewValues);
     } catch (err) {
       result = {
         groupName: groupTemplate.name,
@@ -204,7 +205,7 @@ export async function runScaffold(
     const pipelineTemplate = templateDefinition.pipelines[i];
 
     // Skip this pipeline if its when condition is not satisfied
-    if (pipelineTemplate.when && !evaluateWhenExpression(pipelineTemplate.when, parameterValues)) {
+    if (pipelineTemplate.when && !evaluateWhenExpression(pipelineTemplate.when, viewValues)) {
       pipelineSteps[i].status = "skipped";
       pipelineSteps[i].detail = `Condition '${pipelineTemplate.when}' was not met.`;
       onProgress([...allSteps]);
@@ -217,7 +218,7 @@ export async function runScaffold(
 
     let result: PipelineScaffoldResult;
     try {
-      result = await scaffoldPipeline(projectId, pipelineTemplate, parameterValues);
+      result = await scaffoldPipeline(projectId, pipelineTemplate, viewValues);
     } catch (err) {
       result = {
         pipelineName: pipelineTemplate.name,

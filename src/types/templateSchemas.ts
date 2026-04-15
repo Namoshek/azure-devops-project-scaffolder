@@ -222,6 +222,32 @@ export const TemplateServiceConnectionSchema = z.object({
   when: z.string().optional(),
 });
 
+/**
+ * A named boolean derived at render time from a `when`-style expression.
+ * Computed entries are injected into the Mustache context alongside the raw parameter values,
+ * enabling `{{#id}}` / `{{^id}}` sections in template files and `when:` fields on any resource.
+ * They are not shown in the parameter form and are not written to the audit log.
+ */
+export const TemplateComputedSchema = z.object({
+  /**
+   * Unique identifier for this computed boolean. Used as the Mustache variable name, e.g.
+   * `{{#isVite}}...{{/isVite}}`. Must not start with a digit. Avoid names that clash with
+   * parameter ids — if a clash occurs the computed value takes precedence.
+   */
+  id: z.string().min(1),
+  /**
+   * Boolean expression evaluated against the current parameter values at render time.
+   * Uses exactly the same syntax as the `when` fields on parameters, repositories, pipelines,
+   * service connections, and variable groups.
+   *
+   * Examples:
+   *   - `typeOfFrontend == 'vite'`
+   *   - `includeBackend && deployTarget == 'kubernetes'`
+   *   - `!useExistingRepo`
+   */
+  expression: z.string().min(1),
+});
+
 export const TemplateDefinitionSchema = z.object({
   /**
    * Universally unique identifier (UUID/GUID) for this template. Should be generated once when the
@@ -276,6 +302,13 @@ export const TemplateDefinitionSchema = z.object({
    * configured category are grouped under the implicit **Others** tab.
    */
   templateCategories: z.array(z.string()).optional(),
+  /**
+   * Named booleans computed from expressions at render time and injected into the Mustache
+   * context alongside raw parameter values. Use this to derive reusable flags from choice
+   * parameters or compound conditions.
+   * They are not surfaced in the parameter form and are not written to the audit log.
+   */
+  computed: z.array(TemplateComputedSchema).optional(),
   /** Ordered list of input parameters the user must fill in before scaffolding can proceed. */
   parameters: z.array(TemplateParameterSchema).default([]),
   /** Git repositories to create in the target project as part of this template's scaffold. */

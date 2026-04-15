@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { TemplateDefinition, TemplatePermissions } from "../../../types/templateTypes";
-import { evaluateWhenExpression } from "../../../services/templateEngineService";
+import { evaluateWhenExpression, buildViewValues } from "../../../services/templateEngineService";
 import { buildDefaults, validate } from "../../../utils/formUtils";
 import { buildSummaryItems, ParameterSummaryItem } from "../../../utils/summaryBuilder";
 import { usePreflightChecks } from "./usePreflightChecks";
@@ -8,6 +8,7 @@ import { TemplateParameter } from "../../../types/templateTypes";
 
 export interface UseParameterFormResult {
   values: Record<string, unknown>;
+  viewValues: Record<string, unknown>;
   errors: Record<string, string>;
   submitted: boolean;
   visibleParams: TemplateParameter[];
@@ -30,6 +31,8 @@ export function useParameterForm(
 
   const { preflightChecks, preflightPending } = usePreflightChecks(projectId, template, values);
 
+  const viewValues = useMemo(() => buildViewValues(template.computed, values), [template.computed, values]);
+
   function handleChange(id: string, value: unknown) {
     const newValues = { ...values, [id]: value };
     setValues(newValues);
@@ -48,8 +51,8 @@ export function useParameterForm(
   }
 
   const visibleParams = useMemo(
-    () => template.parameters.filter((p) => !p.when || evaluateWhenExpression(p.when, values)),
-    [template.parameters, values],
+    () => template.parameters.filter((p) => !p.when || evaluateWhenExpression(p.when, viewValues)),
+    [template.parameters, viewValues],
   );
 
   const summaryItems = useMemo(
@@ -72,6 +75,7 @@ export function useParameterForm(
 
   return {
     values,
+    viewValues,
     errors,
     submitted,
     visibleParams,

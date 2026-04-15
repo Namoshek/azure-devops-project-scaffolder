@@ -4,7 +4,7 @@ import { BuildRestClient } from "azure-devops-extension-api/Build";
 import { ServiceEndpointRestClient } from "azure-devops-extension-api/ServiceEndpoint";
 import { TaskAgentRestClient } from "azure-devops-extension-api/TaskAgent";
 import { TemplateDefinition } from "../types/templateTypes";
-import { renderTemplate } from "./templateEngineService";
+import { renderTemplate, buildViewValues } from "./templateEngineService";
 
 // ─── Result types ──────────────────────────────────────────────────────────────
 
@@ -237,8 +237,10 @@ export async function checkTemplateResourcesExistence(
   template: TemplateDefinition,
   paramValues: Record<string, unknown>,
 ): Promise<ResourceExistenceMap> {
+  const viewValues = buildViewValues(template.computed, paramValues);
+
   const repositoryEntries = (template.repositories ?? []).map((r) => {
-    const renderedName = renderTemplate(r.name, paramValues);
+    const renderedName = renderTemplate(r.name, viewValues);
     return {
       key: renderedName.toLowerCase(),
       rendered: renderedName,
@@ -246,7 +248,7 @@ export async function checkTemplateResourcesExistence(
   });
 
   const pipelineEntries = (template.pipelines ?? []).map((p) => {
-    const renderedName = renderTemplate(p.name, paramValues);
+    const renderedName = renderTemplate(p.name, viewValues);
     const folder = p.folder ?? "\\";
     return {
       key: `${folder.toLowerCase()}::${renderedName.toLowerCase()}`,
@@ -256,7 +258,7 @@ export async function checkTemplateResourcesExistence(
   });
 
   const serviceConnectionEntries = (template.serviceConnections ?? []).map((sc) => {
-    const renderedName = renderTemplate(sc.name, paramValues);
+    const renderedName = renderTemplate(sc.name, viewValues);
     return {
       key: renderedName.toLowerCase(),
       rendered: renderedName,
@@ -264,7 +266,7 @@ export async function checkTemplateResourcesExistence(
   });
 
   const variableGroupEntries = (template.variableGroups ?? []).map((vg) => {
-    const renderedName = renderTemplate(vg.name, paramValues);
+    const renderedName = renderTemplate(vg.name, viewValues);
     return {
       key: renderedName.toLowerCase(),
       rendered: renderedName,

@@ -2,6 +2,7 @@ import {
   renderTemplate,
   renderTemplatePreview,
   evaluateWhenExpression,
+  buildViewValues,
 } from "../../src/services/templateEngineService";
 
 // ─── renderTemplate ────────────────────────────────────────────────────────────
@@ -225,5 +226,84 @@ describe("renderTemplatePreview — Markdown-safe interpolation", () => {
 
   it("returns empty string for an undefined template", () => {
     expect(renderTemplatePreview(undefined, { name: "Alice" })).toBe("");
+  });
+});
+
+// ─── buildViewValues ───────────────────────────────────────────────────────────
+
+describe("buildViewValues", () => {
+  it("returns raw values unchanged when computed is undefined", () => {
+    const raw = { name: "Alice", flag: true };
+    const result = buildViewValues(undefined, raw);
+    expect(result).toEqual(raw);
+  });
+
+  it("returns raw values unchanged when computed is an empty array", () => {
+    const raw = { name: "Alice" };
+    const result = buildViewValues([], raw);
+    expect(result).toEqual(raw);
+  });
+
+  it("injects true for a matching equality expression", () => {
+    const raw = { framework: "vite" };
+    const result = buildViewValues([{ id: "isVite", expression: "framework == 'vite'" }], raw);
+    expect(result.isVite).toBe(true);
+  });
+
+  it("injects false for a non-matching equality expression", () => {
+    const raw = { framework: "webpack" };
+    const result = buildViewValues([{ id: "isVite", expression: "framework == 'vite'" }], raw);
+    expect(result.isVite).toBe(false);
+  });
+
+  it("evaluates a compound && expression", () => {
+    const raw = { includeBackend: true, env: "prod" };
+    const result = buildViewValues([{ id: "backendAndProd", expression: "includeBackend && env == 'prod'" }], raw);
+    expect(result.backendAndProd).toBe(true);
+  });
+
+  it("evaluates a compound || expression", () => {
+    const raw = { frontend: "react" };
+    const result = buildViewValues(
+      [{ id: "isSpaFramework", expression: "frontend == 'react' || frontend == 'vue'" }],
+      raw,
+    );
+    expect(result.isSpaFramework).toBe(true);
+  });
+
+  it("preserves all raw values in the returned object", () => {
+    const raw = { a: "x", b: 42 };
+    const result = buildViewValues([{ id: "isX", expression: "a == 'x'" }], raw);
+    expect(result.a).toBe("x");
+    expect(result.b).toBe(42);
+    expect(result.isX).toBe(true);
+  });
+
+  it("evaluates multiple computed entries independently (no cross-entry accumulation)", () => {
+    // isA uses raw 'flag'; isB also uses raw 'flag' — isA's result does NOT feed into isB's evaluation.
+    const raw = { flag: true };
+    const result = buildViewValues(
+      [
+        { id: "isA", expression: "flag" },
+        { id: "isB", expression: "flag" },
+      ],
+      raw,
+    );
+    expect(result.isA).toBe(true);
+    expect(result.isB).toBe(true);
+    // raw values still intact
+    expect(result.flag).toBe(true);
+  });
+
+  it("computed value overrides a raw parameter with the same name", () => {
+    // Intentional precedence rule: computed spread last.
+    const raw = { isVite: "unexpected-raw-string" };
+    const result = buildViewValues([{ id: "isVite", expression: "false" }], raw);
+    expect(result.isVite).toBe(false);
+  });
+
+  it("injects false for a truthy-check on a missing parameter", () => {
+    const result = buildViewValues([{ id: "hasFlag", expression: "missingParam" }], {});
+    expect(result.hasFlag).toBe(false);
   });
 });

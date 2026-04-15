@@ -1,6 +1,8 @@
 import React from "react";
+import { useMemo } from "react";
 import { DiscoveredTemplate, TemplatePermissions } from "../../../../types/templateTypes";
 import { ScaffoldResult } from "../../../../services/scaffoldingOrchestrator";
+import { buildViewValues } from "../../../../services/templateEngineService";
 import { Button } from "azure-devops-ui/Components/Button/Button";
 import { Card } from "azure-devops-ui/Components/Card/Card";
 import { TitleSize } from "azure-devops-ui/Components/Header/Header.Props";
@@ -40,6 +42,11 @@ export function ScaffoldProgress({
     permissions,
     results,
     onComplete,
+  );
+
+  const viewValues = useMemo(
+    () => buildViewValues(template.definition.computed, parameterValues),
+    [template.definition.computed, parameterValues],
   );
 
   return (
@@ -85,7 +92,7 @@ export function ScaffoldProgress({
         template.definition.postScaffoldNotes.length > 0 && (
           <div className="flex-column rhythm-vertical-8">
             {template.definition.postScaffoldNotes.map((note, i) => (
-              <ScaffoldNote key={i} note={note} values={parameterValues} />
+              <ScaffoldNote key={i} note={note} values={viewValues} />
             ))}
           </div>
         )}

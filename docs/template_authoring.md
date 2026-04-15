@@ -96,6 +96,13 @@ parameters:
     required: true
     when: "includeSonarQube"
 
+# ── Computed booleans (optional) ───────────────────────────────────────────────────
+computed:
+  - id: isWebTeam # Used in Mustache: {{#isWebTeam}}...{{/isWebTeam}}
+    expression: "teamName == 'Web Team'" # Same syntax as any 'when' field
+  - id: dockerAndSonar
+    expression: "includeDocker && includeSonarQube"
+
 # ── Repositories ───────────────────────────────────────────────────────────────────
 repositories:
   - name: "{{projectName}}.backend" # Mustache in repo name ✔
@@ -256,6 +263,111 @@ src/{{projectName}}.csproj   →   src/my-service.csproj
 ```
 
 Binary files (images, fonts, etc.) are copied as-is without Mustache rendering.
+
+---
+
+## Computed Booleans
+
+Mustache supports `{{#flag}}...{{/flag}}` section blocks but cannot evaluate expressions directly inside template files. The `computed` section solves this by letting you **pre-compute named booleans** from any expression so they become available as Mustache variables alongside your parameters.
+
+### Why you need this
+
+`choice` parameters (and compound conditions across multiple parameters) cannot drive Mustache sections directly, because Mustache only checks whether a value is truthy — it cannot compare strings. `computed` entries bridge that gap.
+
+**Without `computed`** the following is not possible in Mustache:
+
+```
+{{#typeOfFrontend == "vite"}}  ← invalid, Mustache cannot do this
+...
+{{/typeOfFrontend == "vite"}}
+```
+
+**With `computed`** we can make this work though:
+
+```yaml
+computed:
+  - id: isVite
+    expression: "typeOfFrontend == 'vite'"
+```
+
+We can then use a simple boolean section in Mustache:
+
+```
+{{#isVite}}
+// vite.config.ts content
+{{/isVite}}
+```
+
+### YAML syntax
+
+```yaml
+# Computed booleans are derived from parameter values at render time.
+# They are available as Mustache section tags in template files and as
+# identifiers in any 'when' field — but they are NOT shown in the form
+# and are NOT written to the audit log.
+computed:
+  - id: isVite
+    expression: "typeOfFrontend == 'vite'"
+  - id: isWebpack
+    expression: "typeOfFrontend == 'webpack'"
+  - id: fullStack
+    expression: "includeBackend && includeFrontend"
+  - id: isWebTeam
+    expression: "teamName == 'Web Team'"
+```
+
+| Field        | Required | Description                                                                                                                                |
+| ------------ | -------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `id`         | Yes      | The identifier injected into the Mustache context. Must be a valid identifier (letters, digits, underscores; must not start with a digit). |
+| `expression` | Yes      | A boolean expression using the same syntax as all `when` fields (see [`when` Expressions](#when-expressions) below).                       |
+
+Please be aware that the `id` has to be unique across all `computed` and `parameters` entries.
+
+### Usage in template file content
+
+Once declared, a computed id is available as a Mustache section tag in any template file:
+
+```handlebars
+{{#isVite}}
+  import { defineConfig } from 'vite'; export default defineConfig({ ... });
+{{/isVite}}
+{{#isWebpack}}
+  const path = require('path'); module.exports = { ... };
+{{/isWebpack}}
+```
+
+Use `{{^id}}` for the inverted (else) branch:
+
+```handlebars
+{{^isVite}}
+// non-vite build setup
+{{/isVite}}
+```
+
+### Usage in `when` fields
+
+Computed ids can also be used in any `when:` field on parameters, repositories, pipelines, service connections, and variable groups — exactly like any other parameter id:
+
+```yaml
+parameters:
+  - id: vitePort
+    label: "Dev Server Port"
+    type: string
+    defaultValue: "5173"
+    when: "isVite" # ← computed id used here
+
+repositories:
+  - name: "{{projectName}}.frontend"
+    sourcePath: "templates/frontend-vite"
+    when: "isVite" # ← and here
+```
+
+### Scoping and audit behaviour
+
+- Computed ids are **not shown in the parameter form** — they are invisible to the user.
+- Computed values are **not written to the audit log** — only raw parameter values are logged.
+- Expressions are evaluated against **raw parameter values only**. Computed entries cannot reference each other.
+- If a computed `id` collides with a parameter `id`, the computed value takes precedence. Avoid naming collisions.
 
 ---
 

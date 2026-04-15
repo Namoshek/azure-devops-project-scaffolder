@@ -10,6 +10,7 @@ import {
   TemplateServiceConnectionSchema,
   TemplateVariableGroupVariableSchema,
   TemplateVariableGroupSchema,
+  TemplateComputedSchema,
 } from "./templateSchemas";
 
 export type TemplateDefinition = z.infer<typeof TemplateDefinitionSchema>;
@@ -23,6 +24,7 @@ export type TemplatePipeline = z.infer<typeof TemplatePipelineSchema>;
 export type TemplateServiceConnection = z.infer<typeof TemplateServiceConnectionSchema>;
 export type TemplateVariableGroupVariable = z.infer<typeof TemplateVariableGroupVariableSchema>;
 export type TemplateVariableGroup = z.infer<typeof TemplateVariableGroupSchema>;
+export type TemplateComputed = z.infer<typeof TemplateComputedSchema>;
 
 /**
  * The name of the virtual "All" category that is always prepended first and

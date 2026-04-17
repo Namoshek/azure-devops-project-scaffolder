@@ -2,7 +2,7 @@
   "manifestVersion": 1,
   "id": "ado-project-scaffolder",
   "publisher": "namoshek",
-  "version": "0.21.0",
+  "version": "0.22.0",
   "name": "Project Scaffolder",
   "description": "Scaffold repositories and pipelines across your Azure DevOps projects from your own templates — guided, parameterized, and non-destructive.",
   "public": true,

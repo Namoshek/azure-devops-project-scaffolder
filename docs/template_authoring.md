@@ -83,16 +83,19 @@ parameters:
   - id: dockerRegistry
     label: "Container Registry URL"
     type: string
+    formGroup: "Docker" # Groups this parameter visually with others that share the same label
     when: "includeDocker == true" # Only shown when includeDocker is checked
 
   - id: includeSonarQube
     label: "Include SonarQube Analysis"
     type: boolean
+    formGroup: "Code Quality"
     defaultValue: true
 
   - id: sonarqubePersonalAccessToken
     label: "SonarQube Personal Access Token"
     type: string
+    formGroup: "Code Quality"
     required: true
     when: "includeSonarQube"
 
@@ -368,6 +371,49 @@ repositories:
 - Computed values are **not written to the audit log** — only raw parameter values are logged.
 - Expressions are evaluated against **raw parameter values only**. Computed entries cannot reference each other.
 - If a computed `id` collides with a parameter `id`, the computed value takes precedence. Avoid naming collisions.
+
+---
+
+## Parameter Groups
+
+Use the `formGroup` field on any parameter to cluster related parameters into a named section inside the scaffolding form. Parameters that share the same `formGroup` string are rendered together inside the same group of form fields. Parameters without a `formGroup` are rendered after all groups with no visual decoration.
+
+```yaml
+parameters:
+  - id: projectName
+    label: "Project Name"
+    type: string
+    formGroup: "Project Info"
+
+  - id: teamName
+    label: "Team Name"
+    type: choice
+    formGroup: "Project Info"
+    options:
+      - "Platform Team"
+      - "Web Team"
+
+  - id: includeDocker
+    label: "Include Docker Support"
+    type: boolean
+    formGroup: "Feature Flags"
+
+  - id: includeSonarQube
+    label: "Include SonarQube"
+    type: boolean
+    formGroup: "Feature Flags"
+
+  - id: notes
+    label: "Additional Notes" # no formGroup — rendered after all groups
+    type: string
+```
+
+**Rules:**
+
+- Groups appear in the form in **first-appearance order** — the order of the first parameter that names a given group determines where that group block is placed.
+- Parameters without `formGroup` are always rendered **after** all named groups.
+- `when` expressions still work normally inside grouped parameters; hidden parameters never produce an empty group block because visibility is evaluated before grouping.
+- `formGroup` is purely a form presentation hint and has no effect on Mustache rendering, audit logging, or `when` expression evaluation.
 
 ---
 

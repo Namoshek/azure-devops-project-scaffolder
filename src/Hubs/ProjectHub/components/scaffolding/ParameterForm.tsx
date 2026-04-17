@@ -5,6 +5,7 @@ import { ParameterField } from "./ParameterField";
 import { TemplateFormHeader } from "./TemplateFormHeader";
 import { ScaffoldSummaryPanel } from "./ScaffoldSummaryPanel";
 import { useParameterForm } from "../../hooks/useParameterForm";
+import { groupParameters } from "../../../../utils/formUtils";
 
 interface ParameterFormProps {
   template: TemplateDefinition;
@@ -38,17 +39,44 @@ export function ParameterForm({ template, permissions, projectId, onSubmit, onBa
       >
         <TemplateFormHeader template={template} values={viewValues} />
 
-        <div className="flex-column rhythm-vertical-20">
-          {visibleParams.map((param) => (
-            <ParameterField
-              key={param.id}
-              param={param}
-              value={values[param.id]}
-              error={errors[param.id] || undefined}
-              values={viewValues}
-              onChange={handleChange}
-            />
-          ))}
+        <div className="flex-column rhythm-vertical-32">
+          {groupParameters(visibleParams).map((group) =>
+            group.title === undefined ? (
+              group.params.map((param) => (
+                <ParameterField
+                  key={param.id}
+                  param={param}
+                  value={values[param.id]}
+                  error={errors[param.id] || undefined}
+                  values={viewValues}
+                  onChange={handleChange}
+                />
+              ))
+            ) : (
+              <div key={"group-" + group.title} style={{ display: "flex", gap: 16 }}>
+                <div
+                  style={{
+                    width: 4,
+                    background: "rgb(var(--palette-neutral-10))",
+                    flexShrink: 0,
+                  }}
+                />
+                <div className="flex-column rhythm-vertical-20 padding-vertical-8" style={{ flex: 1 }}>
+                  <span className="body-m font-weight-semibold">{group.title}</span>
+                  {group.params.map((param) => (
+                    <ParameterField
+                      key={param.id}
+                      param={param}
+                      value={values[param.id]}
+                      error={errors[param.id] || undefined}
+                      values={viewValues}
+                      onChange={handleChange}
+                    />
+                  ))}
+                </div>
+              </div>
+            ),
+          )}
         </div>
 
         <div className="flex-row rhythm-horizontal-8" style={{ marginTop: 32 }}>

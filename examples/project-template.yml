@@ -40,6 +40,7 @@ parameters:
     hint: "A descriptive but technical name for your project (lowercase, no spaces)"
     type: string
     required: true
+    formGroup: "Project Info"
     validation:
       regex: "^[a-zA-Z][a-zA-Z0-9-]+$"
       message: "Letters, numbers, hyphens only. Must start with a letter."
@@ -49,6 +50,7 @@ parameters:
     hint: "Name of the team responsible for this project"
     type: choice
     required: true
+    formGroup: "Project Info"
     options:
       - "Platform Team"
       - "Web Team"
@@ -59,24 +61,28 @@ parameters:
     label: "Include Backend"
     hint: "Whether to initialize the backend repository and pipelines"
     type: boolean
+    formGroup: "Feature Flags"
     defaultValue: true
 
   - id: includeFrontend
     label: "Include Frontend"
     hint: "Whether to initialize the frontend repository and pipelines"
     type: boolean
+    formGroup: "Feature Flags"
     defaultValue: true
 
   - id: includeDocker
     label: "Include Docker Support"
     hint: "Whether to include Dockerfile"
     type: boolean
+    formGroup: "Feature Flags"
     defaultValue: false
 
   - id: dbConnectionString
     label: "Database Connection String"
     hint: "Passed to the backend pipeline as a secret variable"
     type: string
+    formGroup: "Azure Credentials"
     secret: true
     when: "includeBackend"
 
@@ -84,18 +90,21 @@ parameters:
     label: "Azure Tenant ID"
     hint: "The Entra ID tenant to authenticate against (for the Azure service connection)"
     type: string
+    formGroup: "Azure Credentials"
     when: "includeBackend"
 
   - id: azureClientId
     label: "Azure Service Principal Client ID"
     hint: "App registration client ID for the service principal"
     type: string
+    formGroup: "Azure Credentials"
     when: "includeBackend"
 
   - id: azureClientSecret
     label: "Azure Service Principal Client Secret"
     hint: "App registration client secret — masked after submission"
     type: string
+    formGroup: "Azure Credentials"
     secret: true
     when: "includeBackend"
 
@@ -103,12 +112,14 @@ parameters:
     label: "Azure Subscription ID"
     hint: "The subscription to deploy resources to"
     type: string
+    formGroup: "Azure Credentials"
     when: "includeBackend"
 
   - id: azureSubscriptionName
     label: "Azure Subscription Name"
     hint: "Display name for the subscription (informational only)"
     type: string
+    formGroup: "Azure Credentials"
     when: "includeBackend"
 
 computed:

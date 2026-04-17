@@ -1,6 +1,7 @@
 import React from "react";
 import { TemplateDefinition } from "../../../../types/templateTypes";
 import { ScaffoldNote } from "../../../../components/ScaffoldNote";
+import { TemplateInfo } from "./TemplateInfo";
 
 interface TemplateFormHeaderProps {
   template: TemplateDefinition;
@@ -10,19 +11,12 @@ interface TemplateFormHeaderProps {
 export function TemplateFormHeader({ template, values }: TemplateFormHeaderProps) {
   return (
     <>
-      <div className="flex-row rhythm-horizontal-8" style={{ marginBottom: 24 }}>
-        <div>
-          <div className="title-m">Selected Template: {template.name}</div>
-          {template.description && (
-            <p className="body-m secondary-text" style={{ margin: "4px 0 0" }}>
-              {template.description}
-            </p>
-          )}
-        </div>
+      <div style={{ marginBottom: 24 }}>
+        <TemplateInfo template={template} />
       </div>
 
       {template.preScaffoldNotes && template.preScaffoldNotes.length > 0 && (
-        <div className="flex-column rhythm-vertical-8" style={{ marginBottom: 20 }}>
+        <div className="flex-column rhythm-vertical-8" style={{ marginBottom: 40 }}>
           {template.preScaffoldNotes.map((note, i) => (
             <ScaffoldNote key={i} note={note} values={values} />
           ))}

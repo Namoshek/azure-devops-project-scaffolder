@@ -1,6 +1,46 @@
 import { TemplateParameter } from "../types/templateTypes";
 import { evaluateWhenExpression } from "../services/templateEngineService";
 
+export interface ParameterGroup {
+  /** Group title, or `undefined` for the implicit ungrouped bucket. */
+  title: string | undefined;
+  params: TemplateParameter[];
+}
+
+/**
+ * Splits an ordered list of visible parameters into display groups.
+ * Parameters with a `formGroup` value are placed into named buckets in
+ * first-appearance order. Parameters without `formGroup` are collected into
+ * an implicit ungrouped bucket that is appended at the end. The ungrouped
+ * bucket is omitted entirely when all parameters belong to a named group.
+ */
+export function groupParameters(params: TemplateParameter[]): ParameterGroup[] {
+  const namedGroups = new Map<string, TemplateParameter[]>();
+  const ungrouped: TemplateParameter[] = [];
+
+  for (const param of params) {
+    if (param.formGroup) {
+      const existing = namedGroups.get(param.formGroup);
+      if (existing) {
+        existing.push(param);
+      } else {
+        namedGroups.set(param.formGroup, [param]);
+      }
+    } else {
+      ungrouped.push(param);
+    }
+  }
+
+  const result: ParameterGroup[] = [];
+  for (const [title, groupParams] of namedGroups) {
+    result.push({ title, params: groupParams });
+  }
+  if (ungrouped.length > 0) {
+    result.push({ title: undefined, params: ungrouped });
+  }
+  return result;
+}
+
 export function buildDefaults(parameters: TemplateParameter[]): Record<string, unknown> {
   const defaults: Record<string, unknown> = {};
   for (const p of parameters) {

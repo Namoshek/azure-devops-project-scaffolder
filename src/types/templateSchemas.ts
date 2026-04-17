@@ -36,6 +36,12 @@ export const TemplateParameterSchema = z.object({
    * `TemplatePipeline.when`. Example: `"includeDocker"`.
    */
   when: z.string().optional(),
+  /**
+   * Optional group name used to visually cluster related parameters in the scaffolding form.
+   * Parameters sharing the same `formGroup` string are rendered together inside the same group of form fields.
+   * Parameters without a `formGroup` are rendered after all groups, with no visual decoration.
+   */
+  formGroup: z.string().optional(),
   /** Optional validation rule applied to the entered value. Only meaningful for `type: "string"`. */
   validation: ParameterValidationSchema.optional(),
 });

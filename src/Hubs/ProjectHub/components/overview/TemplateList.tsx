@@ -23,6 +23,7 @@ export function TemplateList({ onTemplateSelected }: TemplateListProps) {
     loading,
     error,
     templates,
+    restrictedProjects,
     selectedCategory,
     setSelectedCategory,
     searchQuery,
@@ -46,15 +47,24 @@ export function TemplateList({ onTemplateSelected }: TemplateListProps) {
   }
 
   if (templates.length === 0) {
+    const secondaryText =
+      restrictedProjects.length > 0 ? (
+        <>
+          No templates were found in the restricted project{restrictedProjects.length > 1 ? "s" : ""}:{" "}
+          <strong>{restrictedProjects.map((p) => p.name).join(", ")}</strong>. Create a repository in one of those
+          projects with a <code>project-template.yml</code> file at the root, or ask an administrator to update the
+          project restriction.
+        </>
+      ) : (
+        <>
+          Create a repository in any project in this collection with a <code>project-template.yml</code> file at the
+          root to get started.
+        </>
+      );
     return (
       <ZeroData
         primaryText="No templates found"
-        secondaryText={
-          <>
-            Create a repository in any project in this collection with a <code>project-template.yml</code> file at the
-            root to get started.
-          </>
-        }
+        secondaryText={secondaryText}
         imageAltText="No templates found"
         iconProps={{ iconName: "FileTemplate" }}
       />

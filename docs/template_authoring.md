@@ -327,7 +327,7 @@ Please be aware that the `id` has to be unique across all `computed` and `parame
 
 Once declared, a computed id is available as a Mustache section tag in any template file:
 
-```handlebars
+```mustache
 {{#isVite}}
   import { defineConfig } from 'vite'; export default defineConfig({ ... });
 {{/isVite}}
@@ -338,7 +338,7 @@ Once declared, a computed id is available as a Mustache section tag in any templ
 
 Use `{{^id}}` for the inverted (else) branch:
 
-```handlebars
+```mustache
 {{^isVite}}
 // non-vite build setup
 {{/isVite}}
@@ -373,7 +373,7 @@ repositories:
 
 ## `when` Expressions
 
-Use the `when` field on any parameter to conditionally show or hide it based on the value of another parameter.
+Use the `when` field to conditionally control visibility or inclusion based on the current parameter values. It is supported on **parameters** (show/hide the field), **repositories**, **pipelines**, **service connections**, **variable groups** (skip the resource when the condition is false), and file **exclude** rules (exclude the file/folder when the condition is true).
 
 Supported syntax:
 

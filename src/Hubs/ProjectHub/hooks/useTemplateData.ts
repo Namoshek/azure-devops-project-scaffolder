@@ -1,7 +1,11 @@
 import { useState, useEffect, useMemo } from "react";
 import { DiscoveredTemplate, ALL_CATEGORY_NAME } from "../../../types/templateTypes";
 import { discoverTemplates } from "../../../services/templateDiscoveryService";
-import { getTemplateCategories } from "../../../services/extensionSettingsService";
+import {
+  getTemplateCategories,
+  getRestrictedProjects,
+  RestrictedProject,
+} from "../../../services/extensionSettingsService";
 import { ListSelection } from "azure-devops-ui/List";
 import { ArrayItemProvider } from "azure-devops-ui/Utilities/Provider";
 import { groupTemplates, TemplateCategory } from "../../../utils/templateGrouping";
@@ -10,6 +14,7 @@ export interface UseTemplateDataResult {
   loading: boolean;
   error: string | null;
   templates: DiscoveredTemplate[];
+  restrictedProjects: RestrictedProject[];
   selectedCategory: string;
   setSelectedCategory: (name: string) => void;
   searchQuery: string;
@@ -23,6 +28,7 @@ export function useTemplateData(): UseTemplateDataResult {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [templates, setTemplates] = useState<DiscoveredTemplate[]>([]);
+  const [restrictedProjects, setRestrictedProjects] = useState<RestrictedProject[]>([]);
   const [configuredCategories, setConfiguredCategories] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>(ALL_CATEGORY_NAME);
   const [searchQuery, setSearchQuery] = useState("");
@@ -53,10 +59,11 @@ export function useTemplateData(): UseTemplateDataResult {
   const groupItemProvider = useMemo(() => new ArrayItemProvider(groups), [groups]);
 
   useEffect(() => {
-    Promise.all([discoverTemplates(), getTemplateCategories()])
-      .then(([templates, categories]) => {
+    Promise.all([discoverTemplates(), getTemplateCategories(), getRestrictedProjects()])
+      .then(([templates, categories, restrictions]) => {
         setTemplates(templates);
         setConfiguredCategories(categories);
+        setRestrictedProjects(restrictions);
 
         // Always start on the "All" category (index 0).
         setSelectedCategory(ALL_CATEGORY_NAME);
@@ -72,6 +79,7 @@ export function useTemplateData(): UseTemplateDataResult {
     loading,
     error,
     templates,
+    restrictedProjects,
     selectedCategory,
     setSelectedCategory,
     searchQuery,

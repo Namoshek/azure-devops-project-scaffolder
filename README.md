@@ -16,11 +16,11 @@ Everything is non-destructive. If a repository already exists and has commits, i
 
 - **Automatic template discovery** — Templates are discovered automatically from all repositories in the collection that contain a `project-template.yml` file. No manual registration required.
 - **Parameterized templates** — Templates declare typed parameters (string, boolean, choice) with optional validation, hints, and conditional visibility rules. Repository names, file paths, and file contents are all rendered through Mustache.
-- **Conditional resources** — Entire repositories or pipelines can be skipped based on parameter values, keeping templates flexible without forking.
+- **Conditional resources** — Entire repositories, service connections, variable groups, or pipelines can be skipped based on parameter values, keeping templates flexible without forking.
 - **Guided progress UI** — A step-by-step progress view shows which repositories, service connections, variable groups, and pipelines are being created, with clear success and error indicators.
 - **Non-destructive execution** — Existing repositories with content are never modified. The extension creates only what is missing.
 - **Template categories** — Organization administrators can define categories to group and filter templates, making large template libraries easy to navigate.
-- **Project restriction** — Administrators may restrict which project's templates are offered to users, enabling centralized governance of the template library.
+- **Project restriction** — Administrators may restrict which projects' templates are offered to users, enabling centralized governance of the template library.
 - **Admin hub** — A dedicated settings page gives organization / collection administrators control over categories and project restrictions.
 
 ## Getting started
@@ -78,7 +78,7 @@ A thorough example template can be found in [examples/project-template.yml](exam
 
 Organization administrators have a **Project Scaffolding** page under **Organization Settings** with two settings:
 
-- **Template categories:** define the category names available to template authors. Templates are grouped by category in the selection UI; an _All_ tab and an _Uncategorized_ fallback are always present.
+- **Template categories:** define the category names available to template authors. Templates are grouped by category in the selection UI; an _All_ tab and an _Others_ fallback are always present.
 - **Project restriction:** optionally pin template discovery to one or more projects. Useful when you maintain a dedicated "templates" project and want to prevent ad-hoc templates from appearing organization-wide.
 
 ## Permissions

@@ -42,7 +42,7 @@ export function HelpDialog({ open, onDismiss }: HelpDialogProps) {
         </p>
 
         <h3>What scaffolding does</h3>
-        <p>When a project admin runs a template, the extension will:</p>
+        <p>When a user with sufficient permissions runs a template, the extension will:</p>
         <ol>
           <li style={{ listStyle: "disc" }}>
             Create one or more <strong>repositories</strong> by copying files from the template repository, rendering

@@ -2,6 +2,10 @@ const fs = require("fs");
 const path = require("path");
 const CopyPlugin = require("copy-webpack-plugin");
 
+const certPath = path.resolve(__dirname, "dev.crt");
+const keyPath = path.resolve(__dirname, "dev.key");
+const hasCerts = fs.existsSync(certPath) && fs.existsSync(keyPath);
+
 module.exports = {
   entry: {
     ProjectHub: "./src/Hubs/ProjectHub/index.tsx",
@@ -55,13 +59,15 @@ module.exports = {
   },
   devServer: {
     port: 3000,
-    server: {
-      type: "https",
-      options: {
-        key: fs.readFileSync(path.resolve(__dirname, "dev.key")),
-        cert: fs.readFileSync(path.resolve(__dirname, "dev.crt")),
-      },
-    },
+    server: hasCerts
+      ? {
+          type: "https",
+          options: {
+            cert: fs.readFileSync(certPath),
+            key: fs.readFileSync(keyPath),
+          },
+        }
+      : "http",
     headers: {
       "Access-Control-Allow-Origin": "*",
     },

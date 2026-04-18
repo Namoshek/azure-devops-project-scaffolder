@@ -1,3 +1,4 @@
+const fs = require("fs");
 const path = require("path");
 const CopyPlugin = require("copy-webpack-plugin");
 
@@ -51,5 +52,18 @@ module.exports = {
   ],
   performance: {
     hints: false,
+  },
+  devServer: {
+    port: 3000,
+    server: {
+      type: "https",
+      options: {
+        key: fs.readFileSync(path.resolve(__dirname, "dev.key")),
+        cert: fs.readFileSync(path.resolve(__dirname, "dev.crt")),
+      },
+    },
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+    },
   },
 };

@@ -6,14 +6,17 @@
     "build": "webpack --mode production",
     "build:dev": "webpack --mode development",
     "watch": "webpack --mode development --watch",
+    "start": "webpack serve --mode development",
     "package": "npm run build && tfx extension create --manifest-globs vss-extension.json",
+    "package:dev": "tfx extension create --manifest-globs vss-extension.json --overrides-file vss-extension.dev.json",
     "clean": "rimraf dist",
     "check": "npm run typecheck && npm run lint && npm run test",
     "test": "jest",
     "test:watch": "jest --watch",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src tests",
-    "lint:fix": "eslint src tests --fix"
+    "lint:fix": "eslint src tests --fix",
+    "create-dev-cert": "dotnet dev-certs https --trust && dotnet dev-certs https --export-path dev.crt -np --format pem"
   },
   "dependencies": {
     "azure-devops-extension-api": "^4.270.0",
@@ -65,6 +68,7 @@
     "typescript": "^6.0.2",
     "typescript-eslint": "^8.58.2",
     "webpack": "^5.106.1",
-    "webpack-cli": "^7.0.2"
+    "webpack-cli": "^7.0.2",
+    "webpack-dev-server": "^5.2.3"
   }
 }

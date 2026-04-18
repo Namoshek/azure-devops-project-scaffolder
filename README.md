@@ -98,12 +98,23 @@ The extension requests these OAuth scopes:
 
 ## Development
 
+### Local Development & Hot Reloading
+
+For local development with hot-realoading, run `npm start` to launch the Webpack Dev Server and host the extension from `localhost:3000`.
+To sideload the extension into Azure DevOps, you need to serve it over HTTPS. The easiest way to do this is with a self-signed development certificate.
+You can create and trust a self-signed certificate with this command: `npm run create-dev-cert` (requires the .NET SDK to be installed).
+This creates `dev.crt` and `dev.key` files in the project root, which are used by the `webpack.config.js` for HTTPS hosting.
+
+To build an extension package for local development, run `npm run package:dev` which uses `vss-extension.dev.json` to override the manifest and point to the local development server
+
+````sh
+
 ### Build
 
 ```sh
 npm install
 npm run build
-```
+````
 
 ### Run linter & tests
 

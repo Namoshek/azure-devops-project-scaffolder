@@ -131,6 +131,8 @@ npm run package
 
 This produces a `.vsix` file that can be uploaded to the Marketplace or installed directly into an Azure DevOps Server instance.
 
+Note: The extension is packaged and published to the Visual Studio Marketplace automatically when a GitHub release is created.
+
 ### Development Resources
 
 - [Azure DevOps Design System](https://developer.microsoft.com/en-us/azure-devops/)

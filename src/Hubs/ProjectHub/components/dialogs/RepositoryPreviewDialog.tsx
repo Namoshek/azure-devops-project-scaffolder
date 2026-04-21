@@ -249,9 +249,11 @@ function TreeLevel({ nodes, depth, collapsedFolders, onToggleFolder, selectedFil
 
 interface ContentPaneProps {
   selectedFile: ProcessedFile | null;
+  contentLoading: boolean;
+  contentError: string | null;
 }
 
-function ContentPane({ selectedFile }: ContentPaneProps) {
+function ContentPane({ selectedFile, contentLoading, contentError }: ContentPaneProps) {
   if (selectedFile === null) {
     return <span className="body-s secondary-text">Select a file to preview its contents.</span>;
   }
@@ -260,6 +262,24 @@ function ContentPane({ selectedFile }: ContentPaneProps) {
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <Icon iconName="FileImage" size={IconSize.small} />
         <span className="body-s secondary-text">Binary file â€” cannot preview contents.</span>
+      </div>
+    );
+  }
+  if (contentLoading) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <Spinner size={SpinnerSize.small} />
+        <span className="body-s secondary-text">Loading file contents…</span>
+      </div>
+    );
+  }
+  if (contentError) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <Icon iconName="StatusErrorFull" size={IconSize.small} />
+        <span className="body-s" style={{ color: "var(--status-error-foreground, #cc0000)" }}>
+          Failed to load: {contentError}
+        </span>
       </div>
     );
   }
@@ -289,10 +309,17 @@ interface RepositoryPreviewDialogProps {
 }
 
 export function RepositoryPreviewDialog({ open, onDismiss, repoName, previewContext }: RepositoryPreviewDialogProps) {
-  const { loading, error, files, selectedFile, collapsedFolders, setSelectedFile, toggleFolder } = useRepositoryPreview(
-    open,
-    previewContext,
-  );
+  const {
+    loading,
+    error,
+    files,
+    selectedFile,
+    collapsedFolders,
+    contentLoading,
+    contentError,
+    setSelectedFile,
+    toggleFolder,
+  } = useRepositoryPreview(open, previewContext);
 
   const fileTree = useMemo(() => buildFileTree(files), [files]);
 
@@ -357,7 +384,7 @@ export function RepositoryPreviewDialog({ open, onDismiss, repoName, previewCont
 
             {/* Content pane */}
             <div style={{ flex: 1, overflow: "auto", padding: "12px 16px", minWidth: 600 }}>
-              <ContentPane selectedFile={selectedFile} />
+              <ContentPane selectedFile={selectedFile} contentLoading={contentLoading} contentError={contentError} />
             </div>
           </>
         )}

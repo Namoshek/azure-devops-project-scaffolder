@@ -1,5 +1,7 @@
-import { useState, useEffect } from "react";
-import { fetchTemplateFiles } from "../../../services/templateReaderService";
+import { useState, useEffect, useRef } from "react";
+import { getClient } from "azure-devops-extension-api";
+import { GitRestClient } from "azure-devops-extension-api/Git";
+import { fetchTemplateFileList } from "../../../services/templateReaderService";
 import { renderTemplatePreview, evaluateWhenExpression } from "../../../services/templateEngineService";
 import { RepositoryPreviewContext } from "../../../utils/summaryBuilder";
 
@@ -8,10 +10,12 @@ export interface ProcessedFile {
   sourcePath: string;
   /** Path relative to sourcePath with Mustache applied (e.g. MyProject.backend/README.md). */
   renderedPath: string;
-  /** Mustache-rendered file content for text files; null for binary files. */
+  /** Mustache-rendered file content for text files; null when not yet loaded or binary. */
   renderedContent: string | null;
   isExcluded: boolean;
   isBase64: boolean;
+  /** True once content has been fetched (always true for binary files, which need no fetch). */
+  contentLoaded: boolean;
 }
 
 export interface UseRepositoryPreviewResult {
@@ -20,6 +24,10 @@ export interface UseRepositoryPreviewResult {
   files: ProcessedFile[];
   selectedFile: ProcessedFile | null;
   collapsedFolders: Set<string>;
+  /** True while the selected file's content is being fetched on demand. */
+  contentLoading: boolean;
+  /** Error message if the selected file's content failed to load. */
+  contentError: string | null;
   setSelectedFile: (file: ProcessedFile) => void;
   toggleFolder: (path: string) => void;
 }
@@ -36,9 +44,19 @@ export function useRepositoryPreview(
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [files, setFiles] = useState<ProcessedFile[]>([]);
-  const [selectedFile, setSelectedFile] = useState<ProcessedFile | null>(null);
+  const [selectedFile, setSelectedFileState] = useState<ProcessedFile | null>(null);
   const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set());
+  const [contentLoading, setContentLoading] = useState(false);
+  const [contentError, setContentError] = useState<string | null>(null);
 
+  // Keep a ref so the content-loading effect always sees the latest context
+  // values even though the file-list effect only re-runs when `open` changes.
+  const previewContextRef = useRef(previewContext);
+  useEffect(() => {
+    previewContextRef.current = previewContext;
+  });
+
+  // ── Phase 1: fetch the file list as soon as the dialog opens ────────────────
   useEffect(() => {
     if (!open) {
       return;
@@ -47,7 +65,9 @@ export function useRepositoryPreview(
     setLoading(true);
     setError(null);
     setFiles([]);
-    setSelectedFile(null);
+    setSelectedFileState(null);
+    setContentLoading(false);
+    setContentError(null);
 
     const { sourceProjectId, sourceRepoId, templateRepository, viewValues } = previewContext;
 
@@ -56,7 +76,7 @@ export function useRepositoryPreview(
     const normalizedBase = rawSourcePath.startsWith("/") ? rawSourcePath : `/${rawSourcePath}`;
     const sourcePathPrefix = normalizedBase.endsWith("/") ? normalizedBase : `${normalizedBase}/`;
 
-    void fetchTemplateFiles(sourceProjectId, sourceRepoId, normalizedBase)
+    void fetchTemplateFileList(sourceProjectId, sourceRepoId, normalizedBase)
       .then((rawFiles) => {
         const processed: ProcessedFile[] = rawFiles
           // Mirror the project-template.yml exclusion done in repositoryService.ts
@@ -70,7 +90,6 @@ export function useRepositoryPreview(
                 : f.path;
 
             const renderedPath = renderTemplatePreview(relativePath, viewValues);
-            const renderedContent = f.isBase64 ? null : renderTemplatePreview(f.content, viewValues);
 
             // Evaluate exclude rules using the same matching logic as repositoryService.ts.
             const excludeRules = templateRepository.exclude ?? [];
@@ -80,7 +99,16 @@ export function useRepositoryPreview(
                 (!rule.when || evaluateWhenExpression(rule.when, viewValues)),
             );
 
-            return { sourcePath: f.path, renderedPath, renderedContent, isExcluded, isBase64: f.isBase64 };
+            // Binary files don't need a content fetch; mark them loaded immediately.
+            const isBase64 = !f.isText;
+            return {
+              sourcePath: f.path,
+              renderedPath,
+              renderedContent: null,
+              isExcluded,
+              isBase64,
+              contentLoaded: isBase64,
+            };
           });
 
         // Derive all unique folder paths so every folder starts collapsed.
@@ -93,7 +121,7 @@ export function useRepositoryPreview(
         }
 
         const firstIncluded = processed.find((f) => !f.isExcluded) ?? processed[0] ?? null;
-        setSelectedFile(firstIncluded);
+        setSelectedFileState(firstIncluded);
         setFiles(processed);
         setCollapsedFolders(allFolderPaths);
       })
@@ -102,6 +130,53 @@ export function useRepositoryPreview(
       })
       .finally(() => setLoading(false));
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Phase 2: fetch content on demand when a text file is selected ────────────
+  useEffect(() => {
+    if (!selectedFile || selectedFile.contentLoaded) {
+      return;
+    }
+
+    let cancelled = false;
+    setContentError(null);
+
+    // Only show the spinner if the fetch takes longer than this threshold so
+    // fast loads (<300 ms) don't cause a visible flicker.
+    const SPINNER_DELAY_MS = 300;
+    const spinnerTimer = setTimeout(() => {
+      if (cancelled) {
+        return;
+      }
+      setContentLoading(true);
+    }, SPINNER_DELAY_MS);
+
+    const { sourceProjectId, sourceRepoId, viewValues } = previewContextRef.current;
+    const gitClient = getClient(GitRestClient);
+
+    void gitClient
+      .getItemText(sourceRepoId, selectedFile.sourcePath, sourceProjectId)
+      .then((rawContent: string) => {
+        const renderedContent = renderTemplatePreview(rawContent, viewValues);
+        const loadedFile: ProcessedFile = { ...selectedFile, renderedContent, contentLoaded: true };
+        // Cache content in files array even if the user has already switched away.
+        setFiles((prev) => prev.map((f) => (f.sourcePath === selectedFile.sourcePath ? loadedFile : f)));
+        if (cancelled) return;
+        setSelectedFileState((prev) => (prev?.sourcePath === selectedFile.sourcePath ? loadedFile : prev));
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setContentError((err as Error).message ?? "Failed to load file content.");
+      })
+      .finally(() => {
+        clearTimeout(spinnerTimer);
+        if (!cancelled) setContentLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+      clearTimeout(spinnerTimer);
+    };
+  }, [selectedFile]);
 
   function toggleFolder(path: string) {
     setCollapsedFolders((prev) => {
@@ -115,5 +190,15 @@ export function useRepositoryPreview(
     });
   }
 
-  return { loading, error, files, selectedFile, collapsedFolders, setSelectedFile, toggleFolder };
+  return {
+    loading,
+    error,
+    files,
+    selectedFile,
+    collapsedFolders,
+    contentLoading,
+    contentError,
+    setSelectedFile: setSelectedFileState,
+    toggleFolder,
+  };
 }

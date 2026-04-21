@@ -41,6 +41,9 @@ export async function readTemplateFromRepo(
  * Fetches all file items under a given sourcePath in a repository.
  * Returns an array of { path, content, isBase64 } objects for use by the
  * repository service when creating git push commits.
+ *
+ * Files are fetched in parallel (up to FETCH_CONCURRENCY concurrent requests)
+ * to reduce total wall-clock time for repositories with many files.
  */
 export async function fetchTemplateFiles(
   projectId: string,
@@ -52,34 +55,73 @@ export async function fetchTemplateFiles(
   // List all items recursively under the sourcePath.
   const items = await gitClient.getItems(repoId, projectId, sourcePath, VersionControlRecursionType.Full);
 
-  const files = items.filter((item) => !item.isFolder);
-  const results: Array<{ path: string; content: string; isBase64: boolean }> = [];
+  type FileResult = { path: string; content: string; isBase64: boolean } | null;
 
-  for (const file of files) {
-    const filePath = file.path!;
-    const isText = isTextFile(filePath);
-
-    try {
-      if (isText) {
-        const content = await gitClient.getItemText(repoId, filePath, projectId);
-        results.push({ path: filePath, content, isBase64: false });
-      } else {
-        const buffer = await gitClient.getItemContent(repoId, filePath, projectId);
-        results.push({
-          path: filePath,
-          content: arrayBufferToBase64(buffer),
-          isBase64: true,
-        });
+  const tasks = items
+    .filter((item) => !item.isFolder)
+    .map((file) => async (): Promise<FileResult> => {
+      const filePath = file.path!;
+      const isText = isTextFile(filePath);
+      try {
+        if (isText) {
+          const content = await gitClient.getItemText(repoId, filePath, projectId);
+          return { path: filePath, content, isBase64: false };
+        } else {
+          const buffer = await gitClient.getItemContent(repoId, filePath, projectId);
+          return { path: filePath, content: arrayBufferToBase64(buffer), isBase64: true };
+        }
+      } catch (err) {
+        console.warn(`Skipping file ${filePath}: ${(err as Error).message}`);
+        return null;
       }
-    } catch (err) {
-      console.warn(`Skipping file ${filePath}: ${(err as Error).message}`);
-    }
-  }
+    });
 
-  return results;
+  const settled = await runConcurrently(tasks, FETCH_CONCURRENCY);
+  return settled.filter((r): r is { path: string; content: string; isBase64: boolean } => r !== null);
+}
+
+/**
+ * Lists all file paths under the given sourcePath without fetching content.
+ * Returns quickly (single API call) and is used by the preview dialog to
+ * build the file tree before content is lazily loaded on demand.
+ */
+export async function fetchTemplateFileList(
+  projectId: string,
+  repoId: string,
+  sourcePath: string,
+): Promise<Array<{ path: string; isText: boolean }>> {
+  const gitClient = getClient(GitRestClient);
+  const items = await gitClient.getItems(repoId, projectId, sourcePath, VersionControlRecursionType.Full);
+  return items.filter((item) => !item.isFolder).map((item) => ({ path: item.path!, isText: isTextFile(item.path!) }));
 }
 
 // ─── Internal helpers ──────────────────────────────────────────────────────────
+
+const FETCH_CONCURRENCY = 10;
+
+/**
+ * Runs up to `concurrency` tasks simultaneously and preserves result order.
+ * Safe in JS's single-threaded model: `nextIndex` is incremented synchronously
+ * before each await, so no two workers ever claim the same slot.
+ */
+async function runConcurrently<T>(tasks: Array<() => Promise<T>>, concurrency: number): Promise<T[]> {
+  const results: T[] = new Array(tasks.length);
+  let nextIndex = 0;
+
+  async function worker(): Promise<void> {
+    while (true) {
+      const index = nextIndex++;
+      if (index >= tasks.length) break;
+      results[index] = await tasks[index]();
+    }
+  }
+
+  const workerCount = Math.min(concurrency, tasks.length);
+  if (workerCount > 0) {
+    await Promise.all(Array.from({ length: workerCount }, worker));
+  }
+  return results;
+}
 
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);

@@ -22,7 +22,7 @@ jest.mock("../../src/services/preflightCheckService", () => ({
 import { getClient } from "azure-devops-extension-api";
 import { fetchTemplateFiles } from "../../src/services/templateReaderService";
 import { checkRepoExists } from "../../src/services/preflightCheckService";
-import { TemplateRepository } from "../../src/types/templateTypes";
+import { DiscoveredTemplate, TemplateRepository } from "../../src/types/templateTypes";
 
 const mockGetClient = getClient as jest.Mock;
 const mockFetchTemplateFiles = fetchTemplateFiles as jest.Mock;
@@ -36,6 +36,16 @@ function makeRepoTemplate(overrides: Partial<TemplateRepository> = {}): Template
     sourcePath: "/templates/api",
     defaultBranch: "main",
     ...overrides,
+  };
+}
+
+function makeDiscoveredTemplate(sourceProjectId = "sp", sourceRepoId = "sr"): DiscoveredTemplate {
+  return {
+    definition: {} as DiscoveredTemplate["definition"],
+    sourceProjectId,
+    sourceProjectName: "Test Project",
+    sourceRepoId,
+    sourceRepoName: "Test Repo",
   };
 }
 
@@ -77,7 +87,12 @@ describe("scaffoldRepository", () => {
       },
     ]);
 
-    const result = await scaffoldRepository("proj1", makeRepoTemplate(), "src-proj", "src-repo", PARAMS);
+    const result = await scaffoldRepository(
+      "proj1",
+      makeRepoTemplate(),
+      makeDiscoveredTemplate("src-proj", "src-repo"),
+      PARAMS,
+    );
 
     expect(result.status).toBe("created");
     expect(result.repoName).toBe("my-app-api");
@@ -96,7 +111,7 @@ describe("scaffoldRepository", () => {
       },
     ]);
 
-    await scaffoldRepository("proj1", makeRepoTemplate(), "sp", "sr", PARAMS);
+    await scaffoldRepository("proj1", makeRepoTemplate(), makeDiscoveredTemplate(), PARAMS);
 
     const pushCall = gitClient.createPush.mock.calls[0][0];
     const change = pushCall.commits[0].changes[0];
@@ -114,7 +129,7 @@ describe("scaffoldRepository", () => {
       },
     ]);
 
-    await scaffoldRepository("proj1", makeRepoTemplate(), "sp", "sr", PARAMS);
+    await scaffoldRepository("proj1", makeRepoTemplate(), makeDiscoveredTemplate(), PARAMS);
 
     const pushCall = gitClient.createPush.mock.calls[0][0];
     const change = pushCall.commits[0].changes[0];
@@ -132,7 +147,7 @@ describe("scaffoldRepository", () => {
       },
     ]);
 
-    await scaffoldRepository("proj1", makeRepoTemplate(), "sp", "sr", PARAMS);
+    await scaffoldRepository("proj1", makeRepoTemplate(), makeDiscoveredTemplate(), PARAMS);
 
     const pushCall = gitClient.createPush.mock.calls[0][0];
     const change = pushCall.commits[0].changes[0];
@@ -157,7 +172,7 @@ describe("scaffoldRepository", () => {
       },
     ]);
 
-    await scaffoldRepository("proj1", makeRepoTemplate(), "sp", "sr", PARAMS);
+    await scaffoldRepository("proj1", makeRepoTemplate(), makeDiscoveredTemplate(), PARAMS);
 
     const pushCall = gitClient.createPush.mock.calls[0][0];
     const paths = pushCall.commits[0].changes.map((c: any) => c.item.path);
@@ -183,10 +198,7 @@ describe("scaffoldRepository", () => {
       exclude: [{ path: "docker-compose.yml", when: "includeDocker == false" }],
     });
 
-    await scaffoldRepository("proj1", repoTemplate, "sp", "sr", {
-      ...PARAMS,
-      includeDocker: false,
-    });
+    await scaffoldRepository("proj1", repoTemplate, makeDiscoveredTemplate(), { ...PARAMS, includeDocker: false });
 
     const pushCall = gitClient.createPush.mock.calls[0][0];
     const paths = pushCall.commits[0].changes.map((c: any) => c.item.path);
@@ -208,10 +220,7 @@ describe("scaffoldRepository", () => {
       exclude: [{ path: "docker-compose.yml", when: "includeDocker == false" }],
     });
 
-    await scaffoldRepository("proj1", repoTemplate, "sp", "sr", {
-      ...PARAMS,
-      includeDocker: true,
-    });
+    await scaffoldRepository("proj1", repoTemplate, makeDiscoveredTemplate(), { ...PARAMS, includeDocker: true });
 
     const pushCall = gitClient.createPush.mock.calls[0][0];
     const paths = pushCall.commits[0].changes.map((c: any) => c.item.path);
@@ -232,7 +241,7 @@ describe("scaffoldRepository", () => {
 
     const repoTemplate = makeRepoTemplate({ exclude: [{ path: "docker/" }] });
 
-    await scaffoldRepository("proj1", repoTemplate, "sp", "sr", PARAMS);
+    await scaffoldRepository("proj1", repoTemplate, makeDiscoveredTemplate(), PARAMS);
 
     const pushCall = gitClient.createPush.mock.calls[0][0];
     const paths = pushCall.commits[0].changes.map((c: any) => c.item.path);
@@ -254,10 +263,7 @@ describe("scaffoldRepository", () => {
       exclude: [{ path: "docker/", when: "includeDocker == false" }],
     });
 
-    await scaffoldRepository("proj1", repoTemplate, "sp", "sr", {
-      ...PARAMS,
-      includeDocker: false,
-    });
+    await scaffoldRepository("proj1", repoTemplate, makeDiscoveredTemplate(), { ...PARAMS, includeDocker: false });
 
     const pushCall = gitClient.createPush.mock.calls[0][0];
     const paths = pushCall.commits[0].changes.map((c: any) => c.item.path);
@@ -277,10 +283,7 @@ describe("scaffoldRepository", () => {
       exclude: [{ path: "docker/", when: "includeDocker == false" }],
     });
 
-    await scaffoldRepository("proj1", repoTemplate, "sp", "sr", {
-      ...PARAMS,
-      includeDocker: true,
-    });
+    await scaffoldRepository("proj1", repoTemplate, makeDiscoveredTemplate(), { ...PARAMS, includeDocker: true });
 
     const pushCall = gitClient.createPush.mock.calls[0][0];
     const paths = pushCall.commits[0].changes.map((c: any) => c.item.path);
@@ -299,7 +302,7 @@ describe("scaffoldRepository", () => {
     // Rule uses "docker/" (with slash) — only files *inside* docker/ should be excluded
     const repoTemplate = makeRepoTemplate({ exclude: [{ path: "docker/" }] });
 
-    await scaffoldRepository("proj1", repoTemplate, "sp", "sr", PARAMS);
+    await scaffoldRepository("proj1", repoTemplate, makeDiscoveredTemplate(), PARAMS);
 
     const pushCall = gitClient.createPush.mock.calls[0][0];
     const paths = pushCall.commits[0].changes.map((c: any) => c.item.path);
@@ -314,7 +317,7 @@ describe("scaffoldRepository", () => {
     const gitClient = makeGitClient();
     mockGetClient.mockReturnValue(gitClient);
 
-    const result = await scaffoldRepository("proj1", makeRepoTemplate(), "sp", "sr", PARAMS);
+    const result = await scaffoldRepository("proj1", makeRepoTemplate(), makeDiscoveredTemplate(), PARAMS);
 
     expect(result.status).toBe("skipped");
     expect(gitClient.createRepository).not.toHaveBeenCalled();
@@ -328,7 +331,7 @@ describe("scaffoldRepository", () => {
     mockGetClient.mockReturnValue(gitClient);
     mockFetchTemplateFiles.mockResolvedValue([]);
 
-    const result = await scaffoldRepository("proj1", makeRepoTemplate(), "sp", "sr", PARAMS);
+    const result = await scaffoldRepository("proj1", makeRepoTemplate(), makeDiscoveredTemplate(), PARAMS);
 
     expect(result.status).toBe("skipped");
     expect(result.reason).toMatch(/no files/i);
@@ -341,7 +344,7 @@ describe("scaffoldRepository", () => {
     const gitClient = makeGitClient();
     mockGetClient.mockReturnValue(gitClient);
 
-    const result = await scaffoldRepository("proj1", makeRepoTemplate(), "sp", "sr", PARAMS);
+    const result = await scaffoldRepository("proj1", makeRepoTemplate(), makeDiscoveredTemplate(), PARAMS);
 
     expect(result.status).toBe("failed");
     expect(result.reason).toMatch(/Failed to check repository existence/);
@@ -354,7 +357,7 @@ describe("scaffoldRepository", () => {
     mockGetClient.mockReturnValue(gitClient);
     mockFetchTemplateFiles.mockResolvedValue([]);
 
-    const result = await scaffoldRepository("proj1", makeRepoTemplate(), "sp", "sr", PARAMS);
+    const result = await scaffoldRepository("proj1", makeRepoTemplate(), makeDiscoveredTemplate(), PARAMS);
 
     expect(result.status).toBe("failed");
     expect(result.reason).toMatch(/Failed to create repository/);
@@ -365,7 +368,7 @@ describe("scaffoldRepository", () => {
     mockGetClient.mockReturnValue(gitClient);
     mockFetchTemplateFiles.mockRejectedValue(new Error("Git error"));
 
-    const result = await scaffoldRepository("proj1", makeRepoTemplate(), "sp", "sr", PARAMS);
+    const result = await scaffoldRepository("proj1", makeRepoTemplate(), makeDiscoveredTemplate(), PARAMS);
 
     expect(result.status).toBe("failed");
     expect(result.reason).toMatch(/Failed to read template files/);
@@ -384,7 +387,7 @@ describe("scaffoldRepository", () => {
       },
     ]);
 
-    const result = await scaffoldRepository("proj1", makeRepoTemplate(), "sp", "sr", PARAMS);
+    const result = await scaffoldRepository("proj1", makeRepoTemplate(), makeDiscoveredTemplate(), PARAMS);
 
     expect(result.status).toBe("failed");
     expect(result.reason).toMatch(/Failed to push files/);

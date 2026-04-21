@@ -15,10 +15,14 @@ Mustache.escape = (text: string) => text;
  * `evaluateWhenExpression` instead of passing raw parameter values directly.
  */
 export function buildViewValues(
-  computed: TemplateDefinition["computed"],
+  template: TemplateDefinition,
   rawValues: Record<string, unknown>,
 ): Record<string, unknown> {
-  if (!computed || computed.length === 0) return rawValues;
+  const computed = template.computed;
+  if (!computed || computed.length === 0) {
+    return rawValues;
+  }
+
   const computedBooleans: Record<string, boolean> = {};
   for (const entry of computed) {
     computedBooleans[entry.id] = evaluateWhenExpression(entry.expression, rawValues);
@@ -40,7 +44,10 @@ export function renderTemplate(templateStr: string, values: Record<string, unkno
  * so the user can see the placeholder until the field is filled in.
  */
 export function renderTemplatePreview(templateStr: string | undefined, values: Record<string, unknown>): string {
-  if (!templateStr) return "";
+  if (!templateStr) {
+    return "";
+  }
+
   const previewValues: Record<string, unknown> = {};
   for (const [key, val] of Object.entries(values)) {
     previewValues[key] = val !== undefined && val !== null && val !== "" ? val : `{{${key}}}`;
@@ -102,8 +109,12 @@ function evalAtom(expr: string, values: Record<string, unknown>): boolean {
     const lhs = values[id];
     const rhs = parseLiteral(rawValue.trim());
 
-    if (op === "==") return lhs === rhs;
-    if (op === "!=") return lhs !== rhs;
+    if (op === "==") {
+      return lhs === rhs;
+    }
+    if (op === "!=") {
+      return lhs !== rhs;
+    }
   }
 
   // Plain identifier (truthy check)
@@ -178,14 +189,30 @@ function splitTopLevel(expr: string, operator: string): string[] {
 
 /** Parse a stringified literal into a JS value. */
 function parseLiteral(raw: string): unknown {
-  if (raw === "true") return true;
-  if (raw === "false") return false;
-  if (raw === "null") return null;
-  if (raw === "undefined") return undefined;
+  if (raw === "true") {
+    return true;
+  }
+
+  if (raw === "false") {
+    return false;
+  }
+
+  if (raw === "null") {
+    return null;
+  }
+
+  if (raw === "undefined") {
+    return undefined;
+  }
+
   if ((raw.startsWith('"') && raw.endsWith('"')) || (raw.startsWith("'") && raw.endsWith("'"))) {
     return raw.slice(1, -1);
   }
+
   const num = Number(raw);
-  if (!isNaN(num)) return num;
+  if (!isNaN(num)) {
+    return num;
+  }
+
   return raw;
 }

@@ -237,7 +237,7 @@ export async function checkTemplateResourcesExistence(
   template: TemplateDefinition,
   paramValues: Record<string, unknown>,
 ): Promise<ResourceExistenceMap> {
-  const viewValues = buildViewValues(template.computed, paramValues);
+  const viewValues = buildViewValues(template, paramValues);
 
   const repositoryEntries = (template.repositories ?? []).map((r) => {
     const renderedName = renderTemplate(r.name, viewValues);

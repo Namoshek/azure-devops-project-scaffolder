@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { TemplateDefinition, TemplatePermissions } from "../../../types/templateTypes";
+import { DiscoveredTemplate, TemplatePermissions } from "../../../types/templateTypes";
 import { evaluateWhenExpression, buildViewValues } from "../../../services/templateEngineService";
 import { buildDefaults, validate } from "../../../utils/formUtils";
 import { buildSummaryItems, ParameterSummaryItem } from "../../../utils/summaryBuilder";
@@ -20,31 +20,29 @@ export interface UseParameterFormResult {
 }
 
 export function useParameterForm(
-  template: TemplateDefinition,
+  template: DiscoveredTemplate,
   permissions: TemplatePermissions | null,
   projectId: string,
   onSubmit: (values: Record<string, unknown>) => void,
-  sourceProjectId?: string,
-  sourceRepoId?: string,
 ): UseParameterFormResult {
-  const [values, setValues] = useState<Record<string, unknown>>(() => buildDefaults(template.parameters));
+  const [values, setValues] = useState<Record<string, unknown>>(() => buildDefaults(template.definition.parameters));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
 
-  const { preflightChecks, preflightPending } = usePreflightChecks(projectId, template, values);
+  const { preflightChecks, preflightPending } = usePreflightChecks(projectId, template.definition, values);
 
-  const viewValues = useMemo(() => buildViewValues(template.computed, values), [template.computed, values]);
+  const viewValues = useMemo(() => buildViewValues(template.definition, values), [template.definition, values]);
 
   function handleChange(id: string, value: unknown) {
     const newValues = { ...values, [id]: value };
     setValues(newValues);
-    const fieldErrors = validate(template.parameters, newValues);
+    const fieldErrors = validate(template.definition.parameters, newValues);
     setErrors((prev) => ({ ...prev, [id]: fieldErrors[id] ?? "" }));
   }
 
   function handleSubmit() {
     setSubmitted(true);
-    const errs = validate(template.parameters, values);
+    const errs = validate(template.definition.parameters, values);
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
       return;
@@ -53,22 +51,13 @@ export function useParameterForm(
   }
 
   const visibleParams = useMemo(
-    () => template.parameters.filter((p) => !p.when || evaluateWhenExpression(p.when, viewValues)),
-    [template.parameters, viewValues],
+    () => template.definition.parameters.filter((p) => !p.when || evaluateWhenExpression(p.when, viewValues)),
+    [template.definition.parameters, viewValues],
   );
 
   const summaryItems = useMemo(
-    () =>
-      buildSummaryItems(
-        template,
-        values,
-        permissions,
-        preflightChecks,
-        preflightPending,
-        sourceProjectId,
-        sourceRepoId,
-      ),
-    [template, values, permissions, preflightChecks, preflightPending, sourceProjectId, sourceRepoId],
+    () => buildSummaryItems(template, values, permissions, preflightChecks, preflightPending),
+    [template, values, permissions, preflightChecks, preflightPending],
   );
 
   const includedItems = summaryItems.filter((i) => i.included);

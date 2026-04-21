@@ -45,8 +45,8 @@ export function ScaffoldProgress({
   );
 
   const viewValues = useMemo(
-    () => buildViewValues(template.definition.computed, parameterValues),
-    [template.definition.computed, parameterValues],
+    () => buildViewValues(template.definition, parameterValues),
+    [template.definition, parameterValues],
   );
 
   return (

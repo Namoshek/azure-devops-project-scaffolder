@@ -1,5 +1,5 @@
 ﻿import React from "react";
-import { TemplateDefinition, TemplatePermissions } from "../../../../types/templateTypes";
+import { DiscoveredTemplate, TemplatePermissions } from "../../../../types/templateTypes";
 import { Button } from "azure-devops-ui/Components/Button/Button";
 import { ParameterField } from "./ParameterField";
 import { TemplateFormHeader } from "./TemplateFormHeader";
@@ -8,24 +8,14 @@ import { useParameterForm } from "../../hooks/useParameterForm";
 import { groupParameters } from "../../../../utils/formUtils";
 
 interface ParameterFormProps {
-  template: TemplateDefinition;
+  template: DiscoveredTemplate;
   permissions: TemplatePermissions | null;
   projectId: string;
   onSubmit: (values: Record<string, unknown>) => void;
   onBack: () => void;
-  sourceProjectId?: string;
-  sourceRepoId?: string;
 }
 
-export function ParameterForm({
-  template,
-  permissions,
-  projectId,
-  onSubmit,
-  onBack,
-  sourceProjectId,
-  sourceRepoId,
-}: ParameterFormProps) {
+export function ParameterForm({ template, permissions, projectId, onSubmit, onBack }: ParameterFormProps) {
   const {
     values,
     viewValues,
@@ -36,7 +26,7 @@ export function ParameterForm({
     submitTooltip,
     handleChange,
     handleSubmit,
-  } = useParameterForm(template, permissions, projectId, onSubmit, sourceProjectId, sourceRepoId);
+  } = useParameterForm(template, permissions, projectId, onSubmit);
 
   return (
     <div className="flex-row" style={{ gap: 48 }}>
@@ -47,7 +37,7 @@ export function ParameterForm({
         }}
         noValidate
       >
-        <TemplateFormHeader template={template} values={viewValues} />
+        <TemplateFormHeader template={template.definition} values={viewValues} />
 
         <div className="flex-column rhythm-vertical-32">
           {groupParameters(visibleParams).map((group) =>

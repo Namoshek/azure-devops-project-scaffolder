@@ -44,13 +44,11 @@ export function ScaffoldApp() {
 
         {screen === "form" && selectedTemplate && (
           <ParameterForm
-            template={selectedTemplate.definition}
+            template={selectedTemplate}
             permissions={permissions}
             projectId={projectId!}
             onSubmit={handleFormSubmit}
             onBack={handleBack}
-            sourceProjectId={selectedTemplate.sourceProjectId}
-            sourceRepoId={selectedTemplate.sourceRepoId}
           />
         )}
 

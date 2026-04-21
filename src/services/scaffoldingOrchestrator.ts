@@ -36,8 +36,8 @@ export async function runScaffold(
   onProgress: ProgressCallback,
   permissions?: TemplatePermissions,
 ): Promise<ScaffoldResult[]> {
-  const { definition: templateDefinition, sourceProjectId, sourceRepoId } = template;
-  const viewValues = buildViewValues(templateDefinition.computed, parameterValues);
+  const { definition: templateDefinition } = template;
+  const viewValues = buildViewValues(templateDefinition, parameterValues);
 
   // Build the initial step list
   const repoSteps: ScaffoldStep[] = templateDefinition.repositories.map((r) => ({
@@ -94,7 +94,7 @@ export async function runScaffold(
 
     let result: RepoScaffoldResult;
     try {
-      result = await scaffoldRepository(projectId, repoTemplate, sourceProjectId, sourceRepoId, viewValues);
+      result = await scaffoldRepository(projectId, repoTemplate, template, viewValues);
     } catch (err) {
       result = {
         repoName: repoTemplate.name,

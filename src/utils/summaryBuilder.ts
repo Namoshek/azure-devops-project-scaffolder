@@ -1,4 +1,4 @@
-import { TemplateDefinition, TemplatePermissions, TemplateRepository } from "../types/templateTypes";
+import { DiscoveredTemplate, TemplatePermissions, TemplateRepository } from "../types/templateTypes";
 import {
   evaluateWhenExpression,
   renderTemplate,
@@ -36,17 +36,16 @@ export interface ParameterSummaryItem {
 }
 
 export function buildSummaryItems(
-  template: TemplateDefinition,
+  template: DiscoveredTemplate,
   values: Record<string, unknown>,
   permissions: TemplatePermissions | null,
   preflightChecks: ResourceExistenceMap | null,
   preflightPending: boolean,
-  sourceProjectId?: string,
-  sourceRepoId?: string,
 ): ParameterSummaryItem[] {
-  const viewValues = buildViewValues(template.computed, values);
+  const { definition } = template;
+  const viewValues = buildViewValues(definition, values);
 
-  const repositories = (template.repositories ?? []).map((r) => {
+  const repositories = (definition.repositories ?? []).map((r) => {
     const included = !r.when || evaluateWhenExpression(r.when, viewValues);
     const conditionalExcludes = (r.exclude ?? []).filter((e) => !!e.when);
     const subItems: ParameterSummarySubItem[] = [
@@ -63,10 +62,12 @@ export function buildSummaryItems(
       included && !permissionDenied && (repositoryCheck?.exists && repositoryCheck.isNonEmpty) === true;
     const existsCheckPending = included && !permissionDenied && (preflightPending || repositoryCheck === undefined);
 
-    const previewContext: RepositoryPreviewContext | undefined =
-      sourceProjectId && sourceRepoId
-        ? { sourceProjectId, sourceRepoId, templateRepository: r, viewValues }
-        : undefined;
+    const previewContext: RepositoryPreviewContext = {
+      sourceProjectId: template.sourceProjectId,
+      sourceRepoId: template.sourceRepoId,
+      templateRepository: r,
+      viewValues,
+    };
 
     return {
       type: "repository" as const,
@@ -80,7 +81,7 @@ export function buildSummaryItems(
     };
   });
 
-  const pipelines = (template.pipelines ?? []).map((p) => {
+  const pipelines = (definition.pipelines ?? []).map((p) => {
     const included = !p.when || evaluateWhenExpression(p.when, viewValues);
     const lookupName = renderTemplate(p.name, viewValues);
     const folder = p.folder ?? "\\";
@@ -107,7 +108,7 @@ export function buildSummaryItems(
     };
   });
 
-  const serviceConnections = (template.serviceConnections ?? []).map((sc) => {
+  const serviceConnections = (definition.serviceConnections ?? []).map((sc) => {
     const included = !sc.when || evaluateWhenExpression(sc.when, viewValues);
     const lookupName = renderTemplate(sc.name, viewValues);
     const serviceConnectionCheck = preflightChecks?.serviceConnections[lookupName.toLowerCase()];
@@ -126,7 +127,7 @@ export function buildSummaryItems(
     };
   });
 
-  const variableGroups = (template.variableGroups ?? []).map((vg) => {
+  const variableGroups = (definition.variableGroups ?? []).map((vg) => {
     const included = !vg.when || evaluateWhenExpression(vg.when, viewValues);
     const lookupName = renderTemplate(vg.name, viewValues);
     const variableGroupCheck = preflightChecks?.variableGroups[lookupName.toLowerCase()];

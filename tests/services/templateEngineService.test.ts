@@ -4,6 +4,11 @@ import {
   evaluateWhenExpression,
   buildViewValues,
 } from "../../src/services/templateEngineService";
+import { TemplateDefinition } from "../../src/types/templateTypes";
+
+function makeTemplate(computed?: TemplateDefinition["computed"]): TemplateDefinition {
+  return { computed } as TemplateDefinition;
+}
 
 // ─── renderTemplate ────────────────────────────────────────────────────────────
 
@@ -234,38 +239,41 @@ describe("renderTemplatePreview — Markdown-safe interpolation", () => {
 describe("buildViewValues", () => {
   it("returns raw values unchanged when computed is undefined", () => {
     const raw = { name: "Alice", flag: true };
-    const result = buildViewValues(undefined, raw);
+    const result = buildViewValues(makeTemplate(undefined), raw);
     expect(result).toEqual(raw);
   });
 
   it("returns raw values unchanged when computed is an empty array", () => {
     const raw = { name: "Alice" };
-    const result = buildViewValues([], raw);
+    const result = buildViewValues(makeTemplate([]), raw);
     expect(result).toEqual(raw);
   });
 
   it("injects true for a matching equality expression", () => {
     const raw = { framework: "vite" };
-    const result = buildViewValues([{ id: "isVite", expression: "framework == 'vite'" }], raw);
+    const result = buildViewValues(makeTemplate([{ id: "isVite", expression: "framework == 'vite'" }]), raw);
     expect(result.isVite).toBe(true);
   });
 
   it("injects false for a non-matching equality expression", () => {
     const raw = { framework: "webpack" };
-    const result = buildViewValues([{ id: "isVite", expression: "framework == 'vite'" }], raw);
+    const result = buildViewValues(makeTemplate([{ id: "isVite", expression: "framework == 'vite'" }]), raw);
     expect(result.isVite).toBe(false);
   });
 
   it("evaluates a compound && expression", () => {
     const raw = { includeBackend: true, env: "prod" };
-    const result = buildViewValues([{ id: "backendAndProd", expression: "includeBackend && env == 'prod'" }], raw);
+    const result = buildViewValues(
+      makeTemplate([{ id: "backendAndProd", expression: "includeBackend && env == 'prod'" }]),
+      raw,
+    );
     expect(result.backendAndProd).toBe(true);
   });
 
   it("evaluates a compound || expression", () => {
     const raw = { frontend: "react" };
     const result = buildViewValues(
-      [{ id: "isSpaFramework", expression: "frontend == 'react' || frontend == 'vue'" }],
+      makeTemplate([{ id: "isSpaFramework", expression: "frontend == 'react' || frontend == 'vue'" }]),
       raw,
     );
     expect(result.isSpaFramework).toBe(true);
@@ -273,7 +281,7 @@ describe("buildViewValues", () => {
 
   it("preserves all raw values in the returned object", () => {
     const raw = { a: "x", b: 42 };
-    const result = buildViewValues([{ id: "isX", expression: "a == 'x'" }], raw);
+    const result = buildViewValues(makeTemplate([{ id: "isX", expression: "a == 'x'" }]), raw);
     expect(result.a).toBe("x");
     expect(result.b).toBe(42);
     expect(result.isX).toBe(true);
@@ -283,10 +291,10 @@ describe("buildViewValues", () => {
     // isA uses raw 'flag'; isB also uses raw 'flag' — isA's result does NOT feed into isB's evaluation.
     const raw = { flag: true };
     const result = buildViewValues(
-      [
+      makeTemplate([
         { id: "isA", expression: "flag" },
         { id: "isB", expression: "flag" },
-      ],
+      ]),
       raw,
     );
     expect(result.isA).toBe(true);
@@ -298,12 +306,12 @@ describe("buildViewValues", () => {
   it("computed value overrides a raw parameter with the same name", () => {
     // Intentional precedence rule: computed spread last.
     const raw = { isVite: "unexpected-raw-string" };
-    const result = buildViewValues([{ id: "isVite", expression: "false" }], raw);
+    const result = buildViewValues(makeTemplate([{ id: "isVite", expression: "false" }]), raw);
     expect(result.isVite).toBe(false);
   });
 
   it("injects false for a truthy-check on a missing parameter", () => {
-    const result = buildViewValues([{ id: "hasFlag", expression: "missingParam" }], {});
+    const result = buildViewValues(makeTemplate([{ id: "hasFlag", expression: "missingParam" }]), {});
     expect(result.hasFlag).toBe(false);
   });
 });

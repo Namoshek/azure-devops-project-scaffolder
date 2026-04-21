@@ -3,7 +3,7 @@ import { GitRestClient, GitPush, VersionControlChangeType, ItemContentType } fro
 import { fetchTemplateFiles } from "./templateReaderService";
 import { renderTemplate, evaluateWhenExpression } from "./templateEngineService";
 import { checkRepoExists } from "./preflightCheckService";
-import { TemplateRepository } from "../types/templateTypes";
+import { DiscoveredTemplate, TemplateRepository } from "../types/templateTypes";
 
 export type RepoScaffoldStatus = "created" | "skipped" | "failed";
 
@@ -22,8 +22,7 @@ export interface RepoScaffoldResult {
 export async function scaffoldRepository(
   projectId: string,
   repoTemplate: TemplateRepository,
-  sourceProjectId: string,
-  sourceRepoId: string,
+  template: DiscoveredTemplate,
   parameterValues: Record<string, unknown>,
 ): Promise<RepoScaffoldResult> {
   const repoName = renderTemplate(repoTemplate.name, parameterValues);
@@ -99,7 +98,7 @@ export async function scaffoldRepository(
     isBase64: boolean;
   }>;
   try {
-    templateFiles = await fetchTemplateFiles(sourceProjectId, sourceRepoId, repoTemplate.sourcePath);
+    templateFiles = await fetchTemplateFiles(template.sourceProjectId, template.sourceRepoId, repoTemplate.sourcePath);
   } catch (err) {
     return {
       repoName,

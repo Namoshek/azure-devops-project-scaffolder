@@ -24,6 +24,8 @@ export function useParameterForm(
   permissions: TemplatePermissions | null,
   projectId: string,
   onSubmit: (values: Record<string, unknown>) => void,
+  sourceProjectId?: string,
+  sourceRepoId?: string,
 ): UseParameterFormResult {
   const [values, setValues] = useState<Record<string, unknown>>(() => buildDefaults(template.parameters));
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -56,8 +58,17 @@ export function useParameterForm(
   );
 
   const summaryItems = useMemo(
-    () => buildSummaryItems(template, values, permissions, preflightChecks, preflightPending),
-    [template, values, permissions, preflightChecks, preflightPending],
+    () =>
+      buildSummaryItems(
+        template,
+        values,
+        permissions,
+        preflightChecks,
+        preflightPending,
+        sourceProjectId,
+        sourceRepoId,
+      ),
+    [template, values, permissions, preflightChecks, preflightPending, sourceProjectId, sourceRepoId],
   );
 
   const includedItems = summaryItems.filter((i) => i.included);

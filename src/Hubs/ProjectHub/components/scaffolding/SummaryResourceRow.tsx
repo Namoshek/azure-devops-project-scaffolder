@@ -1,9 +1,11 @@
-import React from "react";
+import React, { useState } from "react";
 import { ParameterSummaryItem, ParameterSummarySubItem } from "../../../../utils/summaryBuilder";
 import { statusColors } from "../../../../types/statusColors";
 import { Icon, IconSize } from "azure-devops-ui/Icon";
 import { Spinner } from "azure-devops-ui/Components/Spinner/Spinner";
 import { SpinnerSize } from "azure-devops-ui/Components/Spinner/Spinner.Props";
+import { Button } from "azure-devops-ui/Components/Button/Button";
+import { RepositoryPreviewDialog } from "../dialogs/RepositoryPreviewDialog";
 
 // ─── Color aliases ─────────────────────────────────────────────────────────────
 // success = will be created
@@ -40,11 +42,20 @@ const resourceNameMap: Record<ParameterSummaryItem["type"], string> = {
 };
 
 export function SummaryResourceRow({ item, isLast }: SummaryResourceRowProps) {
+  const [previewOpen, setPreviewOpen] = useState(false);
+
   const wrapperClass = isLast ? "flex-column justify-start" : "flex-column justify-start separator-line-bottom";
 
   const isSkipped = !item.included || item.permissionDenied || item.existsWillSkip;
   const iconName = resourceIconMap[item.type] ?? "Page"; // Default icon if type is unrecognized
   const resourceType = resourceNameMap[item.type] ?? "Resource";
+
+  const showPreviewButton =
+    item.type === "repository" &&
+    item.previewContext !== undefined &&
+    item.included &&
+    !item.permissionDenied &&
+    !item.existsWillSkip;
 
   // Determine which system-level blocker applies (highest priority first).
   // Only one badge is shown per resource.
@@ -61,6 +72,18 @@ export function SummaryResourceRow({ item, isLast }: SummaryResourceRowProps) {
           {resourceType}: {item.name}
           {isSkipped && <span style={{ marginLeft: 4 }}>(skipped)</span>}
         </span>
+
+        {showPreviewButton && (
+          <>
+            <span style={{ flexGrow: 1 }}></span>
+            <Button
+              subtle
+              text="Preview"
+              tooltipProps={{ text: "View a preview of the repository contents with the provided parameter inputs." }}
+              onClick={() => setPreviewOpen(true)}
+            />
+          </>
+        )}
 
         {item.existsCheckPending && <Spinner size={SpinnerSize.xSmall} ariaLabel="Checking existence..." />}
 
@@ -149,6 +172,15 @@ export function SummaryResourceRow({ item, isLast }: SummaryResourceRowProps) {
             </div>
           ))}
         </div>
+      )}
+
+      {showPreviewButton && item.previewContext && (
+        <RepositoryPreviewDialog
+          open={previewOpen}
+          onDismiss={() => setPreviewOpen(false)}
+          repoName={item.name}
+          previewContext={item.previewContext}
+        />
       )}
     </div>
   );

@@ -1,4 +1,4 @@
-import { groupParameters, ParameterGroup } from "../../src/utils/formUtils";
+import { groupParameters } from "../../src/utils/formUtils";
 import { TemplateParameter } from "../../src/types/templateTypes";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

@@ -1,4 +1,4 @@
-import { TemplateDefinition, TemplatePermissions } from "../types/templateTypes";
+import { TemplateDefinition, TemplatePermissions, TemplateRepository } from "../types/templateTypes";
 import {
   evaluateWhenExpression,
   renderTemplate,
@@ -12,6 +12,17 @@ export interface ParameterSummarySubItem {
   included: boolean;
 }
 
+/**
+ * Carries the data needed by RepositoryPreviewDialog to fetch and render
+ * the future contents of a repository before scaffolding runs.
+ */
+export interface RepositoryPreviewContext {
+  sourceProjectId: string;
+  sourceRepoId: string;
+  templateRepository: TemplateRepository;
+  viewValues: Record<string, unknown>;
+}
+
 export interface ParameterSummaryItem {
   type: "repository" | "serviceConnection" | "variableGroup" | "pipeline";
   name: string;
@@ -20,6 +31,8 @@ export interface ParameterSummaryItem {
   existsWillSkip: boolean;
   existsCheckPending: boolean;
   subItems?: ParameterSummarySubItem[];
+  /** Only populated for repository items when source context is available. */
+  previewContext?: RepositoryPreviewContext;
 }
 
 export function buildSummaryItems(
@@ -28,6 +41,8 @@ export function buildSummaryItems(
   permissions: TemplatePermissions | null,
   preflightChecks: ResourceExistenceMap | null,
   preflightPending: boolean,
+  sourceProjectId?: string,
+  sourceRepoId?: string,
 ): ParameterSummaryItem[] {
   const viewValues = buildViewValues(template.computed, values);
 
@@ -48,6 +63,11 @@ export function buildSummaryItems(
       included && !permissionDenied && (repositoryCheck?.exists && repositoryCheck.isNonEmpty) === true;
     const existsCheckPending = included && !permissionDenied && (preflightPending || repositoryCheck === undefined);
 
+    const previewContext: RepositoryPreviewContext | undefined =
+      sourceProjectId && sourceRepoId
+        ? { sourceProjectId, sourceRepoId, templateRepository: r, viewValues }
+        : undefined;
+
     return {
       type: "repository" as const,
       name: renderTemplatePreview(r.name, viewValues),
@@ -56,6 +76,7 @@ export function buildSummaryItems(
       existsWillSkip,
       existsCheckPending,
       subItems,
+      previewContext,
     };
   });
 

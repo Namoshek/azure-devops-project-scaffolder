@@ -13,9 +13,19 @@ interface ParameterFormProps {
   projectId: string;
   onSubmit: (values: Record<string, unknown>) => void;
   onBack: () => void;
+  sourceProjectId?: string;
+  sourceRepoId?: string;
 }
 
-export function ParameterForm({ template, permissions, projectId, onSubmit, onBack }: ParameterFormProps) {
+export function ParameterForm({
+  template,
+  permissions,
+  projectId,
+  onSubmit,
+  onBack,
+  sourceProjectId,
+  sourceRepoId,
+}: ParameterFormProps) {
   const {
     values,
     viewValues,
@@ -26,7 +36,7 @@ export function ParameterForm({ template, permissions, projectId, onSubmit, onBa
     submitTooltip,
     handleChange,
     handleSubmit,
-  } = useParameterForm(template, permissions, projectId, onSubmit);
+  } = useParameterForm(template, permissions, projectId, onSubmit, sourceProjectId, sourceRepoId);
 
   return (
     <div className="flex-row" style={{ gap: 48 }}>

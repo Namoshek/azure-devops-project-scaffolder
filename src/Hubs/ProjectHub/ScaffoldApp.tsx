@@ -49,6 +49,8 @@ export function ScaffoldApp() {
             projectId={projectId!}
             onSubmit={handleFormSubmit}
             onBack={handleBack}
+            sourceProjectId={selectedTemplate.sourceProjectId}
+            sourceRepoId={selectedTemplate.sourceRepoId}
           />
         )}
 

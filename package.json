@@ -1,6 +1,6 @@
 {
   "name": "ado-project-scaffolder",
-  "version": "0.23.0",
+  "version": "0.24.0",
   "description": "Azure DevOps extension for project scaffolding from templates",
   "scripts": {
     "build": "webpack --mode production",

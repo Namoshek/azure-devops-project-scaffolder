@@ -31,7 +31,10 @@ export function TemplateCard({ template, onSelect }: TemplateCardProps) {
       className="cursor-pointer"
       onClick={onSelect}
       onKeyDown={(e) => {
-        if (onSelect && (e.key === "Enter" || e.key === " ")) onSelect();
+        if (onSelect && (e.key === "Enter" || e.key === " ")) {
+          e.preventDefault();
+          onSelect();
+        }
       }}
     >
       <Card

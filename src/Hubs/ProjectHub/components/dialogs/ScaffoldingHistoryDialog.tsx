@@ -11,6 +11,7 @@ import { MessageCardSeverity } from "azure-devops-ui/Components/MessageCard/Mess
 import { AuditRecord } from "../../../../types/auditTypes";
 import { getAuditRecordsForProject } from "../../../../services/auditService";
 import { AuditTable } from "../../../../components/AuditTable";
+import { getErrorMessage } from "../../../../utils/errorUtils";
 
 const Dialog = DialogBase as React.ComponentType<
   React.ComponentProps<typeof DialogBase> & { children?: React.ReactNode }
@@ -31,7 +32,7 @@ export function ScaffoldingHistoryDialog() {
       const data = await getAuditRecordsForProject(projectId);
       setRecords(data);
     } catch (err) {
-      setError(`Failed to load scaffolding history: ${(err as Error).message}`);
+      setError(`Failed to load scaffolding history: ${getErrorMessage(err)}`);
     } finally {
       setLoading(false);
     }

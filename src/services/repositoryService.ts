@@ -4,6 +4,7 @@ import { fetchTemplateFiles } from "./templateReaderService";
 import { renderTemplate, evaluateWhenExpression } from "./templateEngineService";
 import { checkRepoExists } from "./preflightCheckService";
 import { DiscoveredTemplate, TemplateRepository } from "../types/templateTypes";
+import { getErrorMessage } from "../utils/errorUtils";
 
 export type RepoScaffoldStatus = "created" | "skipped" | "failed";
 
@@ -38,7 +39,7 @@ export async function scaffoldRepository(
     return {
       repoName,
       status: "failed",
-      reason: `Failed to check repository existence: ${(err as Error).message}`,
+      reason: `Failed to check repository existence: ${getErrorMessage(err)}`,
     };
   }
 
@@ -65,7 +66,7 @@ export async function scaffoldRepository(
       return {
         repoName,
         status: "failed",
-        reason: `Failed to create repository: ${(err as Error).message}`,
+        reason: `Failed to create repository: ${getErrorMessage(err)}`,
       };
     }
     repoId = created.id!;
@@ -86,7 +87,7 @@ export async function scaffoldRepository(
       return {
         repoName,
         status: "failed",
-        reason: `Failed to resolve existing repository ID: ${(err as Error).message}`,
+        reason: `Failed to resolve existing repository ID: ${getErrorMessage(err)}`,
       };
     }
   }
@@ -103,7 +104,7 @@ export async function scaffoldRepository(
     return {
       repoName,
       status: "failed",
-      reason: `Failed to read template files: ${(err as Error).message}`,
+      reason: `Failed to read template files: ${getErrorMessage(err)}`,
     };
   }
 
@@ -180,7 +181,7 @@ export async function scaffoldRepository(
     return {
       repoName,
       status: "failed",
-      reason: `Failed to push files: ${(err as Error).message}`,
+      reason: `Failed to push files: ${getErrorMessage(err)}`,
     };
   }
 

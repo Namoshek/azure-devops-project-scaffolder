@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { OTHERS_CATEGORY_NAME } from "../../../types/templateTypes";
 import { getTemplateCategories, setTemplateCategories } from "../../../services/extensionSettingsService";
+import { getErrorMessage } from "../../../utils/errorUtils";
 
 export interface UseCategoryEditorResult {
   loadingState: "loading" | "ready" | "error";
@@ -40,7 +41,7 @@ export function useCategoryEditor(): UseCategoryEditorResult {
         setLoadingState("error");
         setFeedback({
           type: "error",
-          text: `Failed to load template categories: ${(err as Error).message}`,
+          text: `Failed to load template categories: ${getErrorMessage(err)}`,
         });
       }
     }
@@ -98,7 +99,7 @@ export function useCategoryEditor(): UseCategoryEditorResult {
     } catch (err) {
       setFeedback({
         type: "error",
-        text: `Failed to save template categories: ${(err as Error).message}`,
+        text: `Failed to save template categories: ${getErrorMessage(err)}`,
       });
     } finally {
       setSaving(false);

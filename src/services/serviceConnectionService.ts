@@ -10,6 +10,7 @@ import { renderTemplate } from "./templateEngineService";
 import { checkServiceConnectionExists } from "./preflightCheckService";
 import { getCollectionUrl } from "./locationService";
 import { TemplateServiceConnection } from "../types/templateTypes";
+import { getErrorMessage } from "../utils/errorUtils";
 
 export type ServiceConnectionScaffoldStatus = "created" | "skipped" | "failed";
 
@@ -93,7 +94,7 @@ export async function scaffoldServiceConnection(
     return {
       connectionName,
       status: "failed",
-      reason: `Failed to create service connection: ${(err as Error).message}`,
+      reason: `Failed to create service connection: ${getErrorMessage(err)}`,
     };
   }
 
@@ -104,7 +105,7 @@ export async function scaffoldServiceConnection(
     } catch (err) {
       // Non-fatal: connection was created; authorization failure is a warning only.
       console.warn(
-        `Service connection '${connectionName}' created but pipeline authorization failed: ${(err as Error).message}`,
+        `Service connection '${connectionName}' created but pipeline authorization failed: ${getErrorMessage(err)}`,
       );
     }
   }

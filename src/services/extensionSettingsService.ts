@@ -60,7 +60,8 @@ export async function getRestrictedProjects(): Promise<RestrictedProject[]> {
       defaultValue: null,
     });
     return wrapper?.projects ?? [];
-  } catch {
+  } catch (err) {
+    console.error("Failed to load restricted projects setting:", err);
     return [];
   }
 }
@@ -89,7 +90,8 @@ export async function getTemplateCategories(): Promise<string[]> {
       defaultValue: null,
     });
     return wrapper?.categories ?? [];
-  } catch {
+  } catch (err) {
+    console.error("Failed to load template categories setting:", err);
     return [];
   }
 }

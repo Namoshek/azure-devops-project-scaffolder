@@ -62,7 +62,7 @@ parameters:
       - python
 repositories:
   - name: "{{projectName}}-api"
-    sourcePath: /templates/api
+    sourcePath: templates/api
     defaultBranch: main
     when: "includeDocker"
     exclude:
@@ -179,7 +179,7 @@ describe("readTemplateFromRepo", () => {
 
     const repo = result.definition.repositories![0];
     expect(repo.name).toBe("{{projectName}}-api");
-    expect(repo.sourcePath).toBe("/templates/api");
+    expect(repo.sourcePath).toBe("templates/api");
     expect(repo.defaultBranch).toBe("main");
     expect(repo.when).toBe("includeDocker");
     expect(repo.exclude).toEqual([{ path: "docker-compose.yml", when: "includeDocker == false" }]);
@@ -254,7 +254,7 @@ version: "1"
 parameters: []
 repositories:
   - name: my-repo
-    sourcePath: /src
+    sourcePath: src
 `;
     const mockClient = makeMockGitClient(yaml);
     (getClient as jest.Mock).mockReturnValue(mockClient);

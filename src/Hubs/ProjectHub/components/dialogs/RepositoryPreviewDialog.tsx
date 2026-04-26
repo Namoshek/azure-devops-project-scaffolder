@@ -125,7 +125,11 @@ interface FolderTreeRowProps {
 
 function FolderTreeRow({ node, depth, isCollapsed, onToggle }: FolderTreeRowProps) {
   return (
-    <button title={node.name} onClick={onToggle} style={{ ...ROW_BASE_STYLE, paddingLeft: 8 + depth * 16 }}>
+    <button
+      title={node.name}
+      aria-label={`${isCollapsed ? "Expand" : "Collapse"} folder ${node.name}`}
+      onClick={onToggle}
+      style={{ ...ROW_BASE_STYLE, paddingLeft: 8 + depth * 16 }}>
       <span style={{ flexShrink: 0, lineHeight: 0 }}>
         <Icon iconName={isCollapsed ? "ChevronRight" : "ChevronDown"} size={IconSize.small} />
       </span>

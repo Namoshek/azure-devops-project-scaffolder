@@ -5,6 +5,7 @@ import { DiscoveredTemplate, TemplatePermissions } from "../../../types/template
 import { runScaffold, ScaffoldResult, ScaffoldStep } from "../../../services/scaffoldingOrchestrator";
 import { AuditRecord } from "../../../types/auditTypes";
 import { createAuditRecord, updateAuditRecord, redactSecretParams } from "../../../services/auditService";
+import { getErrorMessage } from "../../../utils/errorUtils";
 
 export interface UseScaffoldExecutionResult {
   steps: ScaffoldStep[];
@@ -28,6 +29,16 @@ export function useScaffoldExecution(
   const [fatalError, setFatalError] = useState<string | null>(null);
   const stepsRef = useRef<ScaffoldStep[]>(steps);
   const auditRecordRef = useRef<AuditRecord | null>(null);
+  // Guard against calling state setters after the component unmounts (e.g. the
+  // user navigates away while scaffolding is still in flight).
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (existingResults.length > 0) {
@@ -46,9 +57,12 @@ export function useScaffoldExecution(
         projectId = project.id;
         projectName = project.name;
       } catch (err) {
+        if (!mountedRef.current) {
+          return;
+        }
         setRunning(false);
         setDone(true);
-        setFatalError(`Failed to determine current project: ${(err as Error).message}`);
+        setFatalError(`Failed to determine current project: ${getErrorMessage(err)}`);
         return;
       }
 
@@ -85,13 +99,17 @@ export function useScaffoldExecution(
           (updatedSteps) => {
             const copy = [...updatedSteps];
             stepsRef.current = copy;
-            setSteps(copy);
+            if (mountedRef.current) {
+              setSteps(copy);
+            }
           },
           permissions,
         );
       } catch (err) {
         runFailed = true;
-        setFatalError(`Unexpected error: ${(err as Error).message}`);
+        if (mountedRef.current) {
+          setFatalError(`Unexpected error: ${getErrorMessage(err)}`);
+        }
       }
 
       // Update the audit record with the final outcome.
@@ -105,6 +123,9 @@ export function useScaffoldExecution(
         }).catch((auditErr) => console.warn("Failed to update audit record:", auditErr));
       }
 
+      if (!mountedRef.current) {
+        return;
+      }
       onComplete(stepsRef.current);
       setRunning(false);
       setDone(true);

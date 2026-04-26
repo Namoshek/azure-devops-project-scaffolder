@@ -8,6 +8,7 @@ import {
 } from "../../../services/extensionSettingsService";
 import { ListSelection } from "azure-devops-ui/List";
 import { ArrayItemProvider } from "azure-devops-ui/Utilities/Provider";
+import { getErrorMessage } from "../../../utils/errorUtils";
 import { groupTemplates, TemplateCategory } from "../../../utils/templateGrouping";
 
 export interface UseTemplateDataResult {
@@ -70,7 +71,7 @@ export function useTemplateData(): UseTemplateDataResult {
         groupSelection.select(0);
       })
       .catch((err) => {
-        setError((err as Error).message);
+        setError(getErrorMessage(err));
       })
       .finally(() => setLoading(false));
   }, [groupSelection]);

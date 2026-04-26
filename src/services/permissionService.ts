@@ -1,6 +1,7 @@
 ﻿import * as SDK from "azure-devops-extension-sdk";
 import { TemplateDefinition, TemplatePermissions } from "../types/templateTypes";
 import { getCollectionUrl } from "./locationService";
+import { getErrorMessage } from "../utils/errorUtils";
 
 // ─── Security namespace GUIDs (constant across all ADO instances) ─────────────
 
@@ -75,6 +76,10 @@ async function getSecurityBaseUrl(): Promise<string> {
 async function evaluatePermissionBatch(evaluations: PermissionEvaluation[]): Promise<boolean[]> {
   const [accessToken, baseUrl] = await Promise.all([SDK.getAccessToken(), getSecurityBaseUrl()]);
 
+  if (!accessToken) {
+    throw new Error("SDK.getAccessToken() returned an empty token; cannot evaluate permissions.");
+  }
+
   const url = `${baseUrl}/_apis/security/permissionevaluationbatch?api-version=7.0`;
 
   const response = await fetch(url, {
@@ -116,7 +121,7 @@ export async function checkRepoPermission(projectId: string): Promise<boolean> {
     ]);
     return allowed;
   } catch (err) {
-    console.warn(`Repo permission check failed: ${(err as Error).message}. Treating as denied.`);
+    console.warn(`Repo permission check failed: ${getErrorMessage(err)}. Treating as denied.`);
     return false;
   }
 }
@@ -138,7 +143,7 @@ export async function checkPipelinePermission(projectId: string): Promise<boolea
     ]);
     return allowed;
   } catch (err) {
-    console.warn(`Pipeline permission check failed: ${(err as Error).message}. Treating as denied.`);
+    console.warn(`Pipeline permission check failed: ${getErrorMessage(err)}. Treating as denied.`);
     return false;
   }
 }
@@ -159,7 +164,7 @@ export async function checkServiceConnectionPermission(projectId: string): Promi
     ]);
     return allowed;
   } catch (err) {
-    console.warn(`Service connection permission check failed: ${(err as Error).message}. Treating as denied.`);
+    console.warn(`Service connection permission check failed: ${getErrorMessage(err)}. Treating as denied.`);
     return false;
   }
 }
@@ -180,7 +185,7 @@ export async function checkVariableGroupPermission(projectId: string): Promise<b
     ]);
     return allowed;
   } catch (err) {
-    console.warn(`Variable group permission check failed: ${(err as Error).message}. Treating as denied.`);
+    console.warn(`Variable group permission check failed: ${getErrorMessage(err)}. Treating as denied.`);
     return false;
   }
 }
@@ -205,7 +210,12 @@ export async function checkTemplatePermissions(
   const needsVariableGroups = (template.variableGroups ?? []).length > 0;
 
   if (!needsRepos && !needsPipelines && !needsServiceConnections && !needsVariableGroups) {
-    return { canCreateRepos: true, canCreatePipelines: true, canCreateServiceConnections: true, canCreateVariableGroups: true };
+    return {
+      canCreateRepos: true,
+      canCreatePipelines: true,
+      canCreateServiceConnections: true,
+      canCreateVariableGroups: true,
+    };
   }
 
   const evaluations: PermissionEvaluation[] = [];
@@ -251,7 +261,7 @@ export async function checkTemplatePermissions(
     const canCreateVariableGroups = needsVariableGroups ? results[idx++] : true;
     return { canCreateRepos, canCreatePipelines, canCreateServiceConnections, canCreateVariableGroups };
   } catch (err) {
-    console.warn(`Template permission check failed: ${(err as Error).message}. Treating as denied.`);
+    console.warn(`Template permission check failed: ${getErrorMessage(err)}. Treating as denied.`);
     return {
       canCreateRepos: needsRepos ? false : true,
       canCreatePipelines: needsPipelines ? false : true,
@@ -278,7 +288,7 @@ export async function checkCollectionAdminPermission(): Promise<boolean> {
     ]);
     return allowed;
   } catch (err) {
-    console.warn(`Collection admin permission check failed: ${(err as Error).message}. Treating as non-admin.`);
+    console.warn(`Collection admin permission check failed: ${getErrorMessage(err)}. Treating as non-admin.`);
     return false;
   }
 }

@@ -7,6 +7,7 @@ import { MessageCardSeverity } from "azure-devops-ui/Components/MessageCard/Mess
 import { AuditRecord } from "../../../types/auditTypes";
 import { getAllAuditRecords } from "../../../services/auditService";
 import { AuditTable } from "../../../components/AuditTable";
+import { getErrorMessage } from "../../../utils/errorUtils";
 
 export function AuditTab() {
   const [loading, setLoading] = useState(true);
@@ -16,7 +17,7 @@ export function AuditTab() {
   useEffect(() => {
     getAllAuditRecords()
       .then(setRecords)
-      .catch((err: Error) => setError(`Failed to load audit records: ${err.message}`))
+      .catch((err: unknown) => setError(`Failed to load audit records: ${getErrorMessage(err)}`))
       .finally(() => setLoading(false));
   }, []);
 

@@ -70,8 +70,9 @@ export function renderTemplatePreview(templateStr: string | undefined, values: R
 export function evaluateWhenExpression(expression: string, values: Record<string, unknown>): boolean {
   try {
     return evalOr(expression.trim(), values);
-  } catch {
+  } catch (err) {
     // If we cannot parse the expression, default to showing the field
+    console.error(`Invalid 'when' expression "${expression}":`, err);
     return true;
   }
 }

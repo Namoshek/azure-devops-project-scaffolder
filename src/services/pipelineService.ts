@@ -13,6 +13,7 @@ import { TaskAgentRestClient } from "azure-devops-extension-api/TaskAgent";
 import { renderTemplate } from "./templateEngineService";
 import { checkPipelineExists } from "./preflightCheckService";
 import { TemplatePipeline } from "../types/templateTypes";
+import { getErrorMessage } from "../utils/errorUtils";
 
 export type PipelineScaffoldStatus = "created" | "skipped" | "failed";
 
@@ -103,7 +104,7 @@ export async function scaffoldPipeline(
     return {
       pipelineName,
       status: "failed",
-      reason: `Failed to create pipeline: ${(err as Error).message}`,
+      reason: `Failed to create pipeline: ${getErrorMessage(err)}`,
     };
   }
 
@@ -133,7 +134,8 @@ async function resolveRepoId(gitClient: GitRestClient, projectId: string, repoNa
     const repos = await gitClient.getRepositories(projectId);
     const repo = repos.find((r) => r.name?.toLowerCase() === repoName.toLowerCase());
     return repo?.id ?? null;
-  } catch {
+  } catch (err) {
+    console.error(`Failed to resolve repository id for '${repoName}':`, err);
     return null;
   }
 }
@@ -145,7 +147,8 @@ async function getDefaultQueueId(taskAgentClient: TaskAgentRestClient, projectId
     // Prefer a queue named "Default"; otherwise take the first available
     const defaultQueue = queues.find((q) => q.name?.toLowerCase() === "default");
     return (defaultQueue ?? queues[0]).id;
-  } catch {
+  } catch (err) {
+    console.error("Failed to retrieve agent queues:", err);
     return null;
   }
 }

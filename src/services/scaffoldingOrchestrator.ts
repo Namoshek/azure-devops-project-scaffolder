@@ -4,6 +4,7 @@ import { scaffoldPipeline, PipelineScaffoldResult } from "./pipelineService";
 import { scaffoldServiceConnection, ServiceConnectionScaffoldResult } from "./serviceConnectionService";
 import { scaffoldVariableGroup, VariableGroupScaffoldResult } from "./variableGroupService";
 import { evaluateWhenExpression, renderTemplate, buildViewValues } from "./templateEngineService";
+import { getErrorMessage } from "../utils/errorUtils";
 
 export type StepStatus = "pending" | "running" | "success" | "skipped" | "failed";
 
@@ -34,6 +35,11 @@ export async function runScaffold(
   template: DiscoveredTemplate,
   parameterValues: Record<string, unknown>,
   onProgress: ProgressCallback,
+  /**
+   * Pre-fetched permission flags for the current user. Callers should always
+   * provide this; when omitted, permission checks are skipped and all resource
+   * types are attempted regardless of the user's actual permissions.
+   */
   permissions?: TemplatePermissions,
 ): Promise<ScaffoldResult[]> {
   const { definition: templateDefinition } = template;
@@ -99,7 +105,7 @@ export async function runScaffold(
       result = {
         repoName: repoTemplate.name,
         status: "failed",
-        reason: (err as Error).message,
+        reason: getErrorMessage(err),
       };
     }
 
@@ -140,7 +146,7 @@ export async function runScaffold(
       result = {
         connectionName: connectionTemplate.name,
         status: "failed",
-        reason: (err as Error).message,
+        reason: getErrorMessage(err),
       };
     }
 
@@ -181,7 +187,7 @@ export async function runScaffold(
       result = {
         groupName: groupTemplate.name,
         status: "failed",
-        reason: (err as Error).message,
+        reason: getErrorMessage(err),
       };
     }
 
@@ -223,7 +229,7 @@ export async function runScaffold(
       result = {
         pipelineName: pipelineTemplate.name,
         status: "failed",
-        reason: (err as Error).message,
+        reason: getErrorMessage(err),
       };
     }
 

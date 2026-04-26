@@ -105,7 +105,8 @@ export async function checkRepoExists(
       }
       result = { exists: true, isNonEmpty };
     }
-  } catch {
+  } catch (err) {
+    console.error(`Failed to check existence of repository '${repoName}':`, err);
     result = { exists: false, isNonEmpty: false };
   }
 
@@ -156,7 +157,8 @@ export async function checkPipelineExists(
       folder, // path (folder)
     );
     result = { exists: existing.length > 0 };
-  } catch {
+  } catch (err) {
+    console.error(`Failed to check existence of pipeline '${pipelineName}' in folder '${folder}':`, err);
     result = { exists: false };
   }
 
@@ -186,7 +188,8 @@ export async function checkServiceConnectionExists(
     const client = getClient(ServiceEndpointRestClient);
     const endpoints = await client.getServiceEndpointsByNames(projectId, [connectionName]);
     result = { exists: endpoints.length > 0 };
-  } catch {
+  } catch (err) {
+    console.error(`Failed to check existence of service connection '${connectionName}':`, err);
     result = { exists: false };
   }
 
@@ -216,7 +219,8 @@ export async function checkVariableGroupExists(
     const client = getClient(TaskAgentRestClient);
     const groups = await client.getVariableGroups(projectId, groupName);
     result = { exists: groups.length > 0 };
-  } catch {
+  } catch (err) {
+    console.error(`Failed to check existence of variable group '${groupName}':`, err);
     result = { exists: false };
   }
 

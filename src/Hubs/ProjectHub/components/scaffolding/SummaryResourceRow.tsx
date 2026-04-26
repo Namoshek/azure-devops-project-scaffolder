@@ -140,8 +140,8 @@ export function SummaryResourceRow({ item, isLast }: SummaryResourceRowProps) {
             opacity: isSkipped ? 0.4 : 1,
           }}
         >
-          {item.subItems.map((sub: ParameterSummarySubItem, si: number) => (
-            <div key={si} className="flex-row" style={{ gap: 8, alignItems: "center" }}>
+          {item.subItems.map((sub: ParameterSummarySubItem) => (
+            <div key={sub.name} className="flex-row" style={{ gap: 8, alignItems: "center" }}>
               <span
                 style={{
                   color: sub.included ? COLOR_INCLUDED : COLOR_EXCLUDED,

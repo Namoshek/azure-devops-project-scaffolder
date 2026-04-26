@@ -92,7 +92,7 @@ export function ScaffoldProgress({
         template.definition.postScaffoldNotes.length > 0 && (
           <div className="flex-column rhythm-vertical-8">
             {template.definition.postScaffoldNotes.map((note, i) => (
-              <ScaffoldNote key={i} note={note} values={viewValues} />
+              <ScaffoldNote key={`post-${i}`} note={note} values={viewValues} />
             ))}
           </div>
         )}

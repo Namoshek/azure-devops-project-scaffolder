@@ -3,6 +3,7 @@ import { getClient } from "azure-devops-extension-api";
 import { GitRestClient, VersionControlRecursionType } from "azure-devops-extension-api/Git";
 import { parse } from "yaml";
 import { ZodError } from "zod";
+import { getErrorMessage } from "../utils/errorUtils";
 import { TemplateDefinition } from "../types/templateTypes";
 import { TemplateDefinitionSchema } from "../types/templateSchemas";
 
@@ -71,7 +72,7 @@ export async function fetchTemplateFiles(
           return { path: filePath, content: arrayBufferToBase64(buffer), isBase64: true };
         }
       } catch (err) {
-        console.warn(`Skipping file ${filePath}: ${(err as Error).message}`);
+        console.warn(`Skipping file ${filePath}: ${getErrorMessage(err)}`);
         return null;
       }
     });
@@ -189,7 +190,7 @@ function parseTemplateYaml(raw: string): TemplateDefinition {
   try {
     parsed = parse(raw);
   } catch (err) {
-    throw new Error(`YAML parse error: ${(err as Error).message}`);
+    throw new Error(`YAML parse error: ${getErrorMessage(err)}`);
   }
 
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {

@@ -18,7 +18,7 @@ export function TemplateFormHeader({ template, values }: TemplateFormHeaderProps
       {template.preScaffoldNotes && template.preScaffoldNotes.length > 0 && (
         <div className="flex-column rhythm-vertical-8" style={{ marginBottom: 40 }}>
           {template.preScaffoldNotes.map((note, i) => (
-            <ScaffoldNote key={i} note={note} values={values} />
+            <ScaffoldNote key={`pre-${i}`} note={note} values={values} />
           ))}
         </div>
       )}

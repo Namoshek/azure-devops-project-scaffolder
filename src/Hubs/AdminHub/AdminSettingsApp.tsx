@@ -11,6 +11,7 @@ import { MessageCardSeverity } from "azure-devops-ui/Components/MessageCard/Mess
 import { Tab as TabBase } from "azure-devops-ui/Components/Tabs/Tab";
 import { TabBar as TabBarBase } from "azure-devops-ui/Components/Tabs/TabBar";
 import { checkCollectionAdminPermission } from "../../services/permissionService";
+import { getErrorMessage } from "../../utils/errorUtils";
 import { ProjectRestrictionTab } from "./components/ProjectRestrictionTab";
 import { TemplateCategoriesTab } from "./components/TemplateCategoriesTab";
 import { AuditTab } from "./components/AuditTab";
@@ -23,14 +24,20 @@ const TabBar = TabBarBase as React.ComponentType<
 export function AdminSettingsApp() {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [initError, setInitError] = useState<string | null>(null);
   const [selectedTabId, setSelectedTabId] = useState("restriction");
 
   useEffect(() => {
     async function init() {
-      await SDK.ready();
-      const admin = await checkCollectionAdminPermission();
-      setIsAdmin(admin);
-      setLoading(false);
+      try {
+        await SDK.ready();
+        const admin = await checkCollectionAdminPermission();
+        setIsAdmin(admin);
+      } catch (err) {
+        setInitError(getErrorMessage(err));
+      } finally {
+        setLoading(false);
+      }
     }
     void init();
   }, []);
@@ -40,6 +47,16 @@ export function AdminSettingsApp() {
       <Page>
         <div className="page-content page-content-top flex-grow flex-row justify-center">
           <Spinner size={SpinnerSize.large} label="Loading…" />
+        </div>
+      </Page>
+    );
+  }
+
+  if (initError) {
+    return (
+      <Page>
+        <div className="page-content page-content-top">
+          <MessageCard severity={MessageCardSeverity.Error}>Failed to load settings: {initError}</MessageCard>
         </div>
       </Page>
     );

@@ -7,6 +7,7 @@ import {
   setRestrictedProjects,
   RestrictedProject,
 } from "../../../services/extensionSettingsService";
+import { getErrorMessage } from "../../../utils/errorUtils";
 
 export interface UseProjectRestrictionResult {
   loadingState: "loading" | "ready" | "error";
@@ -51,7 +52,7 @@ export function useProjectRestriction(): UseProjectRestrictionResult {
         setLoadingState("error");
         setFeedback({
           type: "error",
-          text: `Failed to load settings: ${(err as Error).message}`,
+          text: `Failed to load settings: ${getErrorMessage(err)}`,
         });
       }
     }
@@ -103,7 +104,7 @@ export function useProjectRestriction(): UseProjectRestrictionResult {
     } catch (err) {
       setFeedback({
         type: "error",
-        text: `Failed to save settings: ${(err as Error).message}`,
+        text: `Failed to save settings: ${getErrorMessage(err)}`,
       });
     } finally {
       setSaving(false);

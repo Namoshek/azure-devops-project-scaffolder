@@ -4,6 +4,7 @@ import { GitRestClient } from "azure-devops-extension-api/Git";
 import { fetchTemplateFileList } from "../../../services/templateReaderService";
 import { renderTemplatePreview, evaluateWhenExpression } from "../../../services/templateEngineService";
 import { RepositoryPreviewContext } from "../../../utils/summaryBuilder";
+import { getErrorMessage } from "../../../utils/errorUtils";
 
 export interface ProcessedFile {
   /** Raw absolute path as returned by the Git API (e.g. /templates/backend/README.md). */
@@ -126,7 +127,7 @@ export function useRepositoryPreview(
         setCollapsedFolders(allFolderPaths);
       })
       .catch((err: unknown) => {
-        setError((err as Error).message ?? "Failed to load repository files.");
+        setError(getErrorMessage(err));
       })
       .finally(() => setLoading(false));
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -165,7 +166,7 @@ export function useRepositoryPreview(
       })
       .catch((err: unknown) => {
         if (cancelled) return;
-        setContentError((err as Error).message ?? "Failed to load file content.");
+        setContentError(getErrorMessage(err));
       })
       .finally(() => {
         clearTimeout(spinnerTimer);

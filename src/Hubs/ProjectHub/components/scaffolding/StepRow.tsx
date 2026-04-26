@@ -33,6 +33,7 @@ export function StepRow({ step, isLast }: StepRowProps) {
           <Button
             text={expanded ? "Hide details" : "Show details"}
             subtle
+            ariaExpanded={expanded}
             onClick={() => setExpanded((prev) => !prev)}
           />
         )}

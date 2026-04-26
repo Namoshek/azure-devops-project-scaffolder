@@ -2,7 +2,17 @@ import { z } from "zod";
 
 export const ParameterValidationSchema = z.object({
   /** JavaScript-compatible regular expression applied to the user's input. The value must fully match the expression to be considered valid. */
-  regex: z.string(),
+  regex: z.string().refine(
+    (v) => {
+      try {
+        new RegExp(v);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    { message: "Invalid regular expression syntax." },
+  ),
   /** Error message displayed beneath the input field when the regex validation fails. */
   message: z.string(),
 });
@@ -44,6 +54,14 @@ export const TemplateParameterSchema = z.object({
   formGroup: z.string().optional(),
   /** Optional validation rule applied to the entered value. Only meaningful for `type: "string"`. */
   validation: ParameterValidationSchema.optional(),
+}).superRefine((val, ctx) => {
+  if (val.type === "choice" && (!val.options || val.options.length === 0)) {
+    ctx.addIssue({
+      code: 'custom',
+      message: `Parameter "${val.id}": choice parameters must have at least one entry in the 'options' array.`,
+      path: ["options"],
+    });
+  }
 });
 
 export const TemplateFileExcludeSchema = z.object({
@@ -72,12 +90,24 @@ export const TemplateRepositorySchema = z.object({
    * into the new repository. Use an empty string or `"."` to copy from the repository root.
    * File content and file names are rendered through Mustache before being committed.
    */
-  sourcePath: z.string().default(""),
+  sourcePath: z
+    .string()
+    .refine((v) => !v.startsWith("/"), {
+      message: "sourcePath must not start with a leading slash — use an empty string or '.' to reference the repository root.",
+    })
+    .default(""),
   /**
    * Name of the default branch created in the new repository, e.g. `"main"` or `"master"`.
    * Defaults to `"main"` when not specified.
    */
-  defaultBranch: z.string().default("main"),
+  defaultBranch: z
+    .string()
+    .regex(
+      // eslint-disable-next-line no-control-regex
+      /^[^\s\x00-\x1f~^:?*[\\]+$/,
+      "Invalid branch name — must not contain whitespace, control characters, or special Git characters (~ ^ : ? * [ \\).",
+    )
+    .default("main"),
   /**
    * Skip this entire repository when the expression evaluates to false. Uses the same expression
    * syntax as parameter `when` fields. Skipped repositories still appear in the scaffolding
@@ -240,7 +270,10 @@ export const TemplateComputedSchema = z.object({
    * `{{#isVite}}...{{/isVite}}`. Must not start with a digit. Avoid names that clash with
    * parameter ids — if a clash occurs the computed value takes precedence.
    */
-  id: z.string().min(1),
+  id: z.string().regex(
+    /^[a-zA-Z_][a-zA-Z0-9_]*$/,
+    "Computed entry id must be a valid JavaScript identifier (letters, digits, underscores; must not start with a digit).",
+  ),
   /**
    * Boolean expression evaluated against the current parameter values at render time.
    * Uses exactly the same syntax as the `when` fields on parameters, repositories, pipelines,

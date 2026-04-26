@@ -9,6 +9,7 @@ import { renderTemplate } from "./templateEngineService";
 import { checkVariableGroupExists } from "./preflightCheckService";
 import { getCollectionUrl } from "./locationService";
 import { TemplateVariableGroup } from "../types/templateTypes";
+import { getErrorMessage } from "../utils/errorUtils";
 
 export type VariableGroupScaffoldStatus = "created" | "skipped" | "failed";
 
@@ -80,7 +81,7 @@ export async function scaffoldVariableGroup(
     return {
       groupName,
       status: "failed",
-      reason: `Failed to create variable group: ${(err as Error).message}`,
+      reason: `Failed to create variable group: ${getErrorMessage(err)}`,
     };
   }
 
@@ -90,9 +91,7 @@ export async function scaffoldVariableGroup(
       await authorizeForAllPipelines(projectId, created.id);
     } catch (err) {
       // Non-fatal: group was created; authorization failure is a warning only.
-      console.warn(
-        `Variable group '${groupName}' created but pipeline authorization failed: ${(err as Error).message}`,
-      );
+      console.warn(`Variable group '${groupName}' created but pipeline authorization failed: ${getErrorMessage(err)}`);
     }
   }
 

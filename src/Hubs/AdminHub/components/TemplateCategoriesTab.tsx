@@ -44,7 +44,7 @@ export function TemplateCategoriesTab() {
 
         <div className="rhythm-vertical-8">
           {categories.map((category, index) => (
-            <div key={index} className="flex-row flex-center rhythm-horizontal-8" style={{ gap: 8 }}>
+            <div key={category} className="flex-row flex-center rhythm-horizontal-8" style={{ gap: 8 }}>
               <div className="flex-column" style={{ gap: 0 }}>
                 <Button
                   iconProps={{ iconName: "ChevronUp" }}

@@ -75,7 +75,8 @@ export async function getAuditRecordsForProject(projectId: string): Promise<Audi
     return (docs as AuditRecord[])
       .filter((r) => r.projectId === projectId)
       .sort((a, b) => b.timestamp.localeCompare(a.timestamp));
-  } catch {
+  } catch (err) {
+    console.error("Failed to load audit records for project:", err);
     return [];
   }
 }
@@ -89,7 +90,8 @@ export async function getAllAuditRecords(): Promise<AuditRecord[]> {
     const manager = await getManager();
     const docs = await manager.getDocuments(AUDIT_COLLECTION);
     return (docs as AuditRecord[]).sort((a, b) => b.timestamp.localeCompare(a.timestamp));
-  } catch {
+  } catch (err) {
+    console.error("Failed to load all audit records:", err);
     return [];
   }
 }

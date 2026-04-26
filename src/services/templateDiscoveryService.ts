@@ -3,6 +3,9 @@ import { DiscoveredTemplate } from "../types/templateTypes";
 import { readTemplateFromRepo } from "./templateReaderService";
 import { getRestrictedProjects } from "./extensionSettingsService";
 import { getSearchServiceUrl } from "./locationService";
+import { getErrorMessage } from "../utils/errorUtils";
+
+const MAX_TEMPLATE_SEARCH_RESULTS = 200;
 
 interface CodeSearchResult {
   fileName: string;
@@ -63,7 +66,7 @@ async function fetchTemplates(): Promise<DiscoveredTemplate[]> {
   const body = {
     searchText: "file:project-template.yml",
     $skip: 0,
-    $top: 200,
+    $top: MAX_TEMPLATE_SEARCH_RESULTS,
     filters: restrictions.length > 0 ? { Project: restrictions.map((r) => r.name) } : {},
     $orderBy: null,
     includeFacets: false,
@@ -127,7 +130,7 @@ async function fetchTemplates(): Promise<DiscoveredTemplate[]> {
       });
     } catch (err) {
       // Skip malformed templates; log to console so authors can diagnose
-      console.warn(`Skipping template in ${hit.project.name}/${hit.repository.name}: ${(err as Error).message}`);
+      console.warn(`Skipping template in ${hit.project.name}/${hit.repository.name}: ${getErrorMessage(err)}`);
     }
   }
 

@@ -73,7 +73,7 @@ export async function scaffoldServiceConnection(
 
   const endpoint: ServiceEndpoint = {
     name: connectionName,
-    type: connectionTemplate.type,
+    type: connectionTemplate.endpointType,
     url: url ?? "",
     description: renderedDescription ?? "",
     authorization: {

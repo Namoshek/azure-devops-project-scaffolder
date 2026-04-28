@@ -60,21 +60,22 @@ parameters:
       - dotnet
       - node
       - python
-repositories:
-  - name: "{{projectName}}-api"
+computed:
+  - id: isDotnet
+    expression: "framework == 'dotnet'"
+  - id: backendWithDocker
+    expression: "includeDocker && includeDocker"
+scaffoldingSteps:
+  - type: repository
+    name: "{{projectName}}-api"
     sourcePath: templates/api
     defaultBranch: main
     when: "includeDocker"
     exclude:
       - path: docker-compose.yml
         when: "includeDocker == false"
-computed:
-  - id: isDotnet
-    expression: "framework == 'dotnet'"
-  - id: backendWithDocker
-    expression: "includeDocker && includeDocker"
-pipelines:
-  - name: "{{projectName}}-ci"
+  - type: pipeline
+    name: "{{projectName}}-ci"
     repository: "{{projectName}}-api"
     yamlPath: azure-pipelines.yml
     folder: /MyPipelines
@@ -170,33 +171,45 @@ describe("readTemplateFromRepo", () => {
     expect(choiceParam.type).toBe("choice");
     expect(choiceParam.options).toEqual(["dotnet", "node", "python"]);
   });
-
-  it("parses repositories with when and exclude rules", async () => {
+  it("parses repository steps with when and exclude rules", async () => {
     const mockClient = makeMockGitClient(FULL_YAML);
     (getClient as jest.Mock).mockReturnValue(mockClient);
 
     const result = await readTemplateFromRepo("p", "r", "/project-template.yml");
 
-    const repo = result.definition.repositories![0];
-    expect(repo.name).toBe("{{projectName}}-api");
-    expect(repo.sourcePath).toBe("templates/api");
-    expect(repo.defaultBranch).toBe("main");
-    expect(repo.when).toBe("includeDocker");
-    expect(repo.exclude).toEqual([{ path: "docker-compose.yml", when: "includeDocker == false" }]);
+    const repoStep = result.definition.scaffoldingSteps.find((s) => s.type === "repository")!;
+    expect(repoStep.type).toBe("repository");
+    expect(repoStep.name).toBe("{{projectName}}-api");
+    if (repoStep.type === "repository") {
+      expect(repoStep.sourcePath).toBe("templates/api");
+      expect(repoStep.defaultBranch).toBe("main");
+      expect(repoStep.when).toBe("includeDocker");
+      expect(repoStep.exclude).toEqual([{ path: "docker-compose.yml", when: "includeDocker == false" }]);
+    }
   });
 
-  it("parses pipelines with all fields", async () => {
+  it("parses pipeline steps with all fields", async () => {
     const mockClient = makeMockGitClient(FULL_YAML);
     (getClient as jest.Mock).mockReturnValue(mockClient);
 
     const result = await readTemplateFromRepo("p", "r", "/project-template.yml");
 
-    const pipeline = result.definition.pipelines![0];
-    expect(pipeline.name).toBe("{{projectName}}-ci");
-    expect(pipeline.repository).toBe("{{projectName}}-api");
-    expect(pipeline.yamlPath).toBe("azure-pipelines.yml");
-    expect(pipeline.folder).toBe("/MyPipelines");
-    expect(pipeline.when).toBe("includeDocker");
+    const pipelineStep = result.definition.scaffoldingSteps.find((s) => s.type === "pipeline")!;
+    expect(pipelineStep.type).toBe("pipeline");
+    expect(pipelineStep.name).toBe("{{projectName}}-ci");
+    if (pipelineStep.type === "pipeline") {
+      expect(pipelineStep.repository).toBe("{{projectName}}-api");
+      expect(pipelineStep.yamlPath).toBe("azure-pipelines.yml");
+      expect(pipelineStep.folder).toBe("/MyPipelines");
+      expect(pipelineStep.when).toBe("includeDocker");
+    }
+    expect(pipelineStep.name).toBe("{{projectName}}-ci");
+    if (pipelineStep.type === "pipeline") {
+      expect(pipelineStep.repository).toBe("{{projectName}}-api");
+      expect(pipelineStep.yamlPath).toBe("azure-pipelines.yml");
+      expect(pipelineStep.folder).toBe("/MyPipelines");
+      expect(pipelineStep.when).toBe("includeDocker");
+    }
   });
 
   it("throws when YAML is not an object (scalar value)", async () => {
@@ -245,22 +258,25 @@ parameters:
 
     await expect(readTemplateFromRepo("p", "r", "/project-template.yml")).rejects.toThrow("type");
   });
-
   it("defaults to 'main' when defaultBranch is not specified", async () => {
     const yaml = `
 id: "504c735f-8f8d-4365-b787-a8f135c45c62"
 name: "X"
 version: "1"
 parameters: []
-repositories:
-  - name: my-repo
+scaffoldingSteps:
+  - type: repository
+    name: my-repo
     sourcePath: src
 `;
     const mockClient = makeMockGitClient(yaml);
     (getClient as jest.Mock).mockReturnValue(mockClient);
 
     const result = await readTemplateFromRepo("p", "r", "/project-template.yml");
-    expect(result.definition.repositories![0].defaultBranch).toBe("main");
+    const repoStep = result.definition.scaffoldingSteps.find((s) => s.type === "repository")!;
+    if (repoStep.type === "repository") {
+      expect(repoStep.defaultBranch).toBe("main");
+    }
   });
 
   it("parses templateCategories when present", async () => {
@@ -305,6 +321,148 @@ parameters: []
 
     const result = await readTemplateFromRepo("p", "r", "/project-template.yml");
     expect(result.definition.computed).toBeUndefined();
+  });
+
+  // ─── Legacy format migration ──────────────────────────────────────────────
+
+  describe("legacy format migration", () => {
+    it("migrates top-level repositories array to scaffoldingSteps", async () => {
+      const yaml = `
+id: "504c735f-8f8d-4365-b787-a8f135c45c62"
+name: "Legacy"
+version: "1.0.0"
+parameters: []
+repositories:
+  - name: my-repo
+    sourcePath: src
+    defaultBranch: main
+`;
+      const mockClient = makeMockGitClient(yaml);
+      (getClient as jest.Mock).mockReturnValue(mockClient);
+
+      const result = await readTemplateFromRepo("p", "r", "/project-template.yml");
+      expect(result.definition.scaffoldingSteps).toHaveLength(1);
+      expect(result.definition.scaffoldingSteps[0]).toMatchObject({ type: "repository", name: "my-repo" });
+    });
+
+    it("migrates top-level pipelines array to scaffoldingSteps", async () => {
+      const yaml = `
+id: "504c735f-8f8d-4365-b787-a8f135c45c62"
+name: "Legacy"
+version: "1.0.0"
+parameters: []
+repositories:
+  - name: my-repo
+    sourcePath: src
+    defaultBranch: main
+pipelines:
+  - name: my-ci
+    repository: my-repo
+    yamlPath: azure-pipelines.yml
+`;
+      const mockClient = makeMockGitClient(yaml);
+      (getClient as jest.Mock).mockReturnValue(mockClient);
+
+      const result = await readTemplateFromRepo("p", "r", "/project-template.yml");
+      const pipeline = result.definition.scaffoldingSteps.find((s) => s.type === "pipeline");
+      expect(pipeline).toMatchObject({ type: "pipeline", name: "my-ci" });
+    });
+
+    it("migrates serviceConnections and maps type -> endpointType", async () => {
+      const yaml = `
+id: "504c735f-8f8d-4365-b787-a8f135c45c62"
+name: "Legacy"
+version: "1.0.0"
+parameters: []
+serviceConnections:
+  - name: my-sc
+    type: AzureRM
+    authorizationScheme: ServicePrincipal
+    authorization:
+      serviceprincipalid: sp-id
+      serviceprincipalkey: sp-key
+`;
+      const mockClient = makeMockGitClient(yaml);
+      (getClient as jest.Mock).mockReturnValue(mockClient);
+
+      const result = await readTemplateFromRepo("p", "r", "/project-template.yml");
+      const sc = result.definition.scaffoldingSteps.find((s) => s.type === "serviceConnection");
+      expect(sc).toMatchObject({ type: "serviceConnection", name: "my-sc" });
+      if (sc?.type === "serviceConnection") {
+        expect(sc.endpointType).toBe("AzureRM");
+      }
+    });
+
+    it("migrates variableGroups array to scaffoldingSteps", async () => {
+      const yaml = `
+id: "504c735f-8f8d-4365-b787-a8f135c45c62"
+name: "Legacy"
+version: "1.0.0"
+parameters: []
+variableGroups:
+  - name: my-vars
+`;
+      const mockClient = makeMockGitClient(yaml);
+      (getClient as jest.Mock).mockReturnValue(mockClient);
+
+      const result = await readTemplateFromRepo("p", "r", "/project-template.yml");
+      expect(result.definition.scaffoldingSteps).toHaveLength(1);
+      expect(result.definition.scaffoldingSteps[0]).toMatchObject({ type: "variableGroup", name: "my-vars" });
+    });
+
+    it("orders migrated steps: repositories, serviceConnections, variableGroups, pipelines", async () => {
+      const yaml = `
+id: "504c735f-8f8d-4365-b787-a8f135c45c62"
+name: "Legacy"
+version: "1.0.0"
+parameters: []
+repositories:
+  - name: my-repo
+    sourcePath: src
+    defaultBranch: main
+pipelines:
+  - name: my-ci
+    repository: my-repo
+    yamlPath: azure-pipelines.yml
+serviceConnections:
+  - name: my-sc
+    type: AzureRM
+    authorizationScheme: ServicePrincipal
+    authorization: {}
+variableGroups:
+  - name: my-vars
+`;
+      const mockClient = makeMockGitClient(yaml);
+      (getClient as jest.Mock).mockReturnValue(mockClient);
+
+      const result = await readTemplateFromRepo("p", "r", "/project-template.yml");
+      const types = result.definition.scaffoldingSteps.map((s) => s.type);
+      expect(types).toEqual(["repository", "serviceConnection", "variableGroup", "pipeline"]);
+    });
+
+    it("ignores legacy fields when scaffoldingSteps is already present", async () => {
+      const yaml = `
+id: "504c735f-8f8d-4365-b787-a8f135c45c62"
+name: "Legacy"
+version: "1.0.0"
+parameters: []
+scaffoldingSteps:
+  - type: repository
+    name: new-repo
+    sourcePath: src
+    defaultBranch: main
+repositories:
+  - name: old-repo
+    sourcePath: src
+    defaultBranch: main
+`;
+      const mockClient = makeMockGitClient(yaml);
+      (getClient as jest.Mock).mockReturnValue(mockClient);
+
+      const result = await readTemplateFromRepo("p", "r", "/project-template.yml");
+      expect(result.definition.scaffoldingSteps).toHaveLength(1);
+      expect(result.definition.scaffoldingSteps[0]).toMatchObject({ name: "new-repo" });
+    });
   });
 });
 

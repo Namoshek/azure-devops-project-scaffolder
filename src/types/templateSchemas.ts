@@ -17,52 +17,54 @@ export const ParameterValidationSchema = z.object({
   message: z.string(),
 });
 
-export const TemplateParameterSchema = z.object({
-  /** Unique identifier used as the Mustache variable name in templates, e.g. `{{projectName}}`. Must be unique within the template. */
-  id: z.string().min(1),
-  /** Human-readable label displayed next to the input control in the parameter form. */
-  label: z.string().min(1),
-  /** Input control type. `"string"` renders a text field, `"boolean"` a checkbox, `"choice"` a dropdown. */
-  type: z.enum(["string", "boolean", "choice"]),
-  /** Optional helper text rendered below the input to guide the user, e.g. format requirements or examples. */
-  hint: z.string().optional(),
-  /** When true, the user must supply a non-empty value before scaffolding can proceed. */
-  required: z.boolean().optional(),
-  /**
-   * Value pre-filled in the form when it is first rendered. Use a `string` for `string`/`choice` types
-   * and a `boolean` for the `boolean` type. The user can still change it before submitting.
-   */
-  defaultValue: z.union([z.string(), z.boolean()]).optional(),
-  /** Selectable options for `type: "choice"` parameters. Ignored for all other types. */
-  options: z.array(z.string()).optional(),
-  /**
-   * When true, the input is rendered as a password field so the value is masked while typing.
-   * Secret parameter values are also replaced with `"[redacted]"` in the audit log.
-   */
-  secret: z.boolean().optional(),
-  /**
-   * Conditional visibility expression. The parameter is shown only when this expression evaluates to
-   * true. Uses the same expression syntax supported by `TemplateRepository.when` and
-   * `TemplatePipeline.when`. Example: `"includeDocker"`.
-   */
-  when: z.string().optional(),
-  /**
-   * Optional group name used to visually cluster related parameters in the scaffolding form.
-   * Parameters sharing the same `formGroup` string are rendered together inside the same group of form fields.
-   * Parameters without a `formGroup` are rendered after all groups, with no visual decoration.
-   */
-  formGroup: z.string().optional(),
-  /** Optional validation rule applied to the entered value. Only meaningful for `type: "string"`. */
-  validation: ParameterValidationSchema.optional(),
-}).superRefine((val, ctx) => {
-  if (val.type === "choice" && (!val.options || val.options.length === 0)) {
-    ctx.addIssue({
-      code: 'custom',
-      message: `Parameter "${val.id}": choice parameters must have at least one entry in the 'options' array.`,
-      path: ["options"],
-    });
-  }
-});
+export const TemplateParameterSchema = z
+  .object({
+    /** Unique identifier used as the Mustache variable name in templates, e.g. `{{projectName}}`. Must be unique within the template. */
+    id: z.string().min(1),
+    /** Human-readable label displayed next to the input control in the parameter form. */
+    label: z.string().min(1),
+    /** Input control type. `"string"` renders a text field, `"boolean"` a checkbox, `"choice"` a dropdown. */
+    type: z.enum(["string", "boolean", "choice"]),
+    /** Optional helper text rendered below the input to guide the user, e.g. format requirements or examples. */
+    hint: z.string().optional(),
+    /** When true, the user must supply a non-empty value before scaffolding can proceed. */
+    required: z.boolean().optional(),
+    /**
+     * Value pre-filled in the form when it is first rendered. Use a `string` for `string`/`choice` types
+     * and a `boolean` for the `boolean` type. The user can still change it before submitting.
+     */
+    defaultValue: z.union([z.string(), z.boolean()]).optional(),
+    /** Selectable options for `type: "choice"` parameters. Ignored for all other types. */
+    options: z.array(z.string()).optional(),
+    /**
+     * When true, the input is rendered as a password field so the value is masked while typing.
+     * Secret parameter values are also replaced with `"[redacted]"` in the audit log.
+     */
+    secret: z.boolean().optional(),
+    /**
+     * Conditional visibility expression. The parameter is shown only when this expression evaluates to
+     * true. Uses the same expression syntax supported by `TemplateRepository.when` and
+     * `TemplatePipeline.when`. Example: `"includeDocker"`.
+     */
+    when: z.string().optional(),
+    /**
+     * Optional group name used to visually cluster related parameters in the scaffolding form.
+     * Parameters sharing the same `formGroup` string are rendered together inside the same group of form fields.
+     * Parameters without a `formGroup` are rendered after all groups, with no visual decoration.
+     */
+    formGroup: z.string().optional(),
+    /** Optional validation rule applied to the entered value. Only meaningful for `type: "string"`. */
+    validation: ParameterValidationSchema.optional(),
+  })
+  .superRefine((val, ctx) => {
+    if (val.type === "choice" && (!val.options || val.options.length === 0)) {
+      ctx.addIssue({
+        code: "custom",
+        message: `Parameter "${val.id}": choice parameters must have at least one entry in the 'options' array.`,
+        path: ["options"],
+      });
+    }
+  });
 
 export const TemplateFileExcludeSchema = z.object({
   /**
@@ -93,7 +95,8 @@ export const TemplateRepositorySchema = z.object({
   sourcePath: z
     .string()
     .refine((v) => !v.startsWith("/"), {
-      message: "sourcePath must not start with a leading slash — use an empty string or '.' to reference the repository root.",
+      message:
+        "sourcePath must not start with a leading slash — use an empty string or '.' to reference the repository root.",
     })
     .default(""),
   /**
@@ -225,7 +228,7 @@ export const TemplateServiceConnectionSchema = z.object({
    * ADO endpoint type name, e.g. "AzureRM", "github", "dockerregistry".
    * Accepts any string — including types contributed by third-party extensions.
    */
-  type: z.string().min(1),
+  endpointType: z.string().min(1),
   /**
    * Authorization scheme, e.g. "ServicePrincipal", "Token", "UsernamePassword",
    * "ManagedServiceIdentity". Must match a scheme supported by the chosen type.
@@ -270,10 +273,12 @@ export const TemplateComputedSchema = z.object({
    * `{{#isVite}}...{{/isVite}}`. Must not start with a digit. Avoid names that clash with
    * parameter ids — if a clash occurs the computed value takes precedence.
    */
-  id: z.string().regex(
-    /^[a-zA-Z_][a-zA-Z0-9_]*$/,
-    "Computed entry id must be a valid JavaScript identifier (letters, digits, underscores; must not start with a digit).",
-  ),
+  id: z
+    .string()
+    .regex(
+      /^[a-zA-Z_][a-zA-Z0-9_]*$/,
+      "Computed entry id must be a valid JavaScript identifier (letters, digits, underscores; must not start with a digit).",
+    ),
   /**
    * Boolean expression evaluated against the current parameter values at render time.
    * Uses exactly the same syntax as the `when` fields on parameters, repositories, pipelines,
@@ -287,75 +292,119 @@ export const TemplateComputedSchema = z.object({
   expression: z.string().min(1),
 });
 
-export const TemplateDefinitionSchema = z.object({
-  /**
-   * Universally unique identifier (UUID/GUID) for this template. Should be generated once when the
-   * template is first authored and never changed — it is used as the stable identity key in audit
-   * records and must remain constant across template updates.
-   */
-  id: z.guid(),
-  /** Display name shown to users in the template selection list and template card. */
-  name: z.string().min(1),
-  /**
-   * Semantic version string, e.g. `"1.0.0"`. Currently informational only — displayed in the
-   * template card but not used for compatibility checks or upgrade logic.
-   */
-  version: z.string().min(1),
-  /** Short description of what the template scaffolds. Displayed in the template card. */
-  description: z.string().optional(),
-  /**
-   * List of team names or contact details responsible for maintaining this template. Shown in the
-   * template card to help users know who to contact with questions or issues.
-   */
-  maintainers: z.array(z.string()).optional(),
-  /**
-   * Guidance shown to the user **before** they submit the scaffolding form, e.g. naming
-   * conventions or required permissions. Each array entry is rendered as a separate
-   * [MessageCard](https://developer.microsoft.com/en-us/azure-devops/components/message-card).
-   *
-   * **GitHub-flavored Markdown is supported** — use bold, italic, headings, bullet/numbered
-   * lists, tables, strikethrough, inline code, and links. Raw HTML is intentionally stripped
-   * for security.
-   *
-   * `{{paramId}}` Mustache tokens work inside Markdown and are interpolated from the current
-   * form values before the Markdown is rendered.
-   */
-  preScaffoldNotes: z.array(z.string()).optional(),
-  /**
-   * Guidance shown to the user **after** scaffolding completes successfully, e.g. next steps
-   * or links to onboarding documentation. Each array entry is rendered as a separate
-   * [MessageCard](https://developer.microsoft.com/en-us/azure-devops/components/message-card).
-   *
-   * **GitHub-flavored Markdown is supported** — use bold, italic, headings, bullet/numbered
-   * lists, tables, strikethrough, inline code, and links. Raw HTML is intentionally stripped
-   * for security.
-   *
-   * `{{paramId}}` Mustache tokens work inside Markdown and are interpolated from the final
-   * parameter values before the Markdown is rendered.
-   */
-  postScaffoldNotes: z.array(z.string()).optional(),
-  /**
-   * Optional list of category names that this template belongs to, as declared in the YAML. Used to
-   * group templates under filter tabs in the selection UI. Categories must also be configured in
-   * Admin Settings to appear as tabs; templates whose declared categories do not match any
-   * configured category are grouped under the implicit **Others** tab.
-   */
-  templateCategories: z.array(z.string()).optional(),
-  /**
-   * Named booleans computed from expressions at render time and injected into the Mustache
-   * context alongside raw parameter values. Use this to derive reusable flags from choice
-   * parameters or compound conditions.
-   * They are not surfaced in the parameter form and are not written to the audit log.
-   */
-  computed: z.array(TemplateComputedSchema).optional(),
-  /** Ordered list of input parameters the user must fill in before scaffolding can proceed. */
-  parameters: z.array(TemplateParameterSchema).default([]),
-  /** Git repositories to create in the target project as part of this template's scaffold. */
-  repositories: z.array(TemplateRepositorySchema).default([]),
-  /** YAML pipeline definitions to create in the target project as part of this template's scaffold. */
-  pipelines: z.array(TemplatePipelineSchema).default([]),
-  /** Service connections to create in the target project as part of this template's scaffold. */
-  serviceConnections: z.array(TemplateServiceConnectionSchema).default([]),
-  /** Variable groups to create in the target project's Library as part of this template's scaffold. */
-  variableGroups: z.array(TemplateVariableGroupSchema).default([]),
+export const RepositoryStepSchema = TemplateRepositorySchema.extend({
+  type: z.literal("repository"),
 });
+
+export const ServiceConnectionStepSchema = TemplateServiceConnectionSchema.extend({
+  type: z.literal("serviceConnection"),
+});
+
+export const VariableGroupStepSchema = TemplateVariableGroupSchema.extend({
+  type: z.literal("variableGroup"),
+});
+
+export const PipelineStepSchema = TemplatePipelineSchema.extend({
+  type: z.literal("pipeline"),
+});
+
+export const ScaffoldingStepSchema = z.discriminatedUnion("type", [
+  RepositoryStepSchema,
+  ServiceConnectionStepSchema,
+  VariableGroupStepSchema,
+  PipelineStepSchema,
+]);
+
+export const TemplateDefinitionSchema = z
+  .object({
+    /**
+     * Universally unique identifier (UUID/GUID) for this template. Should be generated once when the
+     * template is first authored and never changed — it is used as the stable identity key in audit
+     * records and must remain constant across template updates.
+     */
+    id: z.guid(),
+    /** Display name shown to users in the template selection list and template card. */
+    name: z.string().min(1),
+    /**
+     * Semantic version string, e.g. `"1.0.0"`. Currently informational only — displayed in the
+     * template card but not used for compatibility checks or upgrade logic.
+     */
+    version: z.string().min(1),
+    /** Short description of what the template scaffolds. Displayed in the template card. */
+    description: z.string().optional(),
+    /**
+     * List of team names or contact details responsible for maintaining this template. Shown in the
+     * template card to help users know who to contact with questions or issues.
+     */
+    maintainers: z.array(z.string()).optional(),
+    /**
+     * Guidance shown to the user **before** they submit the scaffolding form, e.g. naming
+     * conventions or required permissions. Each array entry is rendered as a separate
+     * [MessageCard](https://developer.microsoft.com/en-us/azure-devops/components/message-card).
+     *
+     * **GitHub-flavored Markdown is supported** — use bold, italic, headings, bullet/numbered
+     * lists, tables, strikethrough, inline code, and links. Raw HTML is intentionally stripped
+     * for security.
+     *
+     * `{{paramId}}` Mustache tokens work inside Markdown and are interpolated from the current
+     * form values before the Markdown is rendered.
+     */
+    preScaffoldNotes: z.array(z.string()).optional(),
+    /**
+     * Guidance shown to the user **after** scaffolding completes successfully, e.g. next steps
+     * or links to onboarding documentation. Each array entry is rendered as a separate
+     * [MessageCard](https://developer.microsoft.com/en-us/azure-devops/components/message-card).
+     *
+     * **GitHub-flavored Markdown is supported** — use bold, italic, headings, bullet/numbered
+     * lists, tables, strikethrough, inline code, and links. Raw HTML is intentionally stripped
+     * for security.
+     *
+     * `{{paramId}}` Mustache tokens work inside Markdown and are interpolated from the final
+     * parameter values before the Markdown is rendered.
+     */
+    postScaffoldNotes: z.array(z.string()).optional(),
+    /**
+     * Optional list of category names that this template belongs to, as declared in the YAML. Used to
+     * group templates under filter tabs in the selection UI. Categories must also be configured in
+     * Admin Settings to appear as tabs; templates whose declared categories do not match any
+     * configured category are grouped under the implicit **Others** tab.
+     */
+    templateCategories: z.array(z.string()).optional(),
+    /**
+     * Named booleans computed from expressions at render time and injected into the Mustache
+     * context alongside raw parameter values. Use this to derive reusable flags from choice
+     * parameters or compound conditions.
+     * They are not surfaced in the parameter form and are not written to the audit log.
+     */
+    computed: z.array(TemplateComputedSchema).optional(),
+    /** Ordered list of input parameters the user must fill in before scaffolding can proceed. */
+    parameters: z.array(TemplateParameterSchema).default([]),
+    /**
+     * Flat, ordered list of scaffolding steps. Each entry is a discriminated union keyed on
+     * `type` (`"repository"`, `"pipeline"`, `"serviceConnection"`, `"variableGroup"`).
+     * Execution order is the order declared here.
+     */
+    scaffoldingSteps: z.array(ScaffoldingStepSchema).default([]),
+  })
+  .superRefine((val, ctx) => {
+    const steps = val.scaffoldingSteps;
+    for (let i = 0; i < steps.length; i++) {
+      const step = steps[i];
+      if (step.type !== "pipeline" || step.repository.includes("{{")) {
+        continue;
+      }
+      const repoNames = steps
+        .slice(0, i)
+        .filter((s) => s.type === "repository")
+        .map((s) => s.name);
+      const hasLiteralMatch = repoNames.some((n) => !n.includes("{{") && n === step.repository);
+      const hasTemplateRepo = repoNames.some((n) => n.includes("{{"));
+      if (!hasLiteralMatch && !hasTemplateRepo) {
+        ctx.addIssue({
+          code: "custom",
+          message: `Pipeline step "${step.name}" references repository "${step.repository}" which does not appear as a repository step earlier in scaffoldingSteps.`,
+          path: [`scaffoldingSteps`, i, "repository"],
+        });
+      }
+    }
+  });

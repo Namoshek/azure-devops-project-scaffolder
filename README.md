@@ -52,13 +52,14 @@ parameters:
       regex: "^[a-z][a-z0-9-]+$"
       message: "Lowercase letters, numbers, and hyphens only."
 
-repositories:
-  - name: "{{projectName}}.backend"
+scaffoldingSteps:
+  - type: repository
+    name: "{{projectName}}.backend"
     sourcePath: "templates/backend"
     defaultBranch: "main"
 
-pipelines:
-  - name: "{{projectName}}-ci"
+  - type: pipeline
+    name: "{{projectName}}-ci"
     repository: "{{projectName}}.backend"
     yamlPath: "pipelines/ci.yml"
     folder: "\\CI"

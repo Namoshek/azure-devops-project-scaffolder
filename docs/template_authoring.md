@@ -9,12 +9,12 @@ This guide explains how to create project templates for the **Project Scaffoldin
 A template is any repository in the collection that contains a `project-template.yml` file in its root. The extension discovers these automatically via Code Search and presents them to project administrators in the "Project Scaffolding" page under Project Settings. If project restrictions are configured, only templates from allowed projects will be shown.
 Users can only see templates from projects they have at least read access to.
 
-When a user selects a template and fills in the parameter form, the extension:
+When a user selects a template and fills in the parameter form, the extension executes each entry in `scaffoldingSteps` in the order defined by the template:
 
-1. Creates new repositories by copying files from `sourcePath` subfolders (or the template repository root if `sourcePath` is empty), rendering all content and file names through [Mustache.js](https://mustache.github.io/).
-2. Creates service connections as defined in the template, rendering all fields through Mustache. Credential fields should reference `secret: true` parameters to ensure secure handling (see Service Connections section below).
-3. Creates Library variable groups as defined in the template, rendering all fields through Mustache. Secret variables should reference `secret: true` parameters (see Variable Groups section below).
-4. Creates YAML pipeline definitions pointing to designated files in the created repositories.
+1. **Repository** — copies files from the specified `sourcePath` subfolder (or the template root if `sourcePath` is empty), rendering all file names and content through [Mustache.js](https://mustache.github.io/).
+2. **Service connection** — creates an ADO service endpoint, with all fields rendered through Mustache. Credential fields should reference `secret: true` parameters to ensure secure handling (see [Service Connections](#service-connections) below).
+3. **Variable group** — creates a Library variable group, with all fields rendered through Mustache. Secret variables should reference `secret: true` parameters (see [Variable Groups](#variable-groups) below).
+4. **Pipeline** — registers a YAML pipeline definition pointing to a designated file in a created repository. The referenced repository must appear earlier in `scaffoldingSteps`.
 
 Everything is **non-destructive**: if a repository already exists and has commits, it is skipped (not overwritten).
 
@@ -106,9 +106,10 @@ computed:
   - id: dockerAndSonar
     expression: "includeDocker && includeSonarQube"
 
-# ── Repositories ───────────────────────────────────────────────────────────────────
-repositories:
-  - name: "{{projectName}}.backend" # Mustache in repo name ✔
+# ── Scaffolding Steps ──────────────────────────────────────────────────────────────
+scaffoldingSteps:
+  - type: repository
+    name: "{{projectName}}.backend" # Mustache in repo name ✔
     sourcePath: "templates/backend" # Subfolder in the template repository
     defaultBranch: "main" # Optional, the default is 'main'
     exclude: # Optional: exclude individual files
@@ -117,15 +118,15 @@ repositories:
       - path: "docker-compose.yml"
         when: "!includeDocker"
 
-  - name: "{{projectName}}.docker-infra"
+  - type: repository
+    name: "{{projectName}}.docker-infra"
     sourcePath: "templates/docker"
     defaultBranch: "main"
     when: "includeDocker" # Optional: skip this entire repo when false
 
-# ── Service Connections ─────────────────────────────────────────────────────────────
-serviceConnections:
-  - name: "SonarQube"
-    type: "sonarqube"
+  - type: serviceConnection
+    name: "SonarQube"
+    endpointType: "sonarqube"
     authorizationScheme: "UsernamePassword"
     authorization:
       username: "{{sonarqubePersonalAccessToken}}"
@@ -135,9 +136,8 @@ serviceConnections:
     grantAccessToAllPipelines: true
     when: "includeSonarQube" # Optional: skip this connection when false
 
-# ── Variable Groups ────────────────────────────────────────────────────────────────
-variableGroups:
-  - name: "{{projectName}}-pipeline-vars"
+  - type: variableGroup
+    name: "{{projectName}}-pipeline-vars"
     description: "Shared pipeline variables for {{projectName}}"
     grantAccessToAllPipelines: true
     variables:
@@ -148,14 +148,14 @@ variableGroups:
         secret: true
     when: "includeBackend"
 
-# ── Pipelines ──────────────────────────────────────────────────────────────────────
-pipelines:
-  - name: "{{projectName}}-ci"
+  - type: pipeline
+    name: "{{projectName}}-ci"
     repository: "{{projectName}}.backend" # Must match a repository name above
     yamlPath: "pipelines/ci.yml" # Path within the target repo
     folder: "\\CI" # Pipeline folder in ADO (optional, default is root)
 
-  - name: "{{projectName}}-docker-build"
+  - type: pipeline
+    name: "{{projectName}}-docker-build"
     repository: "{{projectName}}.backend"
     yamlPath: "pipelines/docker.yml"
     folder: "\\CI"
@@ -349,7 +349,7 @@ Use `{{^id}}` for the inverted (else) branch:
 
 ### Usage in `when` fields
 
-Computed ids can also be used in any `when:` field on parameters, repositories, pipelines, service connections, and variable groups — exactly like any other parameter id:
+Computed ids can also be used in any `when:` field on parameters and `scaffoldingSteps` entries — exactly like any other parameter id:
 
 ```yaml
 parameters:
@@ -359,8 +359,9 @@ parameters:
     defaultValue: "5173"
     when: "isVite" # ← computed id used here
 
-repositories:
-  - name: "{{projectName}}.frontend"
+scaffoldingSteps:
+  - type: repository
+    name: "{{projectName}}.frontend"
     sourcePath: "templates/frontend-vite"
     when: "isVite" # ← and here
 ```
@@ -419,7 +420,7 @@ parameters:
 
 ## `when` Expressions
 
-Use the `when` field to conditionally control visibility or inclusion based on the current parameter values. It is supported on **parameters** (show/hide the field), **repositories**, **pipelines**, **service connections**, **variable groups** (skip the resource when the condition is false), and file **exclude** rules (exclude the file/folder when the condition is true).
+Use the `when` field to conditionally control visibility or inclusion based on the current parameter values. It is supported on **parameters** (show/hide the field), all `scaffoldingSteps` entry types — repositories, pipelines, service connections, variable groups — (skip that step when the condition is false), and file **exclude** rules within repository steps (exclude the file/folder when the condition is true).
 
 Supported syntax:
 
@@ -436,19 +437,20 @@ Supported syntax:
 
 ## Optional Files and Resources
 
-### Conditional repositories and pipelines
+### Conditional steps
 
-Add a `when` field to any `repository` or `pipeline` entry to skip it entirely when the condition evaluates to false. The same expression syntax used for parameter visibility applies here.
+Add a `when` field to any entry in `scaffoldingSteps` to skip it entirely when the condition evaluates to false. The same expression syntax used for parameter visibility applies here.
 
 ```yaml
-repositories:
-  - name: "{{projectName}}.docker-infra"
+scaffoldingSteps:
+  - type: repository
+    name: "{{projectName}}.docker-infra"
     sourcePath: "templates/docker"
     defaultBranch: "main"
     when: "includeDocker" # entire repo is skipped when includeDocker is false
 
-pipelines:
-  - name: "{{projectName}}-docker-build"
+  - type: pipeline
+    name: "{{projectName}}-docker-build"
     repository: "{{projectName}}.backend"
     yamlPath: "pipelines/docker.yml"
     folder: "\\CI"
@@ -464,8 +466,9 @@ Add an `exclude` list to a repository entry to drop specific files or entire fol
 **Exclude individual files** — use a path with no trailing slash:
 
 ```yaml
-repositories:
-  - name: "{{projectName}}.backend"
+scaffoldingSteps:
+  - type: repository
+    name: "{{projectName}}.backend"
     sourcePath: "templates/backend"
     defaultBranch: "main"
     exclude:
@@ -479,8 +482,9 @@ repositories:
 **Exclude an entire folder** — add a trailing slash to the path. All files under that folder (including subfolders) are excluded:
 
 ```yaml
-repositories:
-  - name: "{{projectName}}.backend"
+scaffoldingSteps:
+  - type: repository
+    name: "{{projectName}}.backend"
     sourcePath: "templates/backend"
     defaultBranch: "main"
     exclude:
@@ -516,8 +520,9 @@ The trailing slash is what signals folder exclusion. `"docker/"` excludes every 
 Use the `variables` field on a pipeline entry to define pipeline-level variables that are set directly on the ADO build definition when the pipeline is created. Both the variable name and value are Mustache-rendered, so they can include any parameter.
 
 ```yaml
-pipelines:
-  - name: "{{projectName}}-ci"
+scaffoldingSteps:
+  - type: pipeline
+    name: "{{projectName}}-ci"
     repository: "{{projectName}}.backend"
     yamlPath: "pipelines/ci.yml"
     folder: "\\CI"
@@ -549,8 +554,9 @@ parameters:
     secret: true # renders as a password input in the scaffolding form
     when: "includeBackend"
 
-pipelines:
-  - name: "{{projectName}}-backend-ci"
+scaffoldingSteps:
+  - type: pipeline
+    name: "{{projectName}}-backend-ci"
     repository: "{{projectName}}.backend"
     yamlPath: "pipelines/ci.yml"
     variables:
@@ -563,14 +569,15 @@ pipelines:
 
 ## Service Connections
 
-Use the `serviceConnections` section to create ADO service connections (endpoints) as part of scaffolding. Service connections are created after all repositories are provisioned and before pipelines, so pipelines can reference them immediately.
+Add `serviceConnection` entries to `scaffoldingSteps` to create ADO service connections (endpoints) as part of scaffolding. Place them after repository steps and before pipeline steps so that pipelines can reference them immediately.
 
 ### Basic example
 
 ```yaml
-serviceConnections:
-  - name: "{{projectName}}-azure"
-    type: "AzureRM"
+scaffoldingSteps:
+  - type: serviceConnection
+    name: "{{projectName}}-azure"
+    endpointType: "AzureRM"
     authorizationScheme: "ServicePrincipal"
     url: "https://management.azure.com/"
     authorization:
@@ -591,7 +598,7 @@ serviceConnections:
 | Field                       | Required | Description                                                                                                                       |
 | --------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------- |
 | `name`                      | yes      | Display name for the connection. Mustache-rendered.                                                                               |
-| `type`                      | yes      | ADO endpoint type name, e.g. `"AzureRM"`, `"github"`, `"dockerregistry"`. Accepts any type, including extension-contributed ones. |
+| `endpointType`              | yes      | ADO endpoint type name, e.g. `"AzureRM"`, `"github"`, `"dockerregistry"`. Accepts any type, including extension-contributed ones. |
 | `authorizationScheme`       | yes      | Scheme supported by the chosen type, e.g. `"ServicePrincipal"`, `"Token"`, `"UsernamePassword"`, `"ManagedServiceIdentity"`.      |
 | `url`                       | no       | Endpoint URL. Required by some types (see table below). Defaults to empty string.                                                 |
 | `authorization`             | yes      | Map of authorization parameter key-value pairs. Values are Mustache-rendered.                                                     |
@@ -611,9 +618,10 @@ parameters:
     type: string
     secret: true # ← renders as a password input; value is never logged
 
-serviceConnections:
-  - name: "{{projectName}}-azure"
-    type: "AzureRM"
+scaffoldingSteps:
+  - type: serviceConnection
+    name: "{{projectName}}-azure"
+    endpointType: "AzureRM"
     authorizationScheme: "ServicePrincipal"
     url: "https://management.azure.com/"
     authorization:
@@ -626,7 +634,7 @@ To find field names for connection types (built-in or extension-contributed), in
 
 Alternatively, you can also create a sample connection of the desired type and inspect the request payload in the browser dev tools network tab when saving it.
 
-Example for a SonarQube service connection (only relevant fields shown):
+Example for a SonarQube service connection (only relevant fields shown). Note that the ADO API uses `type` where the template YAML uses `endpointType`:
 
 ```json
 // POST https://ado.example.com/DefaultCollection/_apis/serviceendpoint/endpoints?api-version=7.0
@@ -659,19 +667,20 @@ Example for a SonarQube service connection (only relevant fields shown):
 
 - **Non-destructive**: if a service connection with the same name already exists in the project, it is skipped, not overwritten. This is consistent with how repositories and pipelines are handled.
 - **`grantAccessToAllPipelines`**: sets "Grant access permission to all pipelines" on the connection. If this call fails after the connection is already created, scaffolding still reports success for that step and logs a warning — the connection exists and you can grant access manually.
-- **Extension-contributed types**: the scaffolder passes `type` and all `authorization`/`data` fields as-is to the ADO Service Endpoint API. Any endpoint type that ADO can create via REST — including types contributed by installed extensions — is supported.
+- **Extension-contributed types**: the scaffolder passes `endpointType` (as `type` in the ADO API) and all `authorization`/`data` fields as-is to the ADO Service Endpoint API. Any endpoint type that ADO can create via REST — including types contributed by installed extensions — is supported.
 
 ---
 
 ## Variable Groups
 
-Use the `variableGroups` section to create [Azure Pipelines Library variable groups](https://learn.microsoft.com/en-us/azure/devops/pipelines/library/variable-groups) as part of scaffolding. Variable groups are created before pipelines, so the groups are available by name when pipelines run.
+Add `variableGroup` entries to `scaffoldingSteps` to create [Azure Pipelines Library variable groups](https://learn.microsoft.com/en-us/azure/devops/pipelines/library/variable-groups) as part of scaffolding. Place them before pipeline steps so the groups are available by name when pipelines run.
 
 ### Basic example
 
 ```yaml
-variableGroups:
-  - name: "{{projectName}}-pipeline-vars"
+scaffoldingSteps:
+  - type: variableGroup
+    name: "{{projectName}}-pipeline-vars"
     description: "Shared pipeline variables for {{projectName}}"
     grantAccessToAllPipelines: true
     variables:
@@ -721,8 +730,9 @@ parameters:
     type: string
     secret: true # masked in the scaffolding form; never logged
 
-variableGroups:
-  - name: "{{projectName}}-secrets"
+scaffoldingSteps:
+  - type: variableGroup
+    name: "{{projectName}}-secrets"
     variables:
       - name: "DB_PASSWORD"
         value: "{{dbPassword}}"

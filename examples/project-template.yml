@@ -130,8 +130,9 @@ computed:
   - id: fullStack
     expression: "includeBackend && includeFrontend"
 
-repositories:
-  - name: "{{projectName}}.backend"
+scaffoldingSteps:
+  - type: repository
+    name: "{{projectName}}.backend"
     sourcePath: "templates/backend"
     defaultBranch: "main"
     when: "includeBackend"
@@ -139,14 +140,15 @@ repositories:
       - path: "Dockerfile"
         when: "!includeDocker"
 
-  - name: "{{projectName}}.frontend"
+  - type: repository
+    name: "{{projectName}}.frontend"
     sourcePath: "templates/frontend"
     defaultBranch: "main"
     when: "includeFrontend"
 
-serviceConnections:
-  - name: "{{projectName}}-azure"
-    type: "AzureRM"
+  - type: serviceConnection
+    name: "{{projectName}}-azure"
+    endpointType: "AzureRM"
     authorizationScheme: "ServicePrincipal"
     url: "https://management.azure.com/"
     authorization:
@@ -161,8 +163,8 @@ serviceConnections:
     grantAccessToAllPipelines: true
     when: "includeBackend"
 
-variableGroups:
-  - name: "{{projectName}}-pipeline-vars"
+  - type: variableGroup
+    name: "{{projectName}}-pipeline-vars"
     description: "Shared pipeline variables for {{projectName}}"
     grantAccessToAllPipelines: true
     when: "includeBackend"
@@ -177,7 +179,8 @@ variableGroups:
       - name: "AZURE_SUBSCRIPTION_ID"
         value: "{{azureSubscriptionId}}"
 
-  - name: "{{projectName}}-docker-vars"
+  - type: variableGroup
+    name: "{{projectName}}-docker-vars"
     description: "Docker-specific variables for {{projectName}}"
     grantAccessToAllPipelines: true
     when: "includeDocker"
@@ -185,8 +188,8 @@ variableGroups:
       - name: "DOCKER_IMAGE_NAME"
         value: "{{projectName}}"
 
-pipelines:
-  - name: "{{projectName}}-backend-ci"
+  - type: pipeline
+    name: "{{projectName}}-backend-ci"
     repository: "{{projectName}}.backend"
     yamlPath: "pipelines/build.yml"
     folder: "\\CI"
@@ -198,7 +201,8 @@ pipelines:
         value: "{{dbConnectionString}}"
         secret: true
 
-  - name: "{{projectName}}-frontend-ci"
+  - type: pipeline
+    name: "{{projectName}}-frontend-ci"
     repository: "{{projectName}}.frontend"
     yamlPath: "pipelines/build.yml"
     folder: "\\CI"

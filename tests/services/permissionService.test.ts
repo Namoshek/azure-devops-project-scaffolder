@@ -77,16 +77,10 @@ function makeTemplate(overrides: Partial<TemplateDefinition> = {}): TemplateDefi
     name: "Test Template",
     version: "1.0.0",
     parameters: [],
-    repositories: [{ name: "my-repo", sourcePath: "src", defaultBranch: "main" }],
-    pipelines: [
-      {
-        name: "my-pipeline",
-        repository: "my-repo",
-        yamlPath: "azure-pipelines.yml",
-      },
+    scaffoldingSteps: [
+      { type: "repository", name: "my-repo", sourcePath: "src", defaultBranch: "main" },
+      { type: "pipeline", name: "my-pipeline", repository: "my-repo", yamlPath: "azure-pipelines.yml" },
     ],
-    serviceConnections: [],
-    variableGroups: [],
     ...overrides,
   };
 }
@@ -239,7 +233,14 @@ describe("On-premises", () => {
     it("omits the repo evaluation when template has no repositories", async () => {
       const mockFetch = mockFetchSequence(makeBatchResponse([true]));
       (global as any).fetch = mockFetch;
-      const result = await checkTemplatePermissions(PROJECT_ID, makeTemplate({ repositories: [] }));
+      const result = await checkTemplatePermissions(
+        PROJECT_ID,
+        makeTemplate({
+          scaffoldingSteps: [
+            { type: "pipeline", name: "my-pipeline", repository: "my-repo", yamlPath: "azure-pipelines.yml" },
+          ],
+        }),
+      );
       expect(result.canCreateRepos).toBe(true);
       const body = JSON.parse(mockFetch.mock.calls[0][1].body).evaluations;
       expect(body).toHaveLength(1);
@@ -249,7 +250,12 @@ describe("On-premises", () => {
     it("omits the pipeline evaluation when template has no pipelines", async () => {
       const mockFetch = mockFetchSequence(makeBatchResponse([true]));
       (global as any).fetch = mockFetch;
-      const result = await checkTemplatePermissions(PROJECT_ID, makeTemplate({ pipelines: [] }));
+      const result = await checkTemplatePermissions(
+        PROJECT_ID,
+        makeTemplate({
+          scaffoldingSteps: [{ type: "repository", name: "my-repo", sourcePath: "src", defaultBranch: "main" }],
+        }),
+      );
       expect(result.canCreatePipelines).toBe(true);
       const body = JSON.parse(mockFetch.mock.calls[0][1].body).evaluations;
       expect(body).toHaveLength(1);
@@ -259,7 +265,7 @@ describe("On-premises", () => {
     it("returns all true without any API calls when template needs nothing", async () => {
       const mockFetch = jest.fn();
       (global as any).fetch = mockFetch;
-      const result = await checkTemplatePermissions(PROJECT_ID, makeTemplate({ repositories: [], pipelines: [] }));
+      const result = await checkTemplatePermissions(PROJECT_ID, makeTemplate({ scaffoldingSteps: [] }));
       expect(result).toEqual({
         canCreateRepos: true,
         canCreatePipelines: true,
@@ -284,10 +290,13 @@ describe("On-premises", () => {
       const mockFetch = mockFetchSequence(makeBatchResponse([true, true, true]));
       (global as any).fetch = mockFetch;
       const template = makeTemplate({
-        serviceConnections: [
+        scaffoldingSteps: [
+          { type: "repository", name: "my-repo", sourcePath: "src", defaultBranch: "main" },
+          { type: "pipeline", name: "my-pipeline", repository: "my-repo", yamlPath: "azure-pipelines.yml" },
           {
+            type: "serviceConnection",
             name: "azure-prod",
-            type: "AzureRM",
+            endpointType: "AzureRM",
             authorizationScheme: "ServicePrincipal",
             authorization: {},
           },
@@ -310,10 +319,13 @@ describe("On-premises", () => {
       const mockFetch = mockFetchSequence(makeBatchResponse([true, true, false]));
       (global as any).fetch = mockFetch;
       const template = makeTemplate({
-        serviceConnections: [
+        scaffoldingSteps: [
+          { type: "repository", name: "my-repo", sourcePath: "src", defaultBranch: "main" },
+          { type: "pipeline", name: "my-pipeline", repository: "my-repo", yamlPath: "azure-pipelines.yml" },
           {
+            type: "serviceConnection",
             name: "azure-prod",
-            type: "AzureRM",
+            endpointType: "AzureRM",
             authorizationScheme: "ServicePrincipal",
             authorization: {},
           },
@@ -520,7 +532,7 @@ describe("Cloud", () => {
     it("returns all true without any API calls when template needs nothing", async () => {
       const mockFetch = jest.fn();
       (global as any).fetch = mockFetch;
-      const result = await checkTemplatePermissions(PROJECT_ID, makeTemplate({ repositories: [], pipelines: [] }));
+      const result = await checkTemplatePermissions(PROJECT_ID, makeTemplate({ scaffoldingSteps: [] }));
       expect(result).toEqual({
         canCreateRepos: true,
         canCreatePipelines: true,

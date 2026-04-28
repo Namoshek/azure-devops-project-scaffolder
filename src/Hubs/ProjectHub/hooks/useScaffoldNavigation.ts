@@ -47,10 +47,10 @@ export function useScaffoldNavigation(): UseScaffoldNavigationResult {
     } else {
       // No project context — fail closed for all resource types that exist.
       setPermissions({
-        canCreateRepos: template.definition.repositories.length === 0,
-        canCreatePipelines: template.definition.pipelines.length === 0,
-        canCreateServiceConnections: template.definition.serviceConnections.length === 0,
-        canCreateVariableGroups: template.definition.variableGroups.length === 0,
+        canCreateRepos: !template.definition.scaffoldingSteps.some((s) => s.type === "repository"),
+        canCreatePipelines: !template.definition.scaffoldingSteps.some((s) => s.type === "pipeline"),
+        canCreateServiceConnections: !template.definition.scaffoldingSteps.some((s) => s.type === "serviceConnection"),
+        canCreateVariableGroups: !template.definition.scaffoldingSteps.some((s) => s.type === "variableGroup"),
       });
     }
   }

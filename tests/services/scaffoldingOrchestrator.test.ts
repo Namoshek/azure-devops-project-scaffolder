@@ -40,10 +40,7 @@ function makeTemplate(overrides: Partial<TemplateDefinition> = {}): DiscoveredTe
       name: "Test Template",
       version: "1.0.0",
       parameters: [],
-      repositories: [],
-      pipelines: [],
-      serviceConnections: [],
-      variableGroups: [],
+      scaffoldingSteps: [],
       ...overrides,
     },
   };
@@ -61,7 +58,7 @@ describe("runScaffold", () => {
   // ─── No steps ──────────────────────────────────────────────────────────────
 
   it("returns an empty steps array when there are no repos or pipelines", async () => {
-    const template = makeTemplate({ repositories: [], pipelines: [] });
+    const template = makeTemplate({ scaffoldingSteps: [] });
     const steps = await runScaffold("proj1", template, PARAMS, jest.fn());
     expect(steps).toHaveLength(0);
   });
@@ -75,14 +72,14 @@ describe("runScaffold", () => {
     });
 
     const template = makeTemplate({
-      repositories: [
+      scaffoldingSteps: [
         {
+          type: "repository",
           name: "{{projectName}}-api",
           sourcePath: "/src",
           defaultBranch: "main",
         },
       ],
-      pipelines: [],
     });
 
     const onProgress = jest.fn();
@@ -104,14 +101,14 @@ describe("runScaffold", () => {
     });
 
     const template = makeTemplate({
-      repositories: [
+      scaffoldingSteps: [
         {
+          type: "repository",
           name: "{{projectName}}-api",
           sourcePath: "/src",
           defaultBranch: "main",
         },
       ],
-      pipelines: [],
     });
 
     const steps = await runScaffold("proj1", template, PARAMS, jest.fn());
@@ -126,14 +123,14 @@ describe("runScaffold", () => {
     });
 
     const template = makeTemplate({
-      repositories: [
+      scaffoldingSteps: [
         {
+          type: "repository",
           name: "{{projectName}}-api",
           sourcePath: "/src",
           defaultBranch: "main",
         },
       ],
-      pipelines: [],
     });
 
     const steps = await runScaffold("proj1", template, PARAMS, jest.fn());
@@ -145,14 +142,14 @@ describe("runScaffold", () => {
     mockScaffoldRepository.mockRejectedValue(new Error("Connection refused"));
 
     const template = makeTemplate({
-      repositories: [
+      scaffoldingSteps: [
         {
+          type: "repository",
           name: "{{projectName}}-api",
           sourcePath: "/src",
           defaultBranch: "main",
         },
       ],
-      pipelines: [],
     });
 
     const steps = await runScaffold("proj1", template, PARAMS, jest.fn());
@@ -162,15 +159,15 @@ describe("runScaffold", () => {
 
   it("skips a repo whose 'when' expression evaluates to false", async () => {
     const template = makeTemplate({
-      repositories: [
+      scaffoldingSteps: [
         {
+          type: "repository",
           name: "docker-repo",
           sourcePath: "/src",
           defaultBranch: "main",
           when: "includeDocker",
         },
       ],
-      pipelines: [],
     });
 
     const steps = await runScaffold("proj1", template, { includeDocker: false }, jest.fn());
@@ -185,15 +182,15 @@ describe("runScaffold", () => {
     });
 
     const template = makeTemplate({
-      repositories: [
+      scaffoldingSteps: [
         {
+          type: "repository",
           name: "docker-repo",
           sourcePath: "/src",
           defaultBranch: "main",
           when: "includeDocker",
         },
       ],
-      pipelines: [],
     });
 
     const steps = await runScaffold("proj1", template, { includeDocker: true }, jest.fn());
@@ -204,6 +201,10 @@ describe("runScaffold", () => {
   // ─── Pipeline scaffolding ──────────────────────────────────────────────────
 
   it("marks a pipeline step as 'success' when scaffoldPipeline returns 'created'", async () => {
+    mockScaffoldRepository.mockResolvedValue({
+      repoName: "my-app-api",
+      status: "created",
+    });
     mockScaffoldPipeline.mockResolvedValue({
       pipelineName: "my-app-ci",
       status: "created",
@@ -211,9 +212,15 @@ describe("runScaffold", () => {
     });
 
     const template = makeTemplate({
-      repositories: [],
-      pipelines: [
+      scaffoldingSteps: [
         {
+          type: "repository",
+          name: "{{projectName}}-api",
+          sourcePath: "/src",
+          defaultBranch: "main",
+        },
+        {
+          type: "pipeline",
           name: "{{projectName}}-ci",
           repository: "{{projectName}}-api",
           yamlPath: "azure-pipelines.yml",
@@ -222,10 +229,14 @@ describe("runScaffold", () => {
     });
 
     const steps = await runScaffold("proj1", template, PARAMS, jest.fn());
-    expect(steps[0].status).toBe("success");
+    expect(steps[1].status).toBe("success");
   });
 
   it("marks a pipeline step as 'skipped' when scaffoldPipeline returns 'skipped'", async () => {
+    mockScaffoldRepository.mockResolvedValue({
+      repoName: "api",
+      status: "created",
+    });
     mockScaffoldPipeline.mockResolvedValue({
       pipelineName: "my-app-ci",
       status: "skipped",
@@ -233,9 +244,15 @@ describe("runScaffold", () => {
     });
 
     const template = makeTemplate({
-      repositories: [],
-      pipelines: [
+      scaffoldingSteps: [
         {
+          type: "repository",
+          name: "api",
+          sourcePath: "/src",
+          defaultBranch: "main",
+        },
+        {
+          type: "pipeline",
           name: "{{projectName}}-ci",
           repository: "api",
           yamlPath: "azure-pipelines.yml",
@@ -244,27 +261,30 @@ describe("runScaffold", () => {
     });
 
     const steps = await runScaffold("proj1", template, PARAMS, jest.fn());
-    expect(steps[0].status).toBe("skipped");
+    expect(steps[1].status).toBe("skipped");
   });
 
   it("marks a pipeline step as 'failed' when scaffoldPipeline throws", async () => {
+    mockScaffoldRepository.mockResolvedValue({ repoName: "api", status: "created" });
     mockScaffoldPipeline.mockRejectedValue(new Error("API timeout"));
 
     const template = makeTemplate({
-      repositories: [],
-      pipelines: [{ name: "ci", repository: "api", yamlPath: "azure-pipelines.yml" }],
+      scaffoldingSteps: [
+        { type: "repository", name: "api", sourcePath: "/src", defaultBranch: "main" },
+        { type: "pipeline", name: "ci", repository: "api", yamlPath: "azure-pipelines.yml" },
+      ],
     });
 
     const steps = await runScaffold("proj1", template, PARAMS, jest.fn());
-    expect(steps[0].status).toBe("failed");
-    expect(steps[0].detail).toBe("API timeout");
+    expect(steps[1].status).toBe("failed");
+    expect(steps[1].detail).toBe("API timeout");
   });
 
   it("skips a pipeline whose 'when' expression evaluates to false", async () => {
     const template = makeTemplate({
-      repositories: [],
-      pipelines: [
+      scaffoldingSteps: [
         {
+          type: "pipeline",
           name: "ci",
           repository: "api",
           yamlPath: "azure-pipelines.yml",
@@ -278,9 +298,26 @@ describe("runScaffold", () => {
     expect(mockScaffoldPipeline).not.toHaveBeenCalled();
   });
 
+  it("fails a pipeline step when the referenced repository step did not succeed", async () => {
+    mockScaffoldRepository.mockRejectedValue(new Error("Repo creation failed"));
+
+    const template = makeTemplate({
+      scaffoldingSteps: [
+        { type: "repository", name: "api", sourcePath: "/src", defaultBranch: "main" },
+        { type: "pipeline", name: "ci", repository: "api", yamlPath: "azure-pipelines.yml" },
+      ],
+    });
+
+    const steps = await runScaffold("proj1", template, PARAMS, jest.fn());
+    expect(steps[0].status).toBe("failed");
+    expect(steps[1].status).toBe("failed");
+    expect(steps[1].detail).toMatch(/Repository 'api' was not created/i);
+    expect(mockScaffoldPipeline).not.toHaveBeenCalled();
+  });
+
   // ─── Mixed repos + pipelines ───────────────────────────────────────────────
 
-  it("returns all steps in order (repos first, then pipelines)", async () => {
+  it("returns all steps in order (repo then pipeline)", async () => {
     mockScaffoldRepository.mockResolvedValue({
       repoName: "api",
       status: "created",
@@ -291,33 +328,17 @@ describe("runScaffold", () => {
     });
 
     const template = makeTemplate({
-      repositories: [{ name: "api", sourcePath: "/src", defaultBranch: "main" }],
-      pipelines: [{ name: "ci", repository: "api", yamlPath: "azure-pipelines.yml" }],
+      scaffoldingSteps: [
+        { type: "repository", name: "api", sourcePath: "/src", defaultBranch: "main" },
+        { type: "pipeline", name: "ci", repository: "api", yamlPath: "azure-pipelines.yml" },
+      ],
     });
 
     const steps = await runScaffold("proj1", template, PARAMS, jest.fn());
 
     expect(steps).toHaveLength(2);
-    expect(steps[0].id).toBe("repo:api");
+    expect(steps[0].id).toBe("repository:api");
     expect(steps[1].id).toBe("pipeline:ci");
-  });
-
-  it("continues pipeline phase even if a repo step failed", async () => {
-    mockScaffoldRepository.mockRejectedValue(new Error("Repo creation failed"));
-    mockScaffoldPipeline.mockResolvedValue({
-      pipelineName: "ci",
-      status: "created",
-    });
-
-    const template = makeTemplate({
-      repositories: [{ name: "api", sourcePath: "/src", defaultBranch: "main" }],
-      pipelines: [{ name: "ci", repository: "api", yamlPath: "azure-pipelines.yml" }],
-    });
-
-    const steps = await runScaffold("proj1", template, PARAMS, jest.fn());
-
-    expect(steps[0].status).toBe("failed");
-    expect(steps[1].status).toBe("success");
   });
 
   // ─── Step label rendering ──────────────────────────────────────────────────
@@ -329,14 +350,14 @@ describe("runScaffold", () => {
     });
 
     const template = makeTemplate({
-      repositories: [
+      scaffoldingSteps: [
         {
+          type: "repository",
           name: "{{projectName}}-api",
           sourcePath: "/src",
           defaultBranch: "main",
         },
       ],
-      pipelines: [],
     });
 
     const steps = await runScaffold("proj1", template, PARAMS, jest.fn());
@@ -345,12 +366,17 @@ describe("runScaffold", () => {
 
   // ─── Service connection scaffolding ────────────────────────────────────────
 
-  const scTemplate = {
-    name: "Prod-Azure",
-    type: "AzureRM",
-    authorizationScheme: "ServicePrincipal",
-    authorization: { serviceprincipalid: "sp-id", serviceprincipalkey: "sp-key" },
-  };
+  // Build a proper step object for service connections
+  function makeScStep(overrides: Record<string, unknown> = {}) {
+    return {
+      type: "serviceConnection" as const,
+      name: "Prod-Azure",
+      endpointType: "AzureRM",
+      authorizationScheme: "ServicePrincipal",
+      authorization: { serviceprincipalid: "sp-id", serviceprincipalkey: "sp-key" },
+      ...overrides,
+    };
+  }
 
   it("marks a service connection step as 'success' when scaffoldServiceConnection returns 'created'", async () => {
     mockScaffoldServiceConnection.mockResolvedValue({
@@ -360,14 +386,12 @@ describe("runScaffold", () => {
     });
 
     const template = makeTemplate({
-      repositories: [],
-      serviceConnections: [scTemplate],
-      pipelines: [],
+      scaffoldingSteps: [makeScStep()],
     });
 
     const steps = await runScaffold("proj1", template, PARAMS, jest.fn());
     expect(steps).toHaveLength(1);
-    expect(steps[0].id).toBe("serviceconnection:Prod-Azure");
+    expect(steps[0].id).toBe("serviceConnection:Prod-Azure");
     expect(steps[0].status).toBe("success");
   });
 
@@ -379,9 +403,7 @@ describe("runScaffold", () => {
     });
 
     const template = makeTemplate({
-      repositories: [],
-      serviceConnections: [scTemplate],
-      pipelines: [],
+      scaffoldingSteps: [makeScStep()],
     });
 
     const steps = await runScaffold("proj1", template, PARAMS, jest.fn());
@@ -393,9 +415,7 @@ describe("runScaffold", () => {
     mockScaffoldServiceConnection.mockRejectedValue(new Error("API error"));
 
     const template = makeTemplate({
-      repositories: [],
-      serviceConnections: [scTemplate],
-      pipelines: [],
+      scaffoldingSteps: [makeScStep()],
     });
 
     const steps = await runScaffold("proj1", template, PARAMS, jest.fn());
@@ -405,9 +425,7 @@ describe("runScaffold", () => {
 
   it("skips a service connection whose 'when' expression evaluates to false", async () => {
     const template = makeTemplate({
-      repositories: [],
-      serviceConnections: [{ ...scTemplate, when: "includeDocker" }],
-      pipelines: [],
+      scaffoldingSteps: [makeScStep({ when: "includeDocker" })],
     });
 
     const steps = await runScaffold("proj1", template, { includeDocker: false }, jest.fn());
@@ -422,32 +440,32 @@ describe("runScaffold", () => {
     mockScaffoldPipeline.mockResolvedValue({ pipelineName: "ci", status: "created" });
 
     const template = makeTemplate({
-      repositories: [{ name: "api", sourcePath: "/src", defaultBranch: "main" }],
-      serviceConnections: [scTemplate],
-      variableGroups: [{ name: "Prod-Vars" }],
-      pipelines: [{ name: "ci", repository: "api", yamlPath: "azure-pipelines.yml" }],
+      scaffoldingSteps: [
+        { type: "repository", name: "api", sourcePath: "/src", defaultBranch: "main" },
+        makeScStep(),
+        { type: "variableGroup", name: "Prod-Vars" },
+        { type: "pipeline", name: "ci", repository: "api", yamlPath: "azure-pipelines.yml" },
+      ],
     });
 
     const steps = await runScaffold("proj1", template, PARAMS, jest.fn());
     expect(steps).toHaveLength(4);
-    expect(steps[0].id).toBe("repo:api");
-    expect(steps[1].id).toBe("serviceconnection:Prod-Azure");
-    expect(steps[2].id).toBe("variablegroup:Prod-Vars");
+    expect(steps[0].id).toBe("repository:api");
+    expect(steps[1].id).toBe("serviceConnection:Prod-Azure");
+    expect(steps[2].id).toBe("variableGroup:Prod-Vars");
     expect(steps[3].id).toBe("pipeline:ci");
   });
 
   // ─── Variable group scaffolding ────────────────────────────────────────────
 
-  const vgTemplate = { name: "Prod-Vars" };
-
   it("marks a variable group step as 'success' when scaffoldVariableGroup returns 'created'", async () => {
     mockScaffoldVariableGroup.mockResolvedValue({ groupName: "Prod-Vars", status: "created" });
 
-    const template = makeTemplate({ variableGroups: [vgTemplate] });
+    const template = makeTemplate({ scaffoldingSteps: [{ type: "variableGroup", name: "Prod-Vars" }] });
 
     const steps = await runScaffold("proj1", template, PARAMS, jest.fn());
     expect(steps).toHaveLength(1);
-    expect(steps[0].id).toBe("variablegroup:Prod-Vars");
+    expect(steps[0].id).toBe("variableGroup:Prod-Vars");
     expect(steps[0].status).toBe("success");
   });
 
@@ -458,7 +476,7 @@ describe("runScaffold", () => {
       reason: "Already exists.",
     });
 
-    const template = makeTemplate({ variableGroups: [vgTemplate] });
+    const template = makeTemplate({ scaffoldingSteps: [{ type: "variableGroup", name: "Prod-Vars" }] });
 
     const steps = await runScaffold("proj1", template, PARAMS, jest.fn());
     expect(steps[0].status).toBe("skipped");
@@ -468,7 +486,7 @@ describe("runScaffold", () => {
   it("marks a variable group step as 'failed' when scaffoldVariableGroup throws", async () => {
     mockScaffoldVariableGroup.mockRejectedValue(new Error("API error"));
 
-    const template = makeTemplate({ variableGroups: [vgTemplate] });
+    const template = makeTemplate({ scaffoldingSteps: [{ type: "variableGroup", name: "Prod-Vars" }] });
 
     const steps = await runScaffold("proj1", template, PARAMS, jest.fn());
     expect(steps[0].status).toBe("failed");
@@ -477,7 +495,7 @@ describe("runScaffold", () => {
 
   it("skips a variable group whose 'when' expression evaluates to false", async () => {
     const template = makeTemplate({
-      variableGroups: [{ name: "docker-vars", when: "includeDocker" }],
+      scaffoldingSteps: [{ type: "variableGroup", name: "docker-vars", when: "includeDocker" }],
     });
 
     const steps = await runScaffold("proj1", template, { includeDocker: false }, jest.fn());
@@ -489,7 +507,7 @@ describe("runScaffold", () => {
     mockScaffoldVariableGroup.mockResolvedValue({ groupName: "docker-vars", status: "created" });
 
     const template = makeTemplate({
-      variableGroups: [{ name: "docker-vars", when: "includeDocker" }],
+      scaffoldingSteps: [{ type: "variableGroup", name: "docker-vars", when: "includeDocker" }],
     });
 
     const steps = await runScaffold("proj1", template, { includeDocker: true }, jest.fn());
@@ -500,27 +518,29 @@ describe("runScaffold", () => {
 // ─── Permission-based skipping ────────────────────────────────────────────────
 
 describe("runScaffold — permission skipping", () => {
-  const repoTemplate = {
+  const repoStep = {
+    type: "repository" as const,
     name: "api",
     sourcePath: "/src",
     defaultBranch: "main",
   };
-  const pipelineTemplate = {
+  const pipelineStep = {
+    type: "pipeline" as const,
     name: "ci",
     repository: "api",
     yamlPath: "azure-pipelines.yml",
   };
-  const serviceConnectionTemplate = {
+  const serviceConnectionStep = {
+    type: "serviceConnection" as const,
     name: "Prod-Azure",
-    type: "AzureRM",
+    endpointType: "AzureRM",
     authorizationScheme: "ServicePrincipal",
     authorization: { serviceprincipalid: "sp-id", serviceprincipalkey: "sp-key" },
   };
 
   it("skips all repo steps when canCreateRepos is false", async () => {
     const template = makeTemplate({
-      repositories: [repoTemplate],
-      pipelines: [],
+      scaffoldingSteps: [repoStep],
     });
 
     const steps = await runScaffold("proj1", template, PARAMS, jest.fn(), {
@@ -543,8 +563,7 @@ describe("runScaffold — permission skipping", () => {
     });
 
     const template = makeTemplate({
-      repositories: [repoTemplate],
-      pipelines: [pipelineTemplate],
+      scaffoldingSteps: [repoStep, pipelineStep],
     });
 
     const steps = await runScaffold("proj1", template, PARAMS, jest.fn(), {
@@ -554,9 +573,9 @@ describe("runScaffold — permission skipping", () => {
       canCreateVariableGroups: true,
     });
 
-    const pipelineStep = steps.find((s) => s.id.startsWith("pipeline:"));
-    expect(pipelineStep!.status).toBe("skipped");
-    expect(pipelineStep!.detail).toMatch(/insufficient permissions/i);
+    const pipelineStepResult = steps.find((s) => s.id.startsWith("pipeline:"));
+    expect(pipelineStepResult!.status).toBe("skipped");
+    expect(pipelineStepResult!.detail).toMatch(/insufficient permissions/i);
     expect(mockScaffoldPipeline).not.toHaveBeenCalled();
   });
 
@@ -571,8 +590,7 @@ describe("runScaffold — permission skipping", () => {
     });
 
     const template = makeTemplate({
-      repositories: [repoTemplate],
-      pipelines: [pipelineTemplate],
+      scaffoldingSteps: [repoStep, pipelineStep],
     });
 
     const steps = await runScaffold("proj1", template, PARAMS, jest.fn(), {
@@ -589,8 +607,7 @@ describe("runScaffold — permission skipping", () => {
 
   it("still applies when-condition skips inside a permitted phase", async () => {
     const template = makeTemplate({
-      repositories: [{ ...repoTemplate, when: "includeDocker == true" }],
-      pipelines: [],
+      scaffoldingSteps: [{ ...repoStep, when: "includeDocker == true" }],
     });
 
     // canCreateRepos is true, but the when condition should still cause a skip
@@ -613,9 +630,7 @@ describe("runScaffold — permission skipping", () => {
 
   it("skips all service connection steps when canCreateServiceConnections is false", async () => {
     const template = makeTemplate({
-      repositories: [],
-      serviceConnections: [serviceConnectionTemplate],
-      pipelines: [],
+      scaffoldingSteps: [serviceConnectionStep],
     });
 
     const steps = await runScaffold("proj1", template, PARAMS, jest.fn(), {
@@ -633,9 +648,7 @@ describe("runScaffold — permission skipping", () => {
 
   it("skips all variable group steps when canCreateVariableGroups is false", async () => {
     const template = makeTemplate({
-      repositories: [],
-      variableGroups: [{ name: "Prod-Vars" }],
-      pipelines: [],
+      scaffoldingSteps: [{ type: "variableGroup", name: "Prod-Vars" }],
     });
 
     const steps = await runScaffold("proj1", template, PARAMS, jest.fn(), {

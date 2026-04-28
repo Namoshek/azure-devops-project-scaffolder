@@ -19,16 +19,14 @@ export function StepRow({ step, isLast }: StepRowProps) {
 
   return (
     <div
-      className="flex-column"
+      className={`flex-column ${isLast ? "" : "separator-line-bottom"}`}
       style={{
-        padding: "10px 16px",
-        borderBottom: isLast ? undefined : "1px solid rgba(0,0,0,0.1)",
+        padding: "16px 16px",
       }}
     >
       <div className="flex-row flex-center" style={{ gap: 12 }}>
         <StepStatusIcon status={step.status} />
         <span className="body-m flex-grow">{step.label}</span>
-        {step.duration !== undefined && <span className="secondary-text body-s">{formatDuration(step.duration)}</span>}
         {hasDetail && (
           <Button
             text={expanded ? "Hide details" : "Show details"}
@@ -37,6 +35,7 @@ export function StepRow({ step, isLast }: StepRowProps) {
             onClick={() => setExpanded((prev) => !prev)}
           />
         )}
+        {step.duration !== undefined && <span className="secondary-text body-s">{formatDuration(step.duration)}</span>}
       </div>
       {expanded && step.detail && (
         <div className="body-s secondary-text" style={{ marginTop: 8, paddingLeft: 36 }}>

@@ -1,8 +1,8 @@
-import { DiscoveredTemplate, TemplatePermissions } from "../types/templateTypes";
-import { scaffoldRepository, RepoScaffoldResult } from "./repositoryService";
-import { scaffoldPipeline, PipelineScaffoldResult } from "./pipelineService";
-import { scaffoldServiceConnection, ServiceConnectionScaffoldResult } from "./serviceConnectionService";
-import { scaffoldVariableGroup, VariableGroupScaffoldResult } from "./variableGroupService";
+import { DiscoveredTemplate, TemplatePermissions, ScaffoldingStep } from "../types/templateTypes";
+import { scaffoldRepository } from "./repositoryService";
+import { scaffoldPipeline } from "./pipelineService";
+import { scaffoldServiceConnection } from "./serviceConnectionService";
+import { scaffoldVariableGroup } from "./variableGroupService";
 import { evaluateWhenExpression, renderTemplate, buildViewValues } from "./templateEngineService";
 import { getErrorMessage } from "../utils/errorUtils";
 
@@ -45,201 +45,118 @@ export async function runScaffold(
   const { definition: templateDefinition } = template;
   const viewValues = buildViewValues(templateDefinition, parameterValues);
 
-  // Build the initial step list
-  const repoSteps: ScaffoldStep[] = templateDefinition.repositories.map((r) => ({
-    id: `repo:${r.name}`,
-    label: `Create repository: ${renderTemplate(r.name, viewValues)}`,
-    status: "pending",
+  // Build the initial step list from scaffoldingSteps
+  const allSteps: ScaffoldStep[] = templateDefinition.scaffoldingSteps.map((step) => ({
+    id: `${step.type}:${step.name}`,
+    label: buildStepLabel(step, viewValues),
+    status: "pending" as StepStatus,
   }));
-
-  const serviceConnectionSteps: ScaffoldStep[] = templateDefinition.serviceConnections.map((sc) => ({
-    id: `serviceconnection:${sc.name}`,
-    label: `Create service connection: ${renderTemplate(sc.name, viewValues)}`,
-    status: "pending",
-  }));
-
-  const variableGroupSteps: ScaffoldStep[] = templateDefinition.variableGroups.map((vg) => ({
-    id: `variablegroup:${vg.name}`,
-    label: `Create variable group: ${renderTemplate(vg.name, viewValues)}`,
-    status: "pending",
-  }));
-
-  const pipelineSteps: ScaffoldStep[] = templateDefinition.pipelines.map((p) => ({
-    id: `pipeline:${p.name}`,
-    label: `Create pipeline: ${renderTemplate(p.name, viewValues)}`,
-    status: "pending",
-  }));
-
-  const allSteps: ScaffoldStep[] = [...repoSteps, ...serviceConnectionSteps, ...variableGroupSteps, ...pipelineSteps];
   onProgress([...allSteps]);
 
-  // ── Phase 1: Repositories ────────────────────────────────────────────────────
-  if (permissions && !permissions.canCreateRepos && repoSteps.length > 0) {
-    for (const step of repoSteps) {
-      step.status = "skipped";
-      step.detail = "Skipped: insufficient permissions to create repositories.";
-    }
-    onProgress([...allSteps]);
-  }
+  const completedRepoNames = new Set<string>();
 
-  for (let i = 0; i < repoSteps.length; i++) {
-    if (repoSteps[i].status === "skipped") continue;
-    const repoTemplate = templateDefinition.repositories[i];
+  for (let i = 0; i < templateDefinition.scaffoldingSteps.length; i++) {
+    const step = templateDefinition.scaffoldingSteps[i];
 
-    // Skip this repository if its when condition is not satisfied
-    if (repoTemplate.when && !evaluateWhenExpression(repoTemplate.when, viewValues)) {
-      repoSteps[i].status = "skipped";
-      repoSteps[i].detail = `Condition '${repoTemplate.when}' was not met.`;
+    // Permission check
+    if (isPermissionDenied(step.type, permissions)) {
+      allSteps[i].status = "skipped";
+      allSteps[i].detail = `Skipped: insufficient permissions to create ${step.type}.`;
       onProgress([...allSteps]);
       continue;
     }
 
-    repoSteps[i].status = "running";
-    repoSteps[i].startTime = Date.now();
-    onProgress([...allSteps]);
-
-    let result: RepoScaffoldResult;
-    try {
-      result = await scaffoldRepository(projectId, repoTemplate, template, viewValues);
-    } catch (err) {
-      result = {
-        repoName: repoTemplate.name,
-        status: "failed",
-        reason: getErrorMessage(err),
-      };
-    }
-
-    repoSteps[i].status = mapStatus(result.status);
-    repoSteps[i].duration = Date.now() - repoSteps[i].startTime!;
-    if (result.reason) repoSteps[i].detail = result.reason;
-    onProgress([...allSteps]);
-  }
-
-  // ── Phase 2: Service Connections ────────────────────────────────────────────
-  if (permissions && !permissions.canCreateServiceConnections && serviceConnectionSteps.length > 0) {
-    for (const step of serviceConnectionSteps) {
-      step.status = "skipped";
-      step.detail = "Skipped: insufficient permissions to create service connections.";
-    }
-    onProgress([...allSteps]);
-  }
-
-  for (let i = 0; i < serviceConnectionSteps.length; i++) {
-    if (serviceConnectionSteps[i].status === "skipped") continue;
-    const connectionTemplate = templateDefinition.serviceConnections[i];
-
-    if (connectionTemplate.when && !evaluateWhenExpression(connectionTemplate.when, viewValues)) {
-      serviceConnectionSteps[i].status = "skipped";
-      serviceConnectionSteps[i].detail = `Condition '${connectionTemplate.when}' was not met.`;
+    // Conditional when check
+    if (step.when && !evaluateWhenExpression(step.when, viewValues)) {
+      allSteps[i].status = "skipped";
+      allSteps[i].detail = `Condition '${step.when}' was not met.`;
       onProgress([...allSteps]);
       continue;
     }
 
-    serviceConnectionSteps[i].status = "running";
-    serviceConnectionSteps[i].startTime = Date.now();
+    allSteps[i].status = "running";
+    allSteps[i].startTime = Date.now();
     onProgress([...allSteps]);
 
-    let result: ServiceConnectionScaffoldResult;
-    try {
-      result = await scaffoldServiceConnection(projectId, connectionTemplate, viewValues);
-    } catch (err) {
-      result = {
-        connectionName: connectionTemplate.name,
-        status: "failed",
-        reason: getErrorMessage(err),
-      };
+    const result = await executeStep(projectId, step, template, viewValues, completedRepoNames);
+
+    allSteps[i].status = mapStatus(result.status);
+    allSteps[i].duration = Date.now() - allSteps[i].startTime!;
+    if (result.reason) allSteps[i].detail = result.reason;
+    onProgress([...allSteps]);
+
+    if (step.type === "repository" && result.status === "created") {
+      completedRepoNames.add(renderTemplate(step.name, viewValues).toLowerCase());
     }
-
-    serviceConnectionSteps[i].status = mapStatus(result.status);
-    serviceConnectionSteps[i].duration = Date.now() - serviceConnectionSteps[i].startTime!;
-    if (result.reason) serviceConnectionSteps[i].detail = result.reason;
-    onProgress([...allSteps]);
-  }
-
-  // ── Phase 3: Variable Groups ─────────────────────────────────────────────────
-  if (permissions && !permissions.canCreateVariableGroups && variableGroupSteps.length > 0) {
-    for (const step of variableGroupSteps) {
-      step.status = "skipped";
-      step.detail = "Skipped: insufficient permissions to create variable groups.";
-    }
-    onProgress([...allSteps]);
-  }
-
-  for (let i = 0; i < variableGroupSteps.length; i++) {
-    if (variableGroupSteps[i].status === "skipped") continue;
-    const groupTemplate = templateDefinition.variableGroups[i];
-
-    if (groupTemplate.when && !evaluateWhenExpression(groupTemplate.when, viewValues)) {
-      variableGroupSteps[i].status = "skipped";
-      variableGroupSteps[i].detail = `Condition '${groupTemplate.when}' was not met.`;
-      onProgress([...allSteps]);
-      continue;
-    }
-
-    variableGroupSteps[i].status = "running";
-    variableGroupSteps[i].startTime = Date.now();
-    onProgress([...allSteps]);
-
-    let result: VariableGroupScaffoldResult;
-    try {
-      result = await scaffoldVariableGroup(projectId, groupTemplate, viewValues);
-    } catch (err) {
-      result = {
-        groupName: groupTemplate.name,
-        status: "failed",
-        reason: getErrorMessage(err),
-      };
-    }
-
-    variableGroupSteps[i].status = mapStatus(result.status);
-    variableGroupSteps[i].duration = Date.now() - variableGroupSteps[i].startTime!;
-    if (result.reason) variableGroupSteps[i].detail = result.reason;
-    onProgress([...allSteps]);
-  }
-
-  // ── Phase 4: Pipelines ───────────────────────────────────────────────────────
-  if (permissions && !permissions.canCreatePipelines && pipelineSteps.length > 0) {
-    for (const step of pipelineSteps) {
-      step.status = "skipped";
-      step.detail = "Skipped: insufficient permissions to create pipeline definitions.";
-    }
-    onProgress([...allSteps]);
-  }
-
-  for (let i = 0; i < pipelineSteps.length; i++) {
-    if (pipelineSteps[i].status === "skipped") continue;
-    const pipelineTemplate = templateDefinition.pipelines[i];
-
-    // Skip this pipeline if its when condition is not satisfied
-    if (pipelineTemplate.when && !evaluateWhenExpression(pipelineTemplate.when, viewValues)) {
-      pipelineSteps[i].status = "skipped";
-      pipelineSteps[i].detail = `Condition '${pipelineTemplate.when}' was not met.`;
-      onProgress([...allSteps]);
-      continue;
-    }
-
-    pipelineSteps[i].status = "running";
-    pipelineSteps[i].startTime = Date.now();
-    onProgress([...allSteps]);
-
-    let result: PipelineScaffoldResult;
-    try {
-      result = await scaffoldPipeline(projectId, pipelineTemplate, viewValues);
-    } catch (err) {
-      result = {
-        pipelineName: pipelineTemplate.name,
-        status: "failed",
-        reason: getErrorMessage(err),
-      };
-    }
-
-    pipelineSteps[i].status = mapStatus(result.status);
-    pipelineSteps[i].duration = Date.now() - pipelineSteps[i].startTime!;
-    if (result.reason) pipelineSteps[i].detail = result.reason;
-    onProgress([...allSteps]);
   }
 
   return [...allSteps];
+}
+
+function buildStepLabel(step: ScaffoldingStep, viewValues: Record<string, unknown>): string {
+  const rendered = renderTemplate(step.name, viewValues);
+  switch (step.type) {
+    case "repository":
+      return `Create repository: ${rendered}`;
+    case "pipeline":
+      return `Create pipeline: ${rendered}`;
+    case "serviceConnection":
+      return `Create service connection: ${rendered}`;
+    case "variableGroup":
+      return `Create variable group: ${rendered}`;
+  }
+}
+
+function isPermissionDenied(type: ScaffoldingStep["type"], permissions?: TemplatePermissions): boolean {
+  if (!permissions) return false;
+  switch (type) {
+    case "repository":
+      return !permissions.canCreateRepos;
+    case "pipeline":
+      return !permissions.canCreatePipelines;
+    case "serviceConnection":
+      return !permissions.canCreateServiceConnections;
+    case "variableGroup":
+      return !permissions.canCreateVariableGroups;
+  }
+}
+
+async function executeStep(
+  projectId: string,
+  step: ScaffoldingStep,
+  template: DiscoveredTemplate,
+  viewValues: Record<string, unknown>,
+  completedRepoNames: Set<string>,
+): Promise<{ status: "created" | "skipped" | "failed"; reason?: string }> {
+  try {
+    switch (step.type) {
+      case "repository": {
+        const r = await scaffoldRepository(projectId, step, template, viewValues);
+        return { status: r.status, reason: r.reason };
+      }
+      case "pipeline": {
+        const repoName = renderTemplate(step.repository, viewValues);
+        if (!completedRepoNames.has(repoName.toLowerCase())) {
+          return {
+            status: "failed",
+            reason: `Repository '${repoName}' was not created in a preceding step. Ensure a repository step with this name appears before this pipeline step.`,
+          };
+        }
+        const p = await scaffoldPipeline(projectId, step, viewValues);
+        return { status: p.status, reason: p.reason };
+      }
+      case "serviceConnection": {
+        const sc = await scaffoldServiceConnection(projectId, step, viewValues);
+        return { status: sc.status, reason: sc.reason };
+      }
+      case "variableGroup": {
+        const vg = await scaffoldVariableGroup(projectId, step, viewValues);
+        return { status: vg.status, reason: vg.reason };
+      }
+    }
+  } catch (err) {
+    return { status: "failed", reason: getErrorMessage(err) };
+  }
 }
 
 function mapStatus(s: "created" | "skipped" | "failed"): StepStatus {

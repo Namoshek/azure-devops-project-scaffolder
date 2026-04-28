@@ -38,7 +38,7 @@ const mockGetCollectionUrl = getCollectionUrl as jest.Mock;
 function makeConnectionTemplate(overrides: Partial<TemplateServiceConnection> = {}): TemplateServiceConnection {
   return {
     name: "{{projectName}}-azure",
-    type: "AzureRM",
+    endpointType: "AzureRM",
     authorizationScheme: "ServicePrincipal",
     url: "https://management.azure.com/",
     authorization: {
@@ -157,7 +157,7 @@ describe("scaffoldServiceConnection", () => {
     const client = makeEndpointClient();
     mockGetClient.mockReturnValue(client);
 
-    await scaffoldServiceConnection("proj-1", makeConnectionTemplate({ type: "github" }), PARAMS);
+    await scaffoldServiceConnection("proj-1", makeConnectionTemplate({ endpointType: "github" }), PARAMS);
 
     const endpoint = client.createServiceEndpoint.mock.calls[0][0];
     expect(endpoint.type).toBe("github");

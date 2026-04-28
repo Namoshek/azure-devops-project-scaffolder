@@ -69,21 +69,39 @@ export function TemplateCard({ template, onSelect }: TemplateCardProps) {
               Maintained by: {definition.maintainers.join(", ")}
             </p>
           )}
-          {((definition.repositories && definition.repositories.length > 0) ||
-            (definition.pipelines && definition.pipelines.length > 0)) && (
-            <div className="flex-row flex-wrap rhythm-horizontal-8">
-              {definition.repositories && definition.repositories.length > 0 && (
-                <Pill size={PillSize.compact} variant={PillVariant.outlined}>
-                  {definition.repositories.length} repo(s)
-                </Pill>
-              )}
-              {definition.pipelines && definition.pipelines.length > 0 && (
-                <Pill size={PillSize.compact} variant={PillVariant.outlined}>
-                  {definition.pipelines.length} pipeline(s)
-                </Pill>
-              )}
-            </div>
-          )}
+          {(() => {
+            const repoCount = definition.scaffoldingSteps.filter((s) => s.type === "repository").length;
+            const pipelineCount = definition.scaffoldingSteps.filter((s) => s.type === "pipeline").length;
+            const serviceConnectionCount = definition.scaffoldingSteps.filter(
+              (s) => s.type === "serviceConnection",
+            ).length;
+            const variableGroupCount = definition.scaffoldingSteps.filter((s) => s.type === "variableGroup").length;
+            const hasPills = repoCount > 0 || pipelineCount > 0 || serviceConnectionCount > 0 || variableGroupCount > 0;
+            return hasPills ? (
+              <div className="flex-row flex-wrap rhythm-horizontal-8">
+                {repoCount > 0 && (
+                  <Pill size={PillSize.compact} variant={PillVariant.outlined}>
+                    {repoCount} repo(s)
+                  </Pill>
+                )}
+                {pipelineCount > 0 && (
+                  <Pill size={PillSize.compact} variant={PillVariant.outlined}>
+                    {pipelineCount} pipeline(s)
+                  </Pill>
+                )}
+                {serviceConnectionCount > 0 && (
+                  <Pill size={PillSize.compact} variant={PillVariant.outlined}>
+                    {serviceConnectionCount} service connection(s)
+                  </Pill>
+                )}
+                {variableGroupCount > 0 && (
+                  <Pill size={PillSize.compact} variant={PillVariant.outlined}>
+                    {variableGroupCount} variable group(s)
+                  </Pill>
+                )}
+              </div>
+            ) : null;
+          })()}
         </div>
       </Card>
     </div>

@@ -488,24 +488,32 @@ describe("checkTemplateResourcesExistence", () => {
       name: "Test",
       version: "1.0.0",
       parameters: [],
-      repositories: repos.map((name) => ({
-        name,
-        sourcePath: "/templates/x",
-        defaultBranch: "main",
-      })),
-      pipelines: pipelines.map(({ name, folder }) => ({
-        name,
-        repository: "repo",
-        yamlPath: "azure-pipelines.yml",
-        ...(folder !== undefined ? { folder } : {}),
-      })),
-      serviceConnections: serviceConnections.map((name) => ({
-        name,
-        type: "AzureRM",
-        authorizationScheme: "ServicePrincipal",
-        authorization: {},
-      })),
-      variableGroups: variableGroups.map((name) => ({ name })),
+      scaffoldingSteps: [
+        ...repos.map((name) => ({
+          type: "repository" as const,
+          name,
+          sourcePath: "/templates/x",
+          defaultBranch: "main",
+        })),
+        ...serviceConnections.map((name) => ({
+          type: "serviceConnection" as const,
+          name,
+          endpointType: "AzureRM",
+          authorizationScheme: "ServicePrincipal",
+          authorization: {} as Record<string, string>,
+        })),
+        ...variableGroups.map((name) => ({
+          type: "variableGroup" as const,
+          name,
+        })),
+        ...pipelines.map(({ name, folder }) => ({
+          type: "pipeline" as const,
+          name,
+          repository: "repo",
+          yamlPath: "azure-pipelines.yml",
+          ...(folder !== undefined ? { folder } : {}),
+        })),
+      ],
     };
   }
 

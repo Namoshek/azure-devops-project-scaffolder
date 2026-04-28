@@ -243,7 +243,12 @@ export async function checkTemplateResourcesExistence(
 ): Promise<ResourceExistenceMap> {
   const viewValues = buildViewValues(template, paramValues);
 
-  const repositoryEntries = (template.repositories ?? []).map((r) => {
+  const repoSteps = template.scaffoldingSteps.filter((s) => s.type === "repository");
+  const pipelineSteps = template.scaffoldingSteps.filter((s) => s.type === "pipeline");
+  const serviceConnSteps = template.scaffoldingSteps.filter((s) => s.type === "serviceConnection");
+  const variableGroupSteps = template.scaffoldingSteps.filter((s) => s.type === "variableGroup");
+
+  const repositoryEntries = repoSteps.map((r) => {
     const renderedName = renderTemplate(r.name, viewValues);
     return {
       key: renderedName.toLowerCase(),
@@ -251,7 +256,7 @@ export async function checkTemplateResourcesExistence(
     };
   });
 
-  const pipelineEntries = (template.pipelines ?? []).map((p) => {
+  const pipelineEntries = pipelineSteps.map((p) => {
     const renderedName = renderTemplate(p.name, viewValues);
     const folder = p.folder ?? "\\";
     return {
@@ -261,7 +266,7 @@ export async function checkTemplateResourcesExistence(
     };
   });
 
-  const serviceConnectionEntries = (template.serviceConnections ?? []).map((sc) => {
+  const serviceConnectionEntries = serviceConnSteps.map((sc) => {
     const renderedName = renderTemplate(sc.name, viewValues);
     return {
       key: renderedName.toLowerCase(),
@@ -269,7 +274,7 @@ export async function checkTemplateResourcesExistence(
     };
   });
 
-  const variableGroupEntries = (template.variableGroups ?? []).map((vg) => {
+  const variableGroupEntries = variableGroupSteps.map((vg) => {
     const renderedName = renderTemplate(vg.name, viewValues);
     return {
       key: renderedName.toLowerCase(),

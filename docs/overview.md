@@ -75,13 +75,14 @@ parameters:
       regex: "^[a-zA-Z][a-zA-Z0-9-]+$"
       message: "Letters, numbers, hyphens only. Must start with a letter."
 
-repositories:
-  - name: "{{projectName}}.backend"
+scaffoldingSteps:
+  - type: repository
+    name: "{{projectName}}.backend"
     sourcePath: "templates/backend"
     defaultBranch: "main"
 
-pipelines:
-  - name: "{{projectName}}-backend-ci"
+  - type: pipeline
+    name: "{{projectName}}-backend-ci"
     repository: "{{projectName}}.backend"
     yamlPath: "pipelines/ci.yml"
 ```

@@ -204,10 +204,10 @@ export async function checkTemplatePermissions(
   projectId: string,
   template: TemplateDefinition,
 ): Promise<TemplatePermissions> {
-  const needsRepos = (template.repositories ?? []).length > 0;
-  const needsPipelines = (template.pipelines ?? []).length > 0;
-  const needsServiceConnections = (template.serviceConnections ?? []).length > 0;
-  const needsVariableGroups = (template.variableGroups ?? []).length > 0;
+  const needsRepos = template.scaffoldingSteps.some((s) => s.type === "repository");
+  const needsPipelines = template.scaffoldingSteps.some((s) => s.type === "pipeline");
+  const needsServiceConnections = template.scaffoldingSteps.some((s) => s.type === "serviceConnection");
+  const needsVariableGroups = template.scaffoldingSteps.some((s) => s.type === "variableGroup");
 
   if (!needsRepos && !needsPipelines && !needsServiceConnections && !needsVariableGroups) {
     return {

@@ -185,6 +185,50 @@ function isTextFile(filePath: string): boolean {
 
 // ─── YAML parsing ─────────────────────────────────────────────────────────────
 
+/**
+ * Converts a template object that uses the legacy top-level arrays
+ * (`repositories`, `serviceConnections`, `variableGroups`, `pipelines`) into
+ * the current `scaffoldingSteps` format.
+ * No-ops when the object already contains `scaffoldingSteps`.
+ */
+function migrateLegacyFormat(obj: Record<string, unknown>): Record<string, unknown> {
+  if (Array.isArray(obj.scaffoldingSteps)) {
+    return obj;
+  }
+
+  const hasLegacy =
+    Array.isArray(obj.repositories) ||
+    Array.isArray(obj.pipelines) ||
+    Array.isArray(obj.serviceConnections) ||
+    Array.isArray(obj.variableGroups);
+
+  if (!hasLegacy) {
+    return obj;
+  }
+
+  const steps: unknown[] = [
+    ...(Array.isArray(obj.repositories)
+      ? (obj.repositories as Record<string, unknown>[]).map((r) => ({ ...r, type: "repository" }))
+      : []),
+    ...(Array.isArray(obj.serviceConnections)
+      ? (obj.serviceConnections as Record<string, unknown>[]).map(({ type: endpointType, ...rest }) => ({
+          ...rest,
+          type: "serviceConnection",
+          endpointType,
+        }))
+      : []),
+    ...(Array.isArray(obj.variableGroups)
+      ? (obj.variableGroups as Record<string, unknown>[]).map((vg) => ({ ...vg, type: "variableGroup" }))
+      : []),
+    ...(Array.isArray(obj.pipelines)
+      ? (obj.pipelines as Record<string, unknown>[]).map((p) => ({ ...p, type: "pipeline" }))
+      : []),
+  ];
+
+  const { repositories: _r, pipelines: _p, serviceConnections: _sc, variableGroups: _vg, ...rest } = obj;
+  return { ...rest, scaffoldingSteps: steps };
+}
+
 function parseTemplateYaml(raw: string): TemplateDefinition {
   let parsed: unknown;
   try {
@@ -198,7 +242,8 @@ function parseTemplateYaml(raw: string): TemplateDefinition {
   }
 
   try {
-    return TemplateDefinitionSchema.parse(parsed);
+    const migrated = migrateLegacyFormat(parsed as Record<string, unknown>);
+    return TemplateDefinitionSchema.parse(migrated);
   } catch (err) {
     if (err instanceof ZodError) {
       const first = err.issues[0];

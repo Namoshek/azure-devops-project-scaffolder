@@ -29,7 +29,7 @@
     "remark-breaks": "^4.0.0",
     "remark-gfm": "^4.0.1",
     "yaml": "^2.8.3",
-    "zod": "^4.3.6"
+    "zod": "^4.4.1"
   },
   "overrides": {
     "azure-devops-ui": {

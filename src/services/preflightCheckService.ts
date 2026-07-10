@@ -73,8 +73,9 @@ function variableGroupCacheKey(projectId: string, groupName: string): string {
  * (the fresh result is still written back so subsequent preview calls benefit).
  * This is used during actual scaffolding to ensure the check is always current.
  *
- * Fails open: returns `{ exists: false, isNonEmpty: false }` on any error so
- * that errors never block the preview UI or the submit button.
+ * Preview checks fail open so that a temporary read error does not block the UI.
+ * Fresh checks are used immediately before a write and fail closed: an error is
+ * rethrown so the caller cannot create or initialize an unverified repository.
  */
 export async function checkRepoExists(
   projectId: string,
@@ -100,12 +101,13 @@ export async function checkRepoExists(
       try {
         const refs = await gitClient.getRefs(existing.id!, projectId, "heads");
         isNonEmpty = refs.length > 0;
-      } catch {
-        // If ref listing fails, treat repo as empty so scaffolding can proceed.
+      } catch (err) {
+        if (opts.fresh) throw err;
       }
       result = { exists: true, isNonEmpty };
     }
   } catch (err) {
+    if (opts.fresh) throw err;
     console.error(`Failed to check existence of repository '${repoName}':`, err);
     result = { exists: false, isNonEmpty: false };
   }
@@ -124,7 +126,6 @@ export async function checkRepoExists(
  * creating a pipeline without an explicit folder.
  *
  * Caching and `fresh` semantics are identical to `checkRepoExists`.
- * Fails open.
  */
 export async function checkPipelineExists(
   projectId: string,
@@ -158,6 +159,7 @@ export async function checkPipelineExists(
     );
     result = { exists: existing.length > 0 };
   } catch (err) {
+    if (opts.fresh) throw err;
     console.error(`Failed to check existence of pipeline '${pipelineName}' in folder '${folder}':`, err);
     result = { exists: false };
   }
@@ -170,7 +172,6 @@ export async function checkPipelineExists(
  * Checks whether a service connection with the given name already exists in the project.
  *
  * Caching and `fresh` semantics are identical to `checkRepoExists`.
- * Fails open: returns `{ exists: false }` on any error.
  */
 export async function checkServiceConnectionExists(
   projectId: string,
@@ -189,6 +190,7 @@ export async function checkServiceConnectionExists(
     const endpoints = await client.getServiceEndpointsByNames(projectId, [connectionName]);
     result = { exists: endpoints.length > 0 };
   } catch (err) {
+    if (opts.fresh) throw err;
     console.error(`Failed to check existence of service connection '${connectionName}':`, err);
     result = { exists: false };
   }
@@ -201,7 +203,6 @@ export async function checkServiceConnectionExists(
  * Checks whether a variable group with the given name already exists in the project's Library.
  *
  * Caching and `fresh` semantics are identical to `checkRepoExists`.
- * Fails open: returns `{ exists: false }` on any error.
  */
 export async function checkVariableGroupExists(
   projectId: string,
@@ -220,6 +221,7 @@ export async function checkVariableGroupExists(
     const groups = await client.getVariableGroups(projectId, groupName);
     result = { exists: groups.length > 0 };
   } catch (err) {
+    if (opts.fresh) throw err;
     console.error(`Failed to check existence of variable group '${groupName}':`, err);
     result = { exists: false };
   }

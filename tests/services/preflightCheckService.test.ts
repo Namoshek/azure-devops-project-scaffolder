@@ -176,6 +176,16 @@ describe("checkRepoExists", () => {
     expect(result).toEqual({ exists: true, isNonEmpty: false });
   });
 
+  it("throws when getRefs fails during a fresh execution check", async () => {
+    const git = makeGitClient({
+      repos: [{ id: "repo-refs-err-strict", name: "error-repo" }],
+      refsError: new Error("Permission denied"),
+    });
+    setupClients(git, makeBuildClient());
+
+    await expect(checkRepoExists("proj-a4-strict", "error-repo", { fresh: true })).rejects.toThrow("Permission denied");
+  });
+
   it("fails open and returns { exists: false, isNonEmpty: false } when getRepositories throws", async () => {
     const git = {
       getRepositories: jest.fn().mockRejectedValue(new Error("Network error")),
@@ -186,6 +196,16 @@ describe("checkRepoExists", () => {
     const result = await checkRepoExists("proj-a5", "any-repo");
 
     expect(result).toEqual({ exists: false, isNonEmpty: false });
+  });
+
+  it("throws when getRepositories fails during a fresh execution check", async () => {
+    const git = {
+      getRepositories: jest.fn().mockRejectedValue(new Error("Network error")),
+      getRefs: jest.fn(),
+    };
+    setupClients(git as any, makeBuildClient());
+
+    await expect(checkRepoExists("proj-a5-strict", "any-repo", { fresh: true })).rejects.toThrow("Network error");
   });
 
   it("is case-insensitive when matching repo names", async () => {
@@ -297,6 +317,17 @@ describe("checkPipelineExists", () => {
     expect(result).toEqual({ exists: false });
   });
 
+  it("throws when getDefinitions fails during a fresh execution check", async () => {
+    const build = {
+      getDefinitions: jest.fn().mockRejectedValue(new Error("Timeout")),
+    };
+    setupClients(makeGitClient(), build as any);
+
+    await expect(checkPipelineExists("proj-b5-strict", "some-pipeline", "\\", { fresh: true })).rejects.toThrow(
+      "Timeout",
+    );
+  });
+
   it("returns a cached result on the second call without hitting the API", async () => {
     const build = makeBuildClient({ definitions: [] });
     setupClients(makeGitClient(), build);
@@ -363,6 +394,15 @@ describe("checkServiceConnectionExists", () => {
     expect(result).toEqual({ exists: false });
   });
 
+  it("throws when endpoint lookup fails during a fresh execution check", async () => {
+    const ep = makeServiceEndpointClient({ error: new Error("Server error") });
+    setupClients(makeGitClient(), makeBuildClient(), ep);
+
+    await expect(checkServiceConnectionExists("proj-sc3-strict", "broken-connection", { fresh: true })).rejects.toThrow(
+      "Server error",
+    );
+  });
+
   it("returns a cached result on the second call without hitting the API", async () => {
     const ep = makeServiceEndpointClient({ endpoints: [] });
     setupClients(makeGitClient(), makeBuildClient(), ep);
@@ -421,6 +461,15 @@ describe("checkVariableGroupExists", () => {
     const result = await checkVariableGroupExists("proj-vg3", "broken-group");
 
     expect(result).toEqual({ exists: false });
+  });
+
+  it("throws when variable group lookup fails during a fresh execution check", async () => {
+    const ta = makeTaskAgentClient({ error: new Error("Permission denied") });
+    setupClients(makeGitClient(), makeBuildClient(), makeServiceEndpointClient(), ta);
+
+    await expect(checkVariableGroupExists("proj-vg3-strict", "broken-group", { fresh: true })).rejects.toThrow(
+      "Permission denied",
+    );
   });
 
   it("returns a cached result on the second call without hitting the API", async () => {

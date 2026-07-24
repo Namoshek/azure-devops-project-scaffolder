@@ -70,7 +70,7 @@ export function useRepositoryPreview(
     setContentLoading(false);
     setContentError(null);
 
-    const { sourceProjectId, sourceRepoId, templateRepository, viewValues } = previewContext;
+    const { sourceProjectId, sourceRepoId, templateRepository, viewValues, mustacheTags } = previewContext;
 
     // Normalise sourcePath the same way repositoryService.ts does.
     const rawSourcePath = templateRepository.sourcePath ?? "";
@@ -90,7 +90,7 @@ export function useRepositoryPreview(
                 ? f.path.slice(1)
                 : f.path;
 
-            const renderedPath = renderTemplatePreview(relativePath, viewValues);
+            const renderedPath = renderTemplatePreview(relativePath, viewValues, mustacheTags);
 
             // Evaluate exclude rules using the same matching logic as repositoryService.ts.
             const excludeRules = templateRepository.exclude ?? [];
@@ -151,13 +151,13 @@ export function useRepositoryPreview(
       setContentLoading(true);
     }, SPINNER_DELAY_MS);
 
-    const { sourceProjectId, sourceRepoId, viewValues } = previewContextRef.current;
+    const { sourceProjectId, sourceRepoId, viewValues, mustacheTags } = previewContextRef.current;
     const gitClient = getClient(GitRestClient);
 
     void gitClient
       .getItemText(sourceRepoId, selectedFile.sourcePath, sourceProjectId)
       .then((rawContent: string) => {
-        const renderedContent = renderTemplatePreview(rawContent, viewValues);
+        const renderedContent = renderTemplatePreview(rawContent, viewValues, mustacheTags);
         const loadedFile: ProcessedFile = { ...selectedFile, renderedContent, contentLoaded: true };
         // Cache content in files array even if the user has already switched away.
         setFiles((prev) => prev.map((f) => (f.sourcePath === selectedFile.sourcePath ? loadedFile : f)));

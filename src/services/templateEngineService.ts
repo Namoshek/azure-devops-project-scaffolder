@@ -34,11 +34,20 @@ export function buildViewValues(
  * Renders a Mustache template string with the provided parameter values.
  * Used for both file content and file path/name templating.
  *
- * Variable tags (`{{...}}`) whose names are not present in `values` are left
- * unchanged in the output so that non-Mustache expressions – such as Azure
- * Pipelines `${{ expr }}` syntax – survive the rendering step intact.
+ * Variable tags whose names are not present in `values` are left unchanged in
+ * the output so that non-Mustache expressions – such as Azure Pipelines
+ * `${{ expr }}` syntax – survive the rendering step intact.
+ *
+ * @param tags - Optional custom Mustache delimiter pair, e.g. `["<#", "#>"]`.
+ *   When provided, only those delimiters are treated as Mustache syntax; the
+ *   standard `{{ }}` delimiters are treated as plain text. Defaults to
+ *   `["{{", "}}"]` when omitted.
  */
-export function renderTemplate(templateStr: string, values: Record<string, unknown>): string {
+export function renderTemplate(
+  templateStr: string,
+  values: Record<string, unknown>,
+  tags?: [string, string],
+): string {
   // Parse the template to discover all variable tags. For each tag whose name
   // does not resolve in `values`, record the exact position and original text
   // (including delimiters and any internal whitespace). Replace those occurrences
@@ -46,17 +55,17 @@ export function renderTemplate(templateStr: string, values: Record<string, unkno
   // text, then restore the original text in the rendered output.
   let tokens: ReturnType<typeof Mustache.parse>;
   try {
-    tokens = Mustache.parse(templateStr);
+    tokens = tags ? Mustache.parse(templateStr, tags) : Mustache.parse(templateStr);
   } catch {
     // Malformed template – fall back to standard rendering.
-    return Mustache.render(templateStr, values);
+    return tags ? Mustache.render(templateStr, values, {}, { tags }) : Mustache.render(templateStr, values);
   }
 
   const occurrences: Array<{ start: number; end: number; original: string }> = [];
   collectMissingVarOccurrences(tokens, values, templateStr, occurrences);
 
   if (occurrences.length === 0) {
-    return Mustache.render(templateStr, values);
+    return tags ? Mustache.render(templateStr, values, {}, { tags }) : Mustache.render(templateStr, values);
   }
 
   // Build a modified template by replacing each missing-variable occurrence with a
@@ -77,7 +86,9 @@ export function renderTemplate(templateStr: string, values: Record<string, unkno
   }
   modifiedTemplate += templateStr.slice(lastEnd);
 
-  let result = Mustache.render(modifiedTemplate, values);
+  let result = tags
+    ? Mustache.render(modifiedTemplate, values, {}, { tags })
+    : Mustache.render(modifiedTemplate, values);
 
   // Restore each sentinel to the exact original tag text (preserving whitespace).
   for (const [sentinel, original] of sentinelMap) {
@@ -89,22 +100,31 @@ export function renderTemplate(templateStr: string, values: Record<string, unkno
 
 /**
  * Renders a Mustache template string for live previews (e.g. hints, notes, summary panel).
- * Parameters that are empty, null, or undefined are kept as their raw `{{paramId}}` tag
+ * Parameters that are empty, null, or undefined are kept as their raw placeholder tag
  * so the user can see the placeholder until the field is filled in.
  * Tags that do not correspond to any known parameter are also preserved unchanged.
+ *
+ * @param tags - Optional custom Mustache delimiter pair. See `renderTemplate` for details.
  */
-export function renderTemplatePreview(templateStr: string | undefined, values: Record<string, unknown>): string {
+export function renderTemplatePreview(
+  templateStr: string | undefined,
+  values: Record<string, unknown>,
+  tags?: [string, string],
+): string {
   if (!templateStr) {
     return "";
   }
 
+  const open = tags?.[0] ?? "{{";
+  const close = tags?.[1] ?? "}}";
   const previewValues: Record<string, unknown> = {};
   for (const [key, val] of Object.entries(values)) {
-    previewValues[key] = val !== undefined && val !== null && val !== "" ? val : `{{${key}}}`;
+    previewValues[key] = val !== undefined && val !== null && val !== "" ? val : `${open}${key}${close}`;
   }
-  // Use renderTemplate so that {{...}} patterns not matching any scaffolding
-  // parameter (e.g. Azure Pipelines expressions) are preserved as-is.
-  return renderTemplate(templateStr, previewValues);
+  // Use renderTemplate so that delimiter patterns not matching any scaffolding
+  // parameter (e.g. Azure Pipelines expressions when using default {{ }} tags)
+  // are preserved as-is.
+  return renderTemplate(templateStr, previewValues, tags);
 }
 
 // ─── Missing-variable preservation helpers ────────────────────────────────────

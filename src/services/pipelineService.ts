@@ -34,9 +34,10 @@ export async function scaffoldPipeline(
   projectId: string,
   pipelineTemplate: TemplatePipeline,
   parameterValues: Record<string, unknown>,
+  tags?: [string, string],
 ): Promise<PipelineScaffoldResult> {
-  const pipelineName = renderTemplate(pipelineTemplate.name, parameterValues);
-  const repoName = renderTemplate(pipelineTemplate.repository, parameterValues);
+  const pipelineName = renderTemplate(pipelineTemplate.name, parameterValues, tags);
+  const repoName = renderTemplate(pipelineTemplate.repository, parameterValues, tags);
   const folder = pipelineTemplate.folder ?? "\\";
 
   const gitClient = getClient(GitRestClient);
@@ -74,7 +75,7 @@ export async function scaffoldPipeline(
   }
 
   // 4. Build the variables map (undefined when no variables are declared)
-  const variables = buildVariablesMap(pipelineTemplate, parameterValues);
+  const variables = buildVariablesMap(pipelineTemplate, parameterValues, tags);
 
   // 5. Create the pipeline definition
   const definition: BuildDefinition = {
@@ -116,14 +117,15 @@ export async function scaffoldPipeline(
 function buildVariablesMap(
   pipelineTemplate: TemplatePipeline,
   parameterValues: Record<string, unknown>,
+  tags?: [string, string],
 ): Record<string, BuildDefinitionVariable> | undefined {
   if (!pipelineTemplate.variables || pipelineTemplate.variables.length === 0) {
     return undefined;
   }
   const map: Record<string, BuildDefinitionVariable> = {};
   for (const variable of pipelineTemplate.variables) {
-    const name = renderTemplate(variable.name, parameterValues);
-    const value = renderTemplate(variable.value, parameterValues);
+    const name = renderTemplate(variable.name, parameterValues, tags);
+    const value = renderTemplate(variable.value, parameterValues, tags);
     map[name] = { value, isSecret: variable.secret ?? false, allowOverride: false };
   }
   return map;

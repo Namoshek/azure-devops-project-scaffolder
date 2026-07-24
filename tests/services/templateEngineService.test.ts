@@ -85,6 +85,58 @@ describe("renderTemplate", () => {
   });
 });
 
+// ─── renderTemplate — custom Mustache delimiters ───────────────────────────────
+
+describe("renderTemplate — custom delimiters", () => {
+  it("renders a known variable with custom delimiters", () => {
+    expect(renderTemplate("<# name #>", { name: "World" }, ["<#", "#>"])).toBe("World");
+  });
+
+  it("preserves standard {{ }} syntax as plain text when custom delimiters are used", () => {
+    expect(renderTemplate("${{ parameters.stage }}", {}, ["<#", "#>"])).toBe("${{ parameters.stage }}");
+  });
+
+  it("renders known custom-delimiter vars while {{ }} content passes through unchanged", () => {
+    const tpl = "<# projectName #> and ${{ parameters.stage }}";
+    expect(renderTemplate(tpl, { projectName: "my-app" }, ["<#", "#>"])).toBe("my-app and ${{ parameters.stage }}");
+  });
+
+  it("preserves an unknown custom-delimiter tag unchanged", () => {
+    expect(renderTemplate("<# missing #>", {}, ["<#", "#>"])).toBe("<# missing #>");
+  });
+
+  it("renders a realistic Azure Pipelines YAML with custom delimiters", () => {
+    const tpl = [
+      "parameters:",
+      "  - name: stage",
+      '    default: "${{ parameters.stage }}"',
+      "jobs:",
+      '  project: "<# projectName #>"',
+    ].join("\n");
+
+    const result = renderTemplate(tpl, { projectName: "my-app" }, ["<#", "#>"]);
+
+    expect(result).toContain('"${{ parameters.stage }}"');
+    expect(result).toContain('"my-app"');
+  });
+});
+
+// ─── renderTemplatePreview — custom Mustache delimiters ───────────────────────
+
+describe("renderTemplatePreview — custom delimiters", () => {
+  it("renders a known variable with custom delimiters", () => {
+    expect(renderTemplatePreview("<# name #>", { name: "Alice" }, ["<#", "#>"])).toBe("Alice");
+  });
+
+  it("preserves an empty-value variable as its custom-delimiter placeholder", () => {
+    expect(renderTemplatePreview("<# name #>", { name: "" }, ["<#", "#>"])).toBe("<#name#>");
+  });
+
+  it("preserves standard {{ }} syntax as plain text when custom delimiters are configured", () => {
+    expect(renderTemplatePreview("${{ parameters.stage }}", {}, ["<#", "#>"])).toBe("${{ parameters.stage }}");
+  });
+});
+
 // ─── evaluateWhenExpression ────────────────────────────────────────────────────
 
 describe("evaluateWhenExpression", () => {

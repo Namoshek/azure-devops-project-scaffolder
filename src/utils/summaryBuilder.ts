@@ -29,6 +29,8 @@ export interface RepositoryPreviewContext {
   sourceRepoId: string;
   templateRepository: TemplateRepository;
   viewValues: Record<string, unknown>;
+  /** Custom Mustache delimiter pair from the template definition, if configured. */
+  mustacheTags?: [string, string];
 }
 
 export interface ParameterSummaryItem {
@@ -52,17 +54,18 @@ export function buildSummaryItems(
 ): ParameterSummaryItem[] {
   const { definition } = template;
   const viewValues = buildViewValues(definition, values);
+  const tags = definition.mustacheTags;
 
   return definition.scaffoldingSteps.map((step) => {
     switch (step.type) {
       case "repository":
-        return buildRepoItem(step, template, viewValues, permissions, preflightChecks, preflightPending);
+        return buildRepoItem(step, template, viewValues, permissions, preflightChecks, preflightPending, tags);
       case "pipeline":
-        return buildPipelineItem(step, viewValues, permissions, preflightChecks, preflightPending);
+        return buildPipelineItem(step, viewValues, permissions, preflightChecks, preflightPending, tags);
       case "serviceConnection":
-        return buildServiceConnectionItem(step, viewValues, permissions, preflightChecks, preflightPending);
+        return buildServiceConnectionItem(step, viewValues, permissions, preflightChecks, preflightPending, tags);
       case "variableGroup":
-        return buildVariableGroupItem(step, viewValues, permissions, preflightChecks, preflightPending);
+        return buildVariableGroupItem(step, viewValues, permissions, preflightChecks, preflightPending, tags);
     }
   });
 }
@@ -74,6 +77,7 @@ function buildRepoItem(
   permissions: TemplatePermissions | null,
   preflightChecks: ResourceExistenceMap | null,
   preflightPending: boolean,
+  tags?: [string, string],
 ): ParameterSummaryItem {
   const included = !r.when || evaluateWhenExpression(r.when, viewValues);
   const conditionalExcludes = (r.exclude ?? []).filter((e) => !!e.when);
@@ -84,7 +88,7 @@ function buildRepoItem(
       included: !evaluateWhenExpression(e.when!, viewValues),
     })),
   ];
-  const lookupName = renderTemplate(r.name, viewValues);
+  const lookupName = renderTemplate(r.name, viewValues, tags);
   const repositoryCheck = preflightChecks?.repos[lookupName.toLowerCase()];
   const permissionDenied = permissions !== null && !permissions.canCreateRepos;
   const existsWillSkip =
@@ -103,11 +107,12 @@ function buildRepoItem(
     sourceRepoId: template.sourceRepoId,
     templateRepository,
     viewValues,
+    mustacheTags: tags,
   };
 
   return {
     type: "repository" as const,
-    name: renderTemplatePreview(r.name, viewValues),
+    name: renderTemplatePreview(r.name, viewValues, tags),
     included,
     permissionDenied,
     existsWillSkip,
@@ -123,9 +128,10 @@ function buildPipelineItem(
   permissions: TemplatePermissions | null,
   preflightChecks: ResourceExistenceMap | null,
   preflightPending: boolean,
+  tags?: [string, string],
 ): ParameterSummaryItem {
   const included = !p.when || evaluateWhenExpression(p.when, viewValues);
-  const lookupName = renderTemplate(p.name, viewValues);
+  const lookupName = renderTemplate(p.name, viewValues, tags);
   const folder = p.folder ?? "\\";
   const pipelineKey = `${folder.toLowerCase()}::${lookupName.toLowerCase()}`;
   const pipelineCheck = preflightChecks?.pipelines[pipelineKey];
@@ -134,14 +140,14 @@ function buildPipelineItem(
   const existsCheckPending = included && !permissionDenied && (preflightPending || pipelineCheck === undefined);
 
   const subItems: ParameterSummarySubItem[] = (p.variables ?? []).map((v) => {
-    const varName = renderTemplatePreview(v.name, viewValues);
-    const varValue = v.secret ? "******" : renderTemplatePreview(v.value, viewValues);
+    const varName = renderTemplatePreview(v.name, viewValues, tags);
+    const varValue = v.secret ? "******" : renderTemplatePreview(v.value, viewValues, tags);
     return { name: `${varName} = ${varValue}`, included: true };
   });
 
   return {
     type: "pipeline" as const,
-    name: renderTemplatePreview(p.name, viewValues),
+    name: renderTemplatePreview(p.name, viewValues, tags),
     included,
     permissionDenied,
     existsWillSkip,
@@ -156,9 +162,10 @@ function buildServiceConnectionItem(
   permissions: TemplatePermissions | null,
   preflightChecks: ResourceExistenceMap | null,
   preflightPending: boolean,
+  tags?: [string, string],
 ): ParameterSummaryItem {
   const included = !sc.when || evaluateWhenExpression(sc.when, viewValues);
-  const lookupName = renderTemplate(sc.name, viewValues);
+  const lookupName = renderTemplate(sc.name, viewValues, tags);
   const serviceConnectionCheck = preflightChecks?.serviceConnections[lookupName.toLowerCase()];
   const permissionDenied = permissions !== null && !permissions.canCreateServiceConnections;
   const existsWillSkip = included && !permissionDenied && serviceConnectionCheck?.exists === true;
@@ -167,7 +174,7 @@ function buildServiceConnectionItem(
 
   return {
     type: "serviceConnection" as const,
-    name: renderTemplatePreview(sc.name, viewValues),
+    name: renderTemplatePreview(sc.name, viewValues, tags),
     included,
     permissionDenied,
     existsWillSkip,
@@ -181,23 +188,24 @@ function buildVariableGroupItem(
   permissions: TemplatePermissions | null,
   preflightChecks: ResourceExistenceMap | null,
   preflightPending: boolean,
+  tags?: [string, string],
 ): ParameterSummaryItem {
   const included = !vg.when || evaluateWhenExpression(vg.when, viewValues);
-  const lookupName = renderTemplate(vg.name, viewValues);
+  const lookupName = renderTemplate(vg.name, viewValues, tags);
   const variableGroupCheck = preflightChecks?.variableGroups[lookupName.toLowerCase()];
   const permissionDenied = permissions !== null && !permissions.canCreateVariableGroups;
   const existsWillSkip = included && !permissionDenied && variableGroupCheck?.exists === true;
   const existsCheckPending = included && !permissionDenied && (preflightPending || variableGroupCheck === undefined);
 
   const subItems: ParameterSummarySubItem[] = (vg.variables ?? []).map((v) => {
-    const varName = renderTemplatePreview(v.name, viewValues);
-    const varValue = v.secret ? "******" : renderTemplatePreview(v.value, viewValues);
+    const varName = renderTemplatePreview(v.name, viewValues, tags);
+    const varValue = v.secret ? "******" : renderTemplatePreview(v.value, viewValues, tags);
     return { name: `${varName} = ${varValue}`, included: true };
   });
 
   return {
     type: "variableGroup" as const,
-    name: renderTemplatePreview(vg.name, viewValues),
+    name: renderTemplatePreview(vg.name, viewValues, tags),
     included,
     permissionDenied,
     existsWillSkip,

@@ -33,8 +33,9 @@ export async function scaffoldVariableGroup(
   projectId: string,
   groupTemplate: TemplateVariableGroup,
   parameterValues: Record<string, unknown>,
+  tags?: [string, string],
 ): Promise<VariableGroupScaffoldResult> {
-  const groupName = renderTemplate(groupTemplate.name, parameterValues);
+  const groupName = renderTemplate(groupTemplate.name, parameterValues, tags);
 
   // 1. Skip if a group with this name already exists
   const { exists } = await checkVariableGroupExists(projectId, groupName, { fresh: true });
@@ -49,13 +50,13 @@ export async function scaffoldVariableGroup(
   // 2. Build the variables map
   const variables: Record<string, { value: string; isSecret: boolean }> = {};
   for (const variable of groupTemplate.variables ?? []) {
-    const name = renderTemplate(variable.name, parameterValues);
-    const value = renderTemplate(variable.value, parameterValues);
+    const name = renderTemplate(variable.name, parameterValues, tags);
+    const value = renderTemplate(variable.value, parameterValues, tags);
     variables[name] = { value, isSecret: variable.secret ?? false };
   }
 
   const renderedDescription = groupTemplate.description
-    ? renderTemplate(groupTemplate.description, parameterValues)
+    ? renderTemplate(groupTemplate.description, parameterValues, tags)
     : undefined;
 
   const projectReference: VariableGroupProjectReference = {

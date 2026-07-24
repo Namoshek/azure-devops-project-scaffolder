@@ -407,17 +407,19 @@ export const TemplateDefinitionSchema = z
   .superRefine((val, ctx) => {
     const steps = val.scaffoldingSteps;
     const openTag = val.mustacheTags?.[0] ?? "{{";
+    const closeTag = val.mustacheTags?.[1] ?? "}}";
+    const isTemplated = (s: string) => s.includes(openTag) && s.includes(closeTag);
     for (let i = 0; i < steps.length; i++) {
       const step = steps[i];
-      if (step.type !== "pipeline" || step.repository.includes(openTag)) {
+      if (step.type !== "pipeline" || isTemplated(step.repository)) {
         continue;
       }
       const repoNames = steps
         .slice(0, i)
         .filter((s) => s.type === "repository")
         .map((s) => s.name);
-      const hasLiteralMatch = repoNames.some((n) => !n.includes(openTag) && n === step.repository);
-      const hasTemplateRepo = repoNames.some((n) => n.includes(openTag));
+      const hasLiteralMatch = repoNames.some((n) => !isTemplated(n) && n === step.repository);
+      const hasTemplateRepo = repoNames.some((n) => isTemplated(n));
       if (!hasLiteralMatch && !hasTemplateRepo) {
         ctx.addIssue({
           code: "custom",

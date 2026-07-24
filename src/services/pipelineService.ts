@@ -3,6 +3,8 @@ import {
   BuildRestClient,
   BuildDefinition,
   BuildDefinitionVariable,
+  ContinuousIntegrationTrigger,
+  DefinitionTriggerType,
   DefinitionType,
   YamlProcess,
   AgentPoolQueue,
@@ -93,7 +95,18 @@ export async function scaffoldPipeline(
       defaultBranch: "refs/heads/main",
       checkoutSubmodules: false,
     } as BuildRepository,
-    triggers: [],
+    triggers: [
+      {
+        triggerType: DefinitionTriggerType.ContinuousIntegration,
+        settingsSourceType: 2, // 2 = read CI trigger settings from the YAML file
+        batchChanges: false,
+        branchFilters: [],
+        pathFilters: [],
+        maxConcurrentBuildsPerBranch: 1,
+        pollingInterval: 0,
+        pollingJobId: "",
+      } as ContinuousIntegrationTrigger,
+    ],
     ...(variables !== undefined && { variables }),
   } as unknown as BuildDefinition;
 

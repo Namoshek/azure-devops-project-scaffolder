@@ -17,8 +17,8 @@ describe("renderTemplate", () => {
     expect(renderTemplate("Hello, {{name}}!", { name: "World" })).toBe("Hello, World!");
   });
 
-  it("replaces a missing variable with an empty string", () => {
-    expect(renderTemplate("{{missing}}", {})).toBe("");
+  it("preserves a missing variable tag unchanged instead of replacing with empty string", () => {
+    expect(renderTemplate("{{missing}}", {})).toBe("{{missing}}");
   });
 
   it("handles multiple variables", () => {
@@ -49,6 +49,91 @@ describe("renderTemplate", () => {
     const tpl = "{{#flag}}yes{{/flag}}{{^flag}}no{{/flag}}";
     expect(renderTemplate(tpl, { flag: true })).toBe("yes");
     expect(renderTemplate(tpl, { flag: false })).toBe("no");
+  });
+
+  it("preserves Azure Pipelines expressions like ${{ parameters.stage }} unchanged", () => {
+    const tpl = 'stage: "${{ parameters.stage }}"';
+    expect(renderTemplate(tpl, {})).toBe('stage: "${{ parameters.stage }}"');
+  });
+
+  it("preserves a missing dotted-path variable tag unchanged", () => {
+    expect(renderTemplate("{{obj.nested}}", {})).toBe("{{obj.nested}}");
+  });
+
+  it("replaces known variables while leaving unknown tags intact", () => {
+    const tpl = "{{known}} and ${{ parameters.stage }}";
+    expect(renderTemplate(tpl, { known: "hello" })).toBe("hello and ${{ parameters.stage }}");
+  });
+
+  it("preserves multiple unknown tags in a realistic Azure Pipelines YAML snippet", () => {
+    const tpl = [
+      "parameters:",
+      "  - name: stage",
+      '    default: "${{ parameters.stage }}"',
+      "jobs:",
+      "  - template: job.yaml@templates",
+      "    parameters:",
+      '      env: "${{ parameters.env }}"',
+      '      project: "{{projectName}}"',
+    ].join("\n");
+
+    const result = renderTemplate(tpl, { projectName: "my-app" });
+
+    expect(result).toContain('"${{ parameters.stage }}"');
+    expect(result).toContain('"${{ parameters.env }}"');
+    expect(result).toContain('"my-app"');
+  });
+});
+
+// ─── renderTemplate — custom Mustache delimiters ───────────────────────────────
+
+describe("renderTemplate — custom delimiters", () => {
+  it("renders a known variable with custom delimiters", () => {
+    expect(renderTemplate("<# name #>", { name: "World" }, ["<#", "#>"])).toBe("World");
+  });
+
+  it("preserves standard {{ }} syntax as plain text when custom delimiters are used", () => {
+    expect(renderTemplate("${{ parameters.stage }}", {}, ["<#", "#>"])).toBe("${{ parameters.stage }}");
+  });
+
+  it("renders known custom-delimiter vars while {{ }} content passes through unchanged", () => {
+    const tpl = "<# projectName #> and ${{ parameters.stage }}";
+    expect(renderTemplate(tpl, { projectName: "my-app" }, ["<#", "#>"])).toBe("my-app and ${{ parameters.stage }}");
+  });
+
+  it("preserves an unknown custom-delimiter tag unchanged", () => {
+    expect(renderTemplate("<# missing #>", {}, ["<#", "#>"])).toBe("<# missing #>");
+  });
+
+  it("renders a realistic Azure Pipelines YAML with custom delimiters", () => {
+    const tpl = [
+      "parameters:",
+      "  - name: stage",
+      '    default: "${{ parameters.stage }}"',
+      "jobs:",
+      '  project: "<# projectName #>"',
+    ].join("\n");
+
+    const result = renderTemplate(tpl, { projectName: "my-app" }, ["<#", "#>"]);
+
+    expect(result).toContain('"${{ parameters.stage }}"');
+    expect(result).toContain('"my-app"');
+  });
+});
+
+// ─── renderTemplatePreview — custom Mustache delimiters ───────────────────────
+
+describe("renderTemplatePreview — custom delimiters", () => {
+  it("renders a known variable with custom delimiters", () => {
+    expect(renderTemplatePreview("<# name #>", { name: "Alice" }, ["<#", "#>"])).toBe("Alice");
+  });
+
+  it("preserves an empty-value variable as its custom-delimiter placeholder", () => {
+    expect(renderTemplatePreview("<# name #>", { name: "" }, ["<#", "#>"])).toBe("<#name#>");
+  });
+
+  it("preserves standard {{ }} syntax as plain text when custom delimiters are configured", () => {
+    expect(renderTemplatePreview("${{ parameters.stage }}", {}, ["<#", "#>"])).toBe("${{ parameters.stage }}");
   });
 });
 
@@ -222,11 +307,10 @@ describe("renderTemplatePreview — Markdown-safe interpolation", () => {
     expect(renderTemplatePreview("**{{name}}**", { name: "" })).toBe("**{{name}}**");
   });
 
-  it("renders a key absent from values as empty string (standard Mustache behaviour)", () => {
-    // The function only replaces empty/null values with {{token}} placeholders for keys
-    // that ARE present in the values object. A completely absent key passes through
-    // Mustache's default rendering (empty string).
-    expect(renderTemplatePreview("**{{name}}**", {})).toBe("****");
+  it("preserves a key absent from values as {{token}} placeholder", () => {
+    // Tags not present in the values object at all are now kept unchanged,
+    // consistent with the behaviour of renderTemplate for non-Mustache expressions.
+    expect(renderTemplatePreview("**{{name}}**", {})).toBe("**{{name}}**");
   });
 
   it("returns empty string for an undefined template", () => {

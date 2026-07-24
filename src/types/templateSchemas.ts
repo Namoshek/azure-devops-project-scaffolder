@@ -377,6 +377,24 @@ export const TemplateDefinitionSchema = z
      * They are not surfaced in the parameter form and are not written to the audit log.
      */
     computed: z.array(TemplateComputedSchema).optional(),
+    /**
+     * Override the Mustache delimiter pair used when rendering file content and configuration
+     * strings in this template. Provide exactly two non-empty strings: `[openingTag, closingTag]`.
+     *
+     * When set, the standard `{{ }}` Mustache delimiters are **not** interpreted — any `{{ }}`
+     * text in scaffolded files is preserved verbatim. This is useful when the files being
+     * scaffolded contain native `{{ }}` syntax such as Azure Pipelines expressions or Helm
+     * chart templates.
+     *
+     * Example — use `<#` / `#>` to avoid conflicts with `{{ }}` in YAML pipelines:
+     * ```yaml
+     * mustacheTags: ["<#", "#>"]
+     * ```
+     * Template files would then use `<# projectName #>` instead of `{{ projectName }}`.
+     *
+     * Defaults to the standard Mustache delimiters `["{{", "}}"]` when omitted.
+     */
+    mustacheTags: z.tuple([z.string().min(1), z.string().min(1)]).optional(),
     /** Ordered list of input parameters the user must fill in before scaffolding can proceed. */
     parameters: z.array(TemplateParameterSchema).default([]),
     /**
@@ -388,17 +406,20 @@ export const TemplateDefinitionSchema = z
   })
   .superRefine((val, ctx) => {
     const steps = val.scaffoldingSteps;
+    const openTag = val.mustacheTags?.[0] ?? "{{";
+    const closeTag = val.mustacheTags?.[1] ?? "}}";
+    const isTemplated = (s: string) => s.includes(openTag) && s.includes(closeTag);
     for (let i = 0; i < steps.length; i++) {
       const step = steps[i];
-      if (step.type !== "pipeline" || step.repository.includes("{{")) {
+      if (step.type !== "pipeline" || isTemplated(step.repository)) {
         continue;
       }
       const repoNames = steps
         .slice(0, i)
         .filter((s) => s.type === "repository")
         .map((s) => s.name);
-      const hasLiteralMatch = repoNames.some((n) => !n.includes("{{") && n === step.repository);
-      const hasTemplateRepo = repoNames.some((n) => n.includes("{{"));
+      const hasLiteralMatch = repoNames.some((n) => !isTemplated(n) && n === step.repository);
+      const hasTemplateRepo = repoNames.some((n) => isTemplated(n));
       if (!hasLiteralMatch && !hasTemplateRepo) {
         ctx.addIssue({
           code: "custom",

@@ -44,11 +44,12 @@ export async function runScaffold(
 ): Promise<ScaffoldResult[]> {
   const { definition: templateDefinition } = template;
   const viewValues = buildViewValues(templateDefinition, parameterValues);
+  const tags = templateDefinition.mustacheTags;
 
   // Build the initial step list from scaffoldingSteps
   const allSteps: ScaffoldStep[] = templateDefinition.scaffoldingSteps.map((step) => ({
     id: `${step.type}:${step.name}`,
-    label: buildStepLabel(step, viewValues),
+    label: buildStepLabel(step, viewValues, tags),
     status: "pending" as StepStatus,
   }));
   onProgress([...allSteps]);
@@ -78,7 +79,7 @@ export async function runScaffold(
     allSteps[i].startTime = Date.now();
     onProgress([...allSteps]);
 
-    const result = await executeStep(projectId, step, template, viewValues, completedRepoNames);
+    const result = await executeStep(projectId, step, template, viewValues, completedRepoNames, tags);
 
     allSteps[i].status = mapStatus(result.status);
     allSteps[i].duration = Date.now() - allSteps[i].startTime!;
@@ -86,15 +87,15 @@ export async function runScaffold(
     onProgress([...allSteps]);
 
     if (step.type === "repository" && result.status === "created") {
-      completedRepoNames.add(renderTemplate(step.name, viewValues).toLowerCase());
+      completedRepoNames.add(renderTemplate(step.name, viewValues, tags).toLowerCase());
     }
   }
 
   return [...allSteps];
 }
 
-function buildStepLabel(step: ScaffoldingStep, viewValues: Record<string, unknown>): string {
-  const rendered = renderTemplate(step.name, viewValues);
+function buildStepLabel(step: ScaffoldingStep, viewValues: Record<string, unknown>, tags?: [string, string]): string {
+  const rendered = renderTemplate(step.name, viewValues, tags);
   switch (step.type) {
     case "repository":
       return `Create repository: ${rendered}`;
@@ -127,6 +128,7 @@ async function executeStep(
   template: DiscoveredTemplate,
   viewValues: Record<string, unknown>,
   completedRepoNames: Set<string>,
+  tags?: [string, string],
 ): Promise<{ status: "created" | "skipped" | "failed"; reason?: string }> {
   try {
     switch (step.type) {
@@ -135,22 +137,22 @@ async function executeStep(
         return { status: r.status, reason: r.reason };
       }
       case "pipeline": {
-        const repoName = renderTemplate(step.repository, viewValues);
+        const repoName = renderTemplate(step.repository, viewValues, tags);
         if (!completedRepoNames.has(repoName.toLowerCase())) {
           return {
             status: "failed",
             reason: `Repository '${repoName}' was not created in a preceding step. Ensure a repository step with this name appears before this pipeline step.`,
           };
         }
-        const p = await scaffoldPipeline(projectId, step, viewValues);
+        const p = await scaffoldPipeline(projectId, step, viewValues, tags);
         return { status: p.status, reason: p.reason };
       }
       case "serviceConnection": {
-        const sc = await scaffoldServiceConnection(projectId, step, viewValues);
+        const sc = await scaffoldServiceConnection(projectId, step, viewValues, tags);
         return { status: sc.status, reason: sc.reason };
       }
       case "variableGroup": {
-        const vg = await scaffoldVariableGroup(projectId, step, viewValues);
+        const vg = await scaffoldVariableGroup(projectId, step, viewValues, tags);
         return { status: vg.status, reason: vg.reason };
       }
     }

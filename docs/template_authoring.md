@@ -106,6 +106,13 @@ computed:
   - id: dockerAndSonar
     expression: "includeDocker && includeSonarQube"
 
+# ── Custom Mustache delimiters (optional) ──────────────────────────────────────────
+# Use this when your template files contain {{ }} syntax that is NOT a Mustache
+# variable — for example Azure Pipelines expressions or Helm chart templates.
+# When set, only the custom delimiters trigger substitution; {{ }} is preserved verbatim.
+#
+# mustacheTags: ["<#", "#>"]   ← template files use <# projectName #> instead of {{projectName}}
+
 # ── Scaffolding Steps ──────────────────────────────────────────────────────────────
 scaffoldingSteps:
   - type: repository
@@ -266,6 +273,68 @@ src/{{projectName}}.csproj   →   src/my-service.csproj
 ```
 
 Binary files (images, fonts, etc.) are copied as-is without Mustache rendering.
+
+---
+
+## Custom Mustache Delimiters (`mustacheTags`)
+
+By default, the scaffolder uses the standard Mustache delimiters `{{ }}` to identify variables in file content, file paths, and configuration strings.
+
+If your template files contain **native `{{ }}` syntax** — such as Azure Pipelines expressions (`${{ parameters.stage }}`), Helm chart templates, or any other framework that uses double-braces — you have two options:
+
+### Option A — Rely on automatic preservation (default, zero configuration)
+
+The scaffolder automatically detects `{{ }}` tags that don't correspond to any declared parameter and **preserves them verbatim**, so Azure Pipelines expressions survive templating without any configuration change.
+
+This is the easiest approach. No changes to your template files or `project-template.yml` are needed.
+
+### Option B — Configure custom Mustache delimiters
+
+For complete peace of mind (or when you prefer explicit syntax), you can declare a custom delimiter pair in `project-template.yml`:
+
+```yaml
+mustacheTags: ["<#", "#>"]
+```
+
+With custom delimiters:
+
+- Template files use `<# projectName #>` instead of `{{ projectName }}`.
+- All `{{ }}` content is treated as plain text and is **never touched** by the scaffolder.
+
+**Example `project-template.yml`:**
+
+```yaml
+id: "04bd1234-5678-90ab-cdef-1234567890ab"
+name: "Azure Pipeline Template"
+version: "1.0.0"
+mustacheTags: ["<#", "#>"]
+parameters:
+  - id: projectName
+    label: Project Name
+    type: string
+    required: true
+scaffoldingSteps:
+  - type: repository
+    name: "<# projectName #>.backend"
+    sourcePath: "templates/backend"
+```
+
+**Corresponding template file (`templates/backend/pipelines/ci.yml`):**
+
+```yaml
+parameters:
+  - name: stage
+    type: string
+    default: ""
+
+jobs:
+  - template: job-validate.yaml@templates
+    parameters:
+      stage: "${{ parameters.stage }}"   # ← preserved as-is; not a Mustache variable
+      project: "<# projectName #>"        # ← replaced with the user's input
+```
+
+Any delimiter pair is valid as long as neither string is empty and the pair doesn't appear as literal text in your template files.
 
 ---
 

@@ -244,6 +244,7 @@ export async function checkTemplateResourcesExistence(
   paramValues: Record<string, unknown>,
 ): Promise<ResourceExistenceMap> {
   const viewValues = buildViewValues(template, paramValues);
+  const tags = template.mustacheTags;
 
   const repoSteps = template.scaffoldingSteps.filter((s) => s.type === "repository");
   const pipelineSteps = template.scaffoldingSteps.filter((s) => s.type === "pipeline");
@@ -251,7 +252,7 @@ export async function checkTemplateResourcesExistence(
   const variableGroupSteps = template.scaffoldingSteps.filter((s) => s.type === "variableGroup");
 
   const repositoryEntries = repoSteps.map((r) => {
-    const renderedName = renderTemplate(r.name, viewValues);
+    const renderedName = renderTemplate(r.name, viewValues, tags);
     return {
       key: renderedName.toLowerCase(),
       rendered: renderedName,
@@ -259,7 +260,7 @@ export async function checkTemplateResourcesExistence(
   });
 
   const pipelineEntries = pipelineSteps.map((p) => {
-    const renderedName = renderTemplate(p.name, viewValues);
+    const renderedName = renderTemplate(p.name, viewValues, tags);
     const folder = p.folder ?? "\\";
     return {
       key: `${folder.toLowerCase()}::${renderedName.toLowerCase()}`,
@@ -269,7 +270,7 @@ export async function checkTemplateResourcesExistence(
   });
 
   const serviceConnectionEntries = serviceConnSteps.map((sc) => {
-    const renderedName = renderTemplate(sc.name, viewValues);
+    const renderedName = renderTemplate(sc.name, viewValues, tags);
     return {
       key: renderedName.toLowerCase(),
       rendered: renderedName,
@@ -277,7 +278,7 @@ export async function checkTemplateResourcesExistence(
   });
 
   const variableGroupEntries = variableGroupSteps.map((vg) => {
-    const renderedName = renderTemplate(vg.name, viewValues);
+    const renderedName = renderTemplate(vg.name, viewValues, tags);
     return {
       key: renderedName.toLowerCase(),
       rendered: renderedName,

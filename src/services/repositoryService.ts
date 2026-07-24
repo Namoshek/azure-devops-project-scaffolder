@@ -26,7 +26,8 @@ export async function scaffoldRepository(
   template: DiscoveredTemplate,
   parameterValues: Record<string, unknown>,
 ): Promise<RepoScaffoldResult> {
-  const repoName = renderTemplate(repoTemplate.name, parameterValues);
+  const tags = template.definition.mustacheTags;
+  const repoName = renderTemplate(repoTemplate.name, parameterValues, tags);
   const gitClient = getClient(GitRestClient);
 
   // 1. Check if the repo already exists (fresh=true bypasses preview cache)
@@ -140,10 +141,10 @@ export async function scaffoldRepository(
       let relativePath = f.path.startsWith(sourcePathPrefix) ? f.path.slice(sourcePathPrefix.length) : f.path;
 
       // Apply Mustache to the path (for dynamic file names)
-      relativePath = renderTemplate(relativePath, parameterValues);
+      relativePath = renderTemplate(relativePath, parameterValues, tags);
 
       // Apply Mustache to text content only
-      const renderedContent = f.isBase64 ? f.content : renderTemplate(f.content, parameterValues);
+      const renderedContent = f.isBase64 ? f.content : renderTemplate(f.content, parameterValues, tags);
 
       return {
         changeType: VersionControlChangeType.Add,

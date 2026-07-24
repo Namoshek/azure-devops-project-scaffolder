@@ -34,8 +34,9 @@ export async function scaffoldServiceConnection(
   projectId: string,
   connectionTemplate: TemplateServiceConnection,
   parameterValues: Record<string, unknown>,
+  tags?: [string, string],
 ): Promise<ServiceConnectionScaffoldResult> {
-  const connectionName = renderTemplate(connectionTemplate.name, parameterValues);
+  const connectionName = renderTemplate(connectionTemplate.name, parameterValues, tags);
 
   // 1. Skip if a connection with this name already exists
   const { exists } = await checkServiceConnectionExists(projectId, connectionName, { fresh: true });
@@ -50,17 +51,17 @@ export async function scaffoldServiceConnection(
   // 2. Render all authorization and data values
   const renderedAuthParams: Record<string, string> = {};
   for (const [key, value] of Object.entries(connectionTemplate.authorization)) {
-    renderedAuthParams[key] = renderTemplate(value, parameterValues);
+    renderedAuthParams[key] = renderTemplate(value, parameterValues, tags);
   }
 
   const renderedData: Record<string, string> | undefined = connectionTemplate.data
     ? Object.fromEntries(
-        Object.entries(connectionTemplate.data).map(([k, v]) => [k, renderTemplate(v, parameterValues)]),
+        Object.entries(connectionTemplate.data).map(([k, v]) => [k, renderTemplate(v, parameterValues, tags)]),
       )
     : undefined;
 
   const renderedDescription = connectionTemplate.description
-    ? renderTemplate(connectionTemplate.description, parameterValues)
+    ? renderTemplate(connectionTemplate.description, parameterValues, tags)
     : undefined;
 
   const projectReference: ServiceEndpointProjectReference = {
@@ -69,7 +70,7 @@ export async function scaffoldServiceConnection(
     description: renderedDescription ?? "",
   };
 
-  const url = connectionTemplate.url ? renderTemplate(connectionTemplate.url, parameterValues) : undefined;
+  const url = connectionTemplate.url ? renderTemplate(connectionTemplate.url, parameterValues, tags) : undefined;
 
   const endpoint: ServiceEndpoint = {
     name: connectionName,

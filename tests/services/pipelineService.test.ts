@@ -11,6 +11,7 @@ jest.mock("azure-devops-extension-api/Git", () => ({
 jest.mock("azure-devops-extension-api/Build", () => ({
   BuildRestClient: jest.fn(),
   DefinitionType: { Build: 2 },
+  DefinitionTriggerType: { ContinuousIntegration: 2 },
   YamlProcess: jest.fn(),
   AgentPoolQueue: jest.fn(),
   BuildRepository: jest.fn(),
@@ -229,6 +230,20 @@ describe("scaffoldPipeline", () => {
 
     const def = buildClient.createDefinition.mock.calls[0][0];
     expect(def.path).toBe("\\BackendPipelines");
+  });
+
+  // ─── CI trigger ────────────────────────────────────────────────────────────
+
+  it("adds a ContinuousIntegration trigger with settingsSourceType 2 so CI is sourced from YAML", async () => {
+    const { buildClient } = makeClients({});
+
+    await scaffoldPipeline("proj1", makePipelineTemplate(), PARAMS);
+
+    const def = buildClient.createDefinition.mock.calls[0][0];
+    expect(def.triggers).toHaveLength(1);
+    const trigger = def.triggers[0];
+    expect(trigger.triggerType).toBe(2); // DefinitionTriggerType.ContinuousIntegration
+    expect(trigger.settingsSourceType).toBe(2); // from YAML
   });
 
   // ─── Pipeline variables ──────────────────────────────────────────────────
